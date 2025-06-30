@@ -125,20 +125,22 @@ $categories = @{
     )
 }
 
-# Creo form e splitcontainer
 $form = New-Object System.Windows.Forms.Form
-$form.Text = "Luca Tweaks - Tema Scuro"
 $form.Size = New-Object System.Drawing.Size(820, 620)
 $form.StartPosition = "CenterScreen"
-$form.BackColor = $colorBackground
-$form.Font = New-Object System.Drawing.Font("Segoe UI", 10)
+$form.Text = "Luca Tweaks"
 
 $splitContainer = New-Object System.Windows.Forms.SplitContainer
 $splitContainer.Dock = "Fill"
-$splitContainer.Panel1MinSize = 180
-$splitContainer.Panel2MinSize = 600
-$splitContainer.SplitterDistance = 180
 $form.Controls.Add($splitContainer)
+
+# Ora che $form.Width è noto, imposta i valori
+$splitContainer.Panel1MinSize = 200
+$splitContainer.Panel2MinSize = 400
+
+# SplitterDistance deve essere compreso tra Panel1MinSize e (Width - Panel2MinSize)
+# Qui: tra 200 e (820 - 400) = 420
+$splitContainer.SplitterDistance = 300
 
 # Sidebar (Panel1)
 $sidebar = $splitContainer.Panel1
