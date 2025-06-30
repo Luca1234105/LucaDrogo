@@ -1,4 +1,4 @@
-# Verifica se lo script è eseguito come amministratore
+# Elevazione automatica Admin
 $currentUser = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
 if (-not $currentUser.IsInRole([Security.Principal.WindowsBuiltinRole]::Administrator)) {
     $psi = New-Object System.Diagnostics.ProcessStartInfo
@@ -16,15 +16,57 @@ if (-not $currentUser.IsInRole([Security.Principal.WindowsBuiltinRole]::Administ
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
-# --- COLORI TEMA SCURO ---
+# Color Theme Dark
 $colorBackground = [System.Drawing.Color]::FromArgb(30,30,30)
 $colorPanel      = [System.Drawing.Color]::FromArgb(45,45,48)
 $colorFore       = [System.Drawing.Color]::FromArgb(220,220,220)
 $colorButtonBack = [System.Drawing.Color]::FromArgb(70,70,70)
 $colorButtonHover= [System.Drawing.Color]::FromArgb(100,100,100)
 $colorChecked    = [System.Drawing.Color]::FromArgb(70,130,180)
+$colorCategoryLabel = [System.Drawing.Color]::FromArgb(150, 200, 255)
 
-# --- FUNZIONE PER SET REGISTRY ---
+# Funzione per creare checkbox dark style
+function New-DarkCheckBox {
+    param(
+        [string]$Text,
+        [int]$X,
+        [int]$Y,
+        [hashtable]$TagData
+    )
+    $cb = New-Object System.Windows.Forms.CheckBox
+    $cb.Text = $Text
+    $cb.Size = New-Object System.Drawing.Size(580, 30)
+    $cb.Location = New-Object System.Drawing.Point($X, $Y)
+    $cb.ForeColor = $colorFore
+    $cb.BackColor = $colorPanel
+    $cb.FlatStyle = "Flat"
+    $cb.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(100,100,100)
+    $cb.FlatAppearance.CheckedBackColor = $colorChecked
+    $cb.Font = New-Object System.Drawing.Font("Segoe UI", 10)
+    $cb.Tag = $TagData
+    $cb.AutoEllipsis = $true
+
+    # Tooltip
+    $tooltip = New-Object System.Windows.Forms.ToolTip
+    $tooltip.SetToolTip($cb, $Text)
+
+    return $cb
+}
+
+# Funzione per creare label categoria
+function New-CategoryLabel {
+    param([string]$Text, [int]$X, [int]$Y)
+    $lbl = New-Object System.Windows.Forms.Label
+    $lbl.Text = $Text
+    $lbl.ForeColor = $colorCategoryLabel
+    $lbl.BackColor = $colorPanel
+    $lbl.Font = New-Object System.Drawing.Font("Segoe UI", 12, [System.Drawing.FontStyle]::Bold)
+    $lbl.AutoSize = $true
+    $lbl.Location = New-Object System.Drawing.Point($X, $Y)
+    return $lbl
+}
+
+# Funzione per set registry value
 function Set-RegistryValue {
     param (
         [string]$Path,
@@ -50,7 +92,51 @@ function Set-RegistryValue {
     }
 }
 
-# --- CREA FORM ---
+# Tweaks divisi per categoria (idem)
+$categories = @{
+    "Sistema" = @(
+        @{Text="Imposta SvcHostSplitThresholdInKB (0x4000000)"; Path="SYSTEM\CurrentControlSet\Control"; Name="SvcHostSplitThresholdInKB"; Value=0x4000000; Type="DWord"},
+        @{Text="Abilita LongPathsEnabled"; Path="SYSTEM\CurrentControlSet\Control\FileSystem"; Name="LongPathsEnabled"; Value=1; Type="DWord"},
+        @{Text="Disabilita WPBT Execution"; Path="SYSTEM\CurrentControlSet\Control\Session Manager"; Name="DisableWpbtExecution"; Value=1; Type="DWord"},
+        @{Text="Abilita BSOD Dettagliato"; Path="SYSTEM\CurrentControlSet\Control\CrashControl"; Name="DisplayParameters"; Value=1; Type="DWord"},
+        @{Text="Disabilita Superfetch e Prefetcher"; Path="SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management\PrefetchParameters"; Name="EnableSuperfetch"; Value=0; Type="DWord"},
+        @{Text="Disabilita Windows Search (wsearch)"; Path="SYSTEM\CurrentControlSet\Services\WSearch"; Name="Start"; Value=4; Type="DWord"}
+    )
+    "Explorer e UI" = @(
+        @{Text="Nascondi pagina Impostazioni Home"; Path="SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer"; Name="SettingsPageVisibility"; Value="hide:home"; Type="String"},
+        @{Text="Imposta Max Cached Icons a 4096"; Path="SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer"; Name="Max Cached Icons"; Value="4096"; Type="String"},
+        @{Text="Disattiva Snap Assist Flyout"; Path="SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced"; Name="EnableSnapAssistFlyout"; Value=0; Type="DWord"},
+        @{Text="Disattiva Sticky Keys"; Path="Control Panel\Accessibility\StickyKeys"; Name="Flags"; Value="58"; Type="String"}
+    )
+    "Aggiornamenti e Driver" = @(
+        @{Text="Blocca driver da Windows Update"; Path="SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate"; Name="ExcludeWUDriversInQualityUpdate"; Value=1; Type="DWord"},
+        @{Text="Disattiva installazione automatica driver"; Path="SOFTWARE\Microsoft\Windows\CurrentVersion\DriverSearching"; Name="SearchOrderConfig"; Value=0; Type="DWord"},
+        @{Text="Disabilita aggiornamento driver da PC"; Path="SOFTWARE\Policies\Microsoft\Windows\Device Metadata"; Name="PreventDeviceMetadataFromNetwork"; Value=1; Type="DWord"}
+    )
+    "Telemetria e Sicurezza" = @(
+        @{Text="Disabilita CEIP (SQMClient)"; Path="SOFTWARE\Microsoft\SQMClient\Windows"; Name="CEIPEnable"; Value=0; Type="DWord"},
+        @{Text="Nascondi Opzioni Famiglia"; Path="SOFTWARE\Policies\Microsoft\Windows Defender Security Center\Family options"; Name="UILockdown"; Value=1; Type="DWord"},
+        @{Text="Nascondi Prestazioni e Integrità"; Path="SOFTWARE\Policies\Microsoft\Windows Defender Security Center\Device performance and health"; Name="UILockdown"; Value=1; Type="DWord"},
+        @{Text="Nascondi Protezione Account"; Path="SOFTWARE\Policies\Microsoft\Windows Defender Security Center\Account protection"; Name="UILockdown"; Value=1; Type="DWord"},
+        @{Text="Disabilita Agent Activation SpeechOneCore"; Path="SOFTWARE\Microsoft\Windows\CurrentVersion\SpeechOneCore\Settings"; Name="AgentActivationLastUsed"; Value=0; Type="DWord"},
+        @{Text="Disabilita Multicast DNSClient"; Path="SOFTWARE\Policies\Microsoft\Windows NT\DNSClient"; Name="EnableMulticast"; Value=0; Type="DWord"},
+        @{Text="Blocca Internet OpenWith"; Path="SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer"; Name="NoInternetOpenWith"; Value=1; Type="DWord"}
+    )
+    "Mappe e Feed" = @(
+        @{Text="Disattiva Download automatico mappe"; Path="SOFTWARE\Policies\Microsoft\Windows\Maps"; Name="AutoDownloadAndUpdateMapData"; Value=0; Type="DWord"},
+        @{Text="Disattiva traffico rete mappe"; Path="SOFTWARE\Policies\Microsoft\Windows\Maps"; Name="AllowUntriggeredNetworkTrafficOnSettingsPage"; Value=0; Type="DWord"},
+        @{Text="Disattiva Feed Attività"; Path="SOFTWARE\Policies\Microsoft\Windows\System"; Name="EnableActivityFeed"; Value=0; Type="DWord"}
+    )
+    "Vari" = @(
+        @{Text="Imposta GPU Priority giochi"; Path="SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile\Tasks\Games"; Name="GPU Priority"; Value=8; Type="DWord"},
+        @{Text="Blocca AAD Workplace Join"; Path="SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System"; Name="BlockAADWorkplaceJoin"; Value=0; Type="DWord"},
+        @{Text="Imposta System Responsiveness"; Path="SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile"; Name="SystemResponsiveness"; Value=0; Type="DWord"},
+        @{Text="Disabilita Storage Sense"; Path="SOFTWARE\Microsoft\Windows\CurrentVersion\StorageSense\Parameters\StoragePolicy"; Name="01"; Value=0; Type="DWord"},
+        @{Text="Abilita Logon Verboso"; Path="SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System"; Name="VerboseStatus"; Value=1; Type="DWord"}
+    )
+}
+
+# Creo form
 $form = New-Object System.Windows.Forms.Form
 $form.Text = "Luca Tweaks - Tema Scuro"
 $form.Size = New-Object System.Drawing.Size(820, 620)
@@ -58,25 +144,38 @@ $form.StartPosition = "CenterScreen"
 $form.BackColor = $colorBackground
 $form.Font = New-Object System.Drawing.Font("Segoe UI", 10)
 
-# --- CREA SIDEBAR PRIMA (Dock Left) ---
-$sidebar = New-Object System.Windows.Forms.Panel
-$sidebar.Width = 180
-$sidebar.Dock = "Left"
+# Creo SplitContainer
+$splitContainer = New-Object System.Windows.Forms.SplitContainer
+$splitContainer.Dock = "Fill"
+
+# Aggiungo SplitContainer al form PRIMA di impostare PanelMinSize
+$form.Controls.Add($splitContainer)
+
+# Imposto dimensioni minime pannelli
+$splitContainer.Panel1MinSize = 180
+$splitContainer.Panel2MinSize = 600
+
+# Ora calcolo dimensione e assegno SplitterDistance in modo sicuro
+$width = $form.ClientSize.Width
+$minPanel1 = $splitContainer.Panel1MinSize
+$minPanel2 = $splitContainer.Panel2MinSize
+$desiredSplitterDistance = 180
+
+if ($desiredSplitterDistance -lt $minPanel1) { $desiredSplitterDistance = $minPanel1 }
+if ($desiredSplitterDistance -gt ($width - $minPanel2)) { $desiredSplitterDistance = $width - $minPanel2 }
+
+$splitContainer.SplitterDistance = $desiredSplitterDistance
+
+# Sidebar nel Panel1
+$sidebar = $splitContainer.Panel1
 $sidebar.BackColor = $colorPanel
-$form.Controls.Add($sidebar)
 
-# --- CREA PANNELLO SCROLLABILE DOPO (Dock Fill) ---
-$panel = New-Object System.Windows.Forms.Panel
-$panel.Dock = "Fill"
-$panel.AutoScroll = $true
+# Pannello scrollabile nel Panel2
+$panel = $splitContainer.Panel2
 $panel.BackColor = $colorPanel
-$form.Controls.Add($panel)
+$panel.AutoScroll = $true
 
-# --- AGGIUNGI AL FORM ---
-$form.Controls.Add($panel)    # PRIMA il pannello scrollabile
-$form.Controls.Add($sidebar)  # POI la sidebar
-
-# --- TITOLO SIDEBAR ---
+# Titolo Sidebar
 $labelSidebarTitle = New-Object System.Windows.Forms.Label
 $labelSidebarTitle.Text = "Luca Tweaks"
 $labelSidebarTitle.ForeColor = $colorChecked
@@ -84,116 +183,9 @@ $labelSidebarTitle.Font = New-Object System.Drawing.Font("Segoe Script", 16, [Sy
 $labelSidebarTitle.AutoSize = $true
 $labelSidebarTitle.Top = 15
 $labelSidebarTitle.Left = [Math]::Max(10, ($sidebar.Width - $labelSidebarTitle.PreferredWidth) / 2)
-
 $sidebar.Controls.Add($labelSidebarTitle)
 
-# --- FUNZIONE PER CREARE CHECKBOX STILE TEMA SCURO ---
-function New-DarkCheckBox {
-    param(
-        [string]$Text,
-        [int]$X,
-        [int]$Y,
-        [hashtable]$TagData
-    )
-    $cb = New-Object System.Windows.Forms.CheckBox
-    $cb.Text = $Text
-    $cb.Size = New-Object System.Drawing.Size(580, 30) # Ridotto
-    $cb.Location = New-Object System.Drawing.Point($X, $Y)
-    $cb.ForeColor = $colorFore
-    $cb.BackColor = $colorPanel
-    $cb.FlatStyle = "Flat"
-    $cb.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(100,100,100)
-    $cb.FlatAppearance.CheckedBackColor = $colorChecked
-    $cb.Font = New-Object System.Drawing.Font("Segoe UI", 10)
-    $cb.Tag = $TagData
-    $cb.AutoEllipsis = $true
-
-    # Tooltip per mostrare il testo intero
-    $tooltip = New-Object System.Windows.Forms.ToolTip
-    $tooltip.SetToolTip($cb, $Text)
-
-    return $cb
-}
-
-
-# --- LISTA TWEAKS ---
-$tweaks = @(
-    @{Text="Imposta SvcHostSplitThresholdInKB (0x4000000)"; Path="SYSTEM\CurrentControlSet\Control"; Name="SvcHostSplitThresholdInKB"; Value=0x4000000; Type="DWord"},
-    @{Text="Abilita LongPathsEnabled"; Path="SYSTEM\CurrentControlSet\Control\FileSystem"; Name="LongPathsEnabled"; Value=1; Type="DWord"},
-    @{Text="Nascondi pagina Impostazioni Home"; Path="SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer"; Name="SettingsPageVisibility"; Value="hide:home"; Type="String"},
-    @{Text="Disabilita CEIP (SQMClient)"; Path="SOFTWARE\Microsoft\SQMClient\Windows"; Name="CEIPEnable"; Value=0; Type="DWord"},
-    @{Text="Blocca driver da Windows Update"; Path="SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate"; Name="ExcludeWUDriversInQualityUpdate"; Value=1; Type="DWord"},
-    @{Text="Disattiva installazione automatica driver"; Path="SOFTWARE\Microsoft\Windows\CurrentVersion\DriverSearching"; Name="SearchOrderConfig"; Value=0; Type="DWord"},
-    @{Text="Disabilita aggiornamento driver da PC"; Path="SOFTWARE\Policies\Microsoft\Windows\Device Metadata"; Name="PreventDeviceMetadataFromNetwork"; Value=1; Type="DWord"},
-    @{Text="Disabilita GameDVR"; Path="SOFTWARE\Policies\Microsoft\Windows\GameDVR"; Name="AllowGameDVR"; Value=0; Type="DWord"},
-    @{Text="Nascondi Opzioni Famiglia"; Path="SOFTWARE\Policies\Microsoft\Windows Defender Security Center\Family options"; Name="UILockdown"; Value=1; Type="DWord"},
-    @{Text="Nascondi Prestazioni e Integrità"; Path="SOFTWARE\Policies\Microsoft\Windows Defender Security Center\Device performance and health"; Name="UILockdown"; Value=1; Type="DWord"},
-    @{Text="Nascondi Protezione Account"; Path="SOFTWARE\Policies\Microsoft\Windows Defender Security Center\Account protection"; Name="UILockdown"; Value=1; Type="DWord"},
-    @{Text="Disabilita WPBT Execution"; Path="SYSTEM\CurrentControlSet\Control\Session Manager"; Name="DisableWpbtExecution"; Value=1; Type="DWord"},
-    @{Text="Imposta Max Cached Icons a 4096"; Path="SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer"; Name="Max Cached Icons"; Value="4096"; Type="String"},
-    @{Text="Disabilita Multicast DNSClient"; Path="SOFTWARE\Policies\Microsoft\Windows NT\DNSClient"; Name="EnableMulticast"; Value=0; Type="DWord"},
-    @{Text="Blocca Internet OpenWith"; Path="SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer"; Name="NoInternetOpenWith"; Value=1; Type="DWord"},
-    @{Text="Disabilita Superfetch e Prefetcher"; Path="SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management\PrefetchParameters"; Name="EnableSuperfetch"; Value=0; Type="DWord"},
-    @{Text="Imposta GPU Priority giochi"; Path="SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile\Tasks\Games"; Name="GPU Priority"; Value=8; Type="DWord"},
-    @{Text="Blocca AAD Workplace Join"; Path="SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System"; Name="BlockAADWorkplaceJoin"; Value=0; Type="DWord"},
-    @{Text="Disabilita Agent Activation SpeechOneCore"; Path="SOFTWARE\Microsoft\Windows\CurrentVersion\SpeechOneCore\Settings"; Name="AgentActivationLastUsed"; Value=0; Type="DWord"},
-    @{Text="Imposta System Responsiveness"; Path="SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile"; Name="SystemResponsiveness"; Value=0; Type="DWord"},
-    @{Text="Disabilita Windows Search (wsearch)"; Path="SYSTEM\CurrentControlSet\Services\WSearch"; Name="Start"; Value=4; Type="DWord"},
-    @{Text="Disabilita Storage Sense"; Path="SOFTWARE\Microsoft\Windows\CurrentVersion\StorageSense\Parameters\StoragePolicy"; Name="01"; Value=0; Type="DWord"}
-)
-
-# --- CREA LE CHECKBOX NEL PANNELLO ---
-[int]$posY = 10
-$checkboxes = @()
-foreach ($tweak in $tweaks) {
-    $cb = New-DarkCheckBox -Text $tweak.Text -X 10 -Y $posY -TagData $tweak
-    $panel.Controls.Add($cb)
-    $checkboxes += $cb
-    $posY += 35
-}
-
-# --- BOTTONE APPLICA TWEAKS ---
-$btnApply = New-Object System.Windows.Forms.Button
-$btnApply.Text = "Applica Tweaks Selezionati"
-$btnApply.Size = New-Object System.Drawing.Size(620, 40)
-$btnApply.Location = New-Object System.Drawing.Point(10, ($posY + 10))
-$btnApply.BackColor = $colorButtonBack
-$btnApply.ForeColor = $colorFore
-$btnApply.FlatStyle = 'Flat'
-$btnApply.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(100,100,100)
-$btnApply.Cursor = [System.Windows.Forms.Cursors]::Hand
-$btnApply.Add_MouseEnter({ $btnApply.BackColor = $colorButtonHover })
-$btnApply.Add_MouseLeave({ $btnApply.BackColor = $colorButtonBack })
-$btnApply.Add_Click({
-    $count = 0
-    foreach ($cb in $checkboxes) {
-        if ($cb.Checked) {
-            $info = $cb.Tag
-            try {
-                Set-RegistryValue -Path $info.Path -Name $info.Name -Value $info.Value -Type ([Microsoft.Win32.RegistryValueKind]::$($info.Type))
-                if ($info.Text -like "*Superfetch*") {
-                    Set-RegistryValue -Path "SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management\PrefetchParameters" `
-                                      -Name "EnablePrefetcher" -Value 0 -Type ([Microsoft.Win32.RegistryValueKind]::DWord)
-                }
-                if ($info.Text -like "*SpeechOneCore*") {
-                    Set-RegistryValue -Path "SOFTWARE\Microsoft\Windows\CurrentVersion\SpeechOneCore\Settings" `
-                                      -Name "AgentActivationEnabled" -Value 0 -Type ([Microsoft.Win32.RegistryValueKind]::DWord)
-                }
-                $count++
-            } catch {
-                [System.Windows.Forms.MessageBox]::Show("Errore su '$($info.Text)': $($_.Exception.Message)", "Errore", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error) | Out-Null
-            }
-        }
-    }
-    if ($count -gt 0) {
-        [System.Windows.Forms.MessageBox]::Show("✅ Applicati $count tweaks.", "Successo", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information) | Out-Null
-    } else {
-        [System.Windows.Forms.MessageBox]::Show("Seleziona almeno un tweak da applicare.", "Attenzione", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning) | Out-Null
-    }
-})
-$panel.Controls.Add($btnApply)
-
-# --- BOTTONE TOGGLE NUM LOCK ---
+# Pulsante toggle Num Lock
 $btnNumLock = New-Object System.Windows.Forms.Button
 $btnNumLock.Text = "Num Lock ON"
 $btnNumLock.Size = New-Object System.Drawing.Size(160, 40)
@@ -219,7 +211,7 @@ $btnNumLock.Add_Click({
 })
 $sidebar.Controls.Add($btnNumLock)
 
-# --- BOTTONE TOGGLE MODALITA' SCURA ---
+# Pulsante toggle Modalità Scura
 $btnDarkMode = New-Object System.Windows.Forms.Button
 $btnDarkMode.Text = "Modalità Scura"
 $btnDarkMode.Size = New-Object System.Drawing.Size(160, 40)
@@ -754,7 +746,146 @@ $btnToggleUAC.Add_Click({
 
 $sidebar.Controls.Add($btnToggleUAC)
 
-# --- MOSTRA FORM ---
-$form.Topmost = $true
-$form.Add_Shown({$form.Activate()})
+# --- BOTTONE DEBLOAT APPX ---
+$btnDebloatAppx = New-Object System.Windows.Forms.Button
+$btnDebloatAppx.Text = "Debloat AppX"
+$btnDebloatAppx.Size = New-Object System.Drawing.Size(160, 40)
+$btnDebloatAppx.Location = New-Object System.Drawing.Point(10, 420)
+$btnDebloatAppx.BackColor = $colorButtonBack
+$btnDebloatAppx.ForeColor = $colorFore
+$btnDebloatAppx.FlatStyle = 'Flat'
+$btnDebloatAppx.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(100,100,100)
+$btnDebloatAppx.Cursor = [System.Windows.Forms.Cursors]::Hand
+$btnDebloatAppx.Add_MouseEnter({ $btnDebloatAppx.BackColor = $colorButtonHover })
+$btnDebloatAppx.Add_MouseLeave({ $btnDebloatAppx.BackColor = $colorButtonBack })
+$btnDebloatAppx.Add_Click({
+    $apps = @(
+        "Clipchamp.Clipchamp",
+        "Microsoft.BingNews",
+        "Microsoft.BingSearch",
+        "Microsoft.BingWeather",
+        "Microsoft.GamingApp",
+        "Microsoft.GetHelp",
+        "Microsoft.MicrosoftOfficeHub",
+        "Microsoft.MicrosoftSolitaireCollection",
+        "Microsoft.MicrosoftStickyNotes",
+        "Microsoft.OutlookForWindows",
+        "Microsoft.Paint",
+        "Microsoft.PowerAutomateDesktop",
+        "Microsoft.ScreenSketch",
+        "Microsoft.Todos",
+        "Microsoft.Windows.DevHome",
+        "Microsoft.WindowsCamera",
+        "Microsoft.WindowsFeedbackHub",
+        "Microsoft.WindowsSoundRecorder",
+        "Microsoft.WindowsTerminal",
+        "Microsoft.YourPhone",
+        "Microsoft.ZuneMusic",
+        "MicrosoftCorporationII.QuickAssist",
+        "MSTeams"
+    )
+    $errors = 0
+    foreach ($app in $apps) {
+        try {
+            Get-AppxPackage -Name $app -AllUsers | Remove-AppxPackage -AllUsers -ErrorAction SilentlyContinue
+            Get-AppxProvisionedPackage -Online | Where-Object { $_.DisplayName -like "*$app*" } | ForEach-Object {
+                Remove-AppxProvisionedPackage -Online -PackageName $_.PackageName -ErrorAction SilentlyContinue
+            }
+        } catch {
+            $errors++
+        }
+    }
+    if ($errors -eq 0) {
+        [System.Windows.Forms.MessageBox]::Show("✅ AppX rimossi con successo.","Successo",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Information)
+    } else {
+        [System.Windows.Forms.MessageBox]::Show("⚠️ Alcuni AppX potrebbero non essere stati rimossi.","Attenzione",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Warning)
+    }
+})
+$sidebar.Controls.Add($btnDebloatAppx)
+
+# Creo checkbox e label categorie nel pannello scrollabile
+[int]$posY = 10
+$checkboxes = @()
+
+foreach ($category in $categories.GetEnumerator()) {
+    # Label categoria
+    $lbl = New-CategoryLabel -Text $category.Key -X 10 -Y $posY
+    $panel.Controls.Add($lbl)
+    $posY += 30
+
+    foreach ($tweak in $category.Value) {
+        $cb = New-DarkCheckBox -Text $tweak.Text -X 10 -Y $posY -TagData $tweak
+        $panel.Controls.Add($cb)
+        $checkboxes += $cb
+        $posY += 35
+    }
+    $posY += 10 # spazio tra categorie
+}
+
+# Pulsanti Seleziona/Deseleziona Tutti
+$btnSelectAll = New-Object System.Windows.Forms.Button
+$btnSelectAll.Text = "Seleziona Tutti"
+$btnSelectAll.Size = New-Object System.Drawing.Size(150, 35)
+$btnSelectAll.Location = New-Object System.Drawing.Point(10, $posY)
+$btnSelectAll.BackColor = $colorButtonBack
+$btnSelectAll.ForeColor = $colorFore
+$btnSelectAll.FlatStyle = 'Flat'
+$btnSelectAll.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(100,100,100)
+$btnSelectAll.Cursor = [System.Windows.Forms.Cursors]::Hand
+$btnSelectAll.Add_MouseEnter({ $btnSelectAll.BackColor = $colorButtonHover })
+$btnSelectAll.Add_MouseLeave({ $btnSelectAll.BackColor = $colorButtonBack })
+$btnSelectAll.Add_Click({
+    foreach ($cb in $checkboxes) { $cb.Checked = $true }
+})
+$panel.Controls.Add($btnSelectAll)
+
+$btnDeselectAll = New-Object System.Windows.Forms.Button
+$btnDeselectAll.Text = "Deseleziona Tutti"
+$btnDeselectAll.Size = New-Object System.Drawing.Size(150, 35)
+$btnDeselectAll.Location = New-Object System.Drawing.Point(170, $posY)
+$btnDeselectAll.BackColor = $colorButtonBack
+$btnDeselectAll.ForeColor = $colorFore
+$btnDeselectAll.FlatStyle = 'Flat'
+$btnDeselectAll.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(100,100,100)
+$btnDeselectAll.Cursor = [System.Windows.Forms.Cursors]::Hand
+$btnDeselectAll.Add_MouseEnter({ $btnDeselectAll.BackColor = $colorButtonHover })
+$btnDeselectAll.Add_MouseLeave({ $btnDeselectAll.BackColor = $colorButtonBack })
+$btnDeselectAll.Add_Click({
+    foreach ($cb in $checkboxes) { $cb.Checked = $false }
+})
+$panel.Controls.Add($btnDeselectAll)
+
+# Pulsante Applica Tweaks grande e blu
+$posY += 45
+$btnApply = New-Object System.Windows.Forms.Button
+$btnApply.Text = "Applica Tweaks"
+$btnApply.Size = New-Object System.Drawing.Size(320, 60)  # grandezza aumentata
+$btnApply.Location = New-Object System.Drawing.Point(10, $posY)
+$btnApply.BackColor = [System.Drawing.Color]::FromArgb(70,130,180)  # blu acceso
+$btnApply.ForeColor = [System.Drawing.Color]::White
+$btnApply.FlatStyle = 'Flat'
+$btnApply.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(40,90,140)
+$btnApply.Cursor = [System.Windows.Forms.Cursors]::Hand
+$btnApply.Font = New-Object System.Drawing.Font("Segoe UI", 12, [System.Drawing.FontStyle]::Bold)
+
+$btnApply.Add_MouseEnter({ $btnApply.BackColor = [System.Drawing.Color]::FromArgb(90,160,210) })
+$btnApply.Add_MouseLeave({ $btnApply.BackColor = [System.Drawing.Color]::FromArgb(70,130,180) })
+
+$btnApply.Add_Click({
+    $countApplied = 0
+    foreach ($cb in $checkboxes) {
+        if ($cb.Checked) {
+            $t = $cb.Tag
+            if ($t -and $t.Path -and $t.Name) {
+                $typeKind = [Microsoft.Win32.RegistryValueKind]::$t.Type
+                Set-RegistryValue -Path $t.Path -Name $t.Name -Value $t.Value -Type $typeKind
+                $countApplied++
+            }
+        }
+    }
+    [System.Windows.Forms.MessageBox]::Show("$countApplied tweak(s) applicati.", "Fatto", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information) | Out-Null
+})
+$panel.Controls.Add($btnApply)
+
+# Mostro form
 [void]$form.ShowDialog()
