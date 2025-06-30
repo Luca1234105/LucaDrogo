@@ -774,6 +774,114 @@ $btnDebloatAppx.Add_Click({
 })
 $sidebar.Controls.Add($btnDebloatAppx)
 
+# --- BOTTONE WINSCRIPT ---
+$btnWinScript = New-Object System.Windows.Forms.Button
+$btnWinScript.Text = "Rimuovi OneDrive/Copilot"
+$btnWinScript.Size = New-Object System.Drawing.Size(160, 40)
+$btnWinScript.Location = New-Object System.Drawing.Point(10, 470)  # sotto l'ultimo bottone
+$btnWinScript.BackColor = $colorButtonBack
+$btnWinScript.ForeColor = $colorFore
+$btnWinScript.FlatStyle = 'Flat'
+$btnWinScript.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(100,100,100)
+$btnWinScript.Cursor = [System.Windows.Forms.Cursors]::Hand
+$btnWinScript.Add_MouseEnter({ $btnWinScript.BackColor = $colorButtonHover })
+$btnWinScript.Add_MouseLeave({ $btnWinScript.BackColor = $colorButtonBack })
+
+$btnWinScript.Add_Click({
+    # Codice batch WinScript da salvare in file temporaneo
+    $batchCode = @"
+@echo off
+:: Check if the script is running as admin
+openfiles >nul 2>&1
+if %errorlevel% neq 0 (
+    color 4
+    echo This script requires administrator privileges.
+    echo Please run WinScript as an administrator.
+    pause
+    exit
+)
+:: Admin privileges confirmed, continue execution
+setlocal EnableExtensions DisableDelayedExpansion
+echo -- Removing Copilot
+PowerShell -ExecutionPolicy Unrestricted -Command "Get-AppxPackage 'Microsoft.CoPilot' | Remove-AppxPackage"
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsCopilot" /v "TurnOffWindowsCopilot" /t "REG_DWORD" /d "1" /f
+reg add "HKCU\Software\Policies\Microsoft\Windows\WindowsCopilot" /v "TurnOffWindowsCopilot" /t "REG_DWORD" /d "1" /f
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings" /v "AutoOpenCopilotLargeScreens" /t "REG_DWORD" /d "0" /f
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v "ShowCopilotButton" /t "REG_DWORD" /d "0" /f
+reg add "HKCU\Software\Microsoft\Windows\Shell\Copilot\BingChat" /v "IsUserEligible" /t "REG_DWORD" /d "0" /f
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Edge" /v "HubsSidebarEnabled" /t "REG_DWORD" /d "0" /f
+echo -- Killing OneDrive Process
+taskkill /f /im OneDrive.exe
+if exist "%SystemRoot%\System32\OneDriveSetup.exe" (
+    echo -- Uninstalling OneDrive through the installers
+    "%SystemRoot%\System32\OneDriveSetup.exe" /uninstall
+)
+if exist "%SystemRoot%\SysWOW64\OneDriveSetup.exe" (
+    "%SystemRoot%\SysWOW64\OneDriveSetup.exe" /uninstall
+)
+echo -- Copy OneDrive files to local folders
+robocopy "%USERPROFILE%\OneDrive" "%USERPROFILE%" /mov /e /xj /ndl /nfl /njh /njs /nc /ns /np
+echo -- Remove OneDrive from explorer sidebar
+reg delete "HKEY_CLASSES_ROOT\WOW6432Node\CLSID\{018D5C66-4533-4307-9B53-224DE2ED1FE6}" /f
+reg delete "HKEY_CLASSES_ROOT\CLSID\{018D5C66-4533-4307-9B53-224DE2ED1FE6}" /f
+echo -- Removing shortcut entry
+del "%appdata%\Microsoft\Windows\Start Menu\Programs\OneDrive.lnk"
+echo -- Removing scheduled task
+powershell -Command "Get-ScheduledTask -TaskPath '\' -TaskName 'OneDrive*' -ErrorAction SilentlyContinue | Unregister-ScheduledTask -Confirm:$false"
+echo -- Removing OneDrive leftovers
+rd "%UserProfile%\OneDrive" /Q /S
+rd "%LocalAppData%\OneDrive" /Q /S
+rd "%LocalAppData%\Microsoft\OneDrive" /Q /S
+rd "%ProgramData%\Microsoft OneDrive" /Q /S
+rd "C:\OneDriveTemp" /Q /S
+reg delete "HKEY_CURRENT_USER\Software\Microsoft\OneDrive" /f
+echo -- Restore default folders locations
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" /v "AppData" /t REG_EXPAND_SZ /d "%USERPROFILE%\AppData\Roaming" /f
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" /v "Cache" /t REG_EXPAND_SZ /d "%USERPROFILE%\AppData\Local\Microsoft\Windows\INetCache" /f
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" /v "Cookies" /t REG_EXPAND_SZ /d "%USERPROFILE%\AppData\Local\Microsoft\Windows\INetCookies" /f
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" /v "Favorites" /t REG_EXPAND_SZ /d "%USERPROFILE%\Favorites" /f
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" /v "History" /t REG_EXPAND_SZ /d "%USERPROFILE%\AppData\Local\Microsoft\Windows\History" /f
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" /v "Local AppData" /t REG_EXPAND_SZ /d "%USERPROFILE%\AppData\Local" /f
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" /v "My Music" /t REG_EXPAND_SZ /d "%USERPROFILE%\Music" /f
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" /v "My Video" /t REG_EXPAND_SZ /d "%USERPROFILE%\Videos" /f
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" /v "NetHood" /t REG_EXPAND_SZ /d "%USERPROFILE%\AppData\Roaming\Microsoft\Windows\Network Shortcuts" /f
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" /v "PrintHood" /t REG_EXPAND_SZ /d "%USERPROFILE%\AppData\Roaming\Microsoft\Windows\Printer Shortcuts" /f
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" /v "Programs" /t REG_EXPAND_SZ /d "%USERPROFILE%\AppData\Roaming\Microsoft\Windows\Start Menu\Programs" /f
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" /v "Recent" /t REG_EXPAND_SZ /d "%USERPROFILE%\AppData\Roaming\Microsoft\Windows\Recent" /f
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" /v "SendTo" /t REG_EXPAND_SZ /d "%USERPROFILE%\AppData\Roaming\Microsoft\Windows\SendTo" /f
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" /v "Start Menu" /t REG_EXPAND_SZ /d "%USERPROFILE%\AppData\Roaming\Microsoft\Windows\Start Menu" /f
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" /v "Startup" /t REG_EXPAND_SZ /d "%USERPROFILE%\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup" /f
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" /v "Templates" /t REG_EXPAND_SZ /d "%USERPROFILE%\AppData\Roaming\Microsoft\Windows\Templates" /f
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" /v "{374DE290-123F-4565-9164-39C4925E467B}" /t REG_EXPAND_SZ /d "%USERPROFILE%\Downloads" /f
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" /v "Desktop" /t REG_EXPAND_SZ /d "%USERPROFILE%\Desktop" /f
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" /v "My Pictures" /t REG_EXPAND_SZ /d "%USERPROFILE%\Pictures" /f
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" /v "Personal" /t REG_EXPAND_SZ /d "%USERPROFILE%\Documents" /f
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" /v "{F42EE2D3-909F-4907-8871-4C22FC0BF756}" /t REG_EXPAND_SZ /d "%USERPROFILE%\Documents" /f
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" /v "{0DDD015D-B06C-45D5-8C4C-F59713854639}" /t REG_EXPAND_SZ /d "%USERPROFILE%\Pictures" /f
+:: Pause the script
+pause
+:: Restore previous environment
+endlocal
+:: Exit the script
+taskkill /f /im explorer.exe & start explorer & exit /b 0
+"@
+
+    # Scrivi batch in file temporaneo
+    $tempBatchPath = [System.IO.Path]::Combine($env:TEMP, "WinScript.bat")
+    Set-Content -Path $tempBatchPath -Value $batchCode -Encoding ASCII
+
+    # Esegui batch con privilegi elevati
+    Start-Process -FilePath $tempBatchPath -Verb RunAs
+
+    # Aspetta un paio di secondi e cancella il file
+    Start-Sleep -Seconds 3
+    Remove-Item -Path $tempBatchPath -ErrorAction SilentlyContinue
+})
+
+# Aggiungi al sidebar
+$sidebar.Controls.Add($btnWinScript)
+
+
 # Area principale (Panel2)
 $panel = $splitContainer.Panel2
 $panel.BackColor = $colorPanel
