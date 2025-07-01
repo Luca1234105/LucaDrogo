@@ -55,6 +55,16 @@ function New-CategoryLabel {
     return $lbl
 }
 
+# Funzione per creare un separatore sottile orizzontale
+function New-Separator {
+    param([int]$X, [int]$Y, [int]$Width)
+    $sep = New-Object System.Windows.Forms.Label
+    $sep.BackColor = [System.Drawing.Color]::Gray
+    $sep.Location = New-Object System.Drawing.Point($X, $Y)
+    $sep.Size = New-Object System.Drawing.Size($Width, 2)
+    return $sep
+}
+
 # Funzione per impostare valori registro
 function Set-RegistryValue {
     param (
@@ -66,20 +76,16 @@ function Set-RegistryValue {
     try {
         $fullPath = "HKLM:\$Path"
         if (-not (Test-Path $fullPath)) {
-            $pathParts = $Path -split '\\'
-            $currentPath = "HKLM:\"
-            foreach ($part in $pathParts) {
-                $currentPath = Join-Path $currentPath $part
-                if (-not (Test-Path $currentPath)) {
-                    New-Item -Path $currentPath -Force | Out-Null
-                }
-            }
+            # Non creare la chiave, solo mostra errore o ignorala
+            Write-Warning "La chiave di registro $fullPath non esiste. Valore non impostato."
+            return
         }
         Set-ItemProperty -Path $fullPath -Name $Name -Value $Value -Type $Type
     } catch {
         [System.Windows.Forms.MessageBox]::Show("Errore: $($_.Exception.Message)", "Errore", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error) | Out-Null
     }
 }
+
 
 # Tweaks completi divisi per categoria (come da tuo elenco)
 $categories = @{
@@ -110,7 +116,23 @@ $categories = @{
         @{Text="Disabilita Agent Activation SpeechOneCore"; Path="SOFTWARE\Microsoft\Windows\CurrentVersion\SpeechOneCore\Settings"; Name="AgentActivationLastUsed"; Value=0; Type="DWord"},
         @{Text="Disabilita Multicast DNSClient"; Path="SOFTWARE\Policies\Microsoft\Windows NT\DNSClient"; Name="EnableMulticast"; Value=0; Type="DWord"},
         @{Text="Blocca Internet OpenWith"; Path="SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer"; Name="NoInternetOpenWith"; Value=1; Type="DWord"}
+    @{
+    Text = "Disabilita tracciamento posizione";
+    RegistryEntries = @(
+        @{Path="SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\location"; Name="Value"; Type="String"; Value="Deny"},
+        @{Path="SOFTWARE\Microsoft\Windows NT\CurrentVersion\Sensor\Overrides\{BFA794E4-F964-4FDB-90F6-51056BFE4B44}"; Name="SensorPermissionState"; Type="DWord"; Value=0},
+        @{Path="SYSTEM\CurrentControlSet\Services\lfsvc\Service\Configuration"; Name="Status"; Type="DWord"; Value=0},
+        @{Path="SYSTEM\Maps"; Name="AutoUpdateEnabled"; Type="DWord"; Value=0}
     )
+}
+@{
+    Text = "Disabilita HomeGroup";
+    ServiceEntries = @(
+        @{Name="HomeGroupListener"; StartupType="Manual"; OriginalType="Automatic"},
+        @{Name="HomeGroupProvider"; StartupType="Manual"; OriginalType="Automatic"}
+    )
+}	
+	)
     "Mappe e Feed" = @(
         @{Text="Disattiva Download automatico mappe"; Path="SOFTWARE\Policies\Microsoft\Windows\Maps"; Name="AutoDownloadAndUpdateMapData"; Value=0; Type="DWord"},
         @{Text="Disattiva traffico rete mappe"; Path="SOFTWARE\Policies\Microsoft\Windows\Maps"; Name="AllowUntriggeredNetworkTrafficOnSettingsPage"; Value=0; Type="DWord"},
@@ -125,24 +147,23 @@ $categories = @{
     )
 }
 
+# Creo la form
 $form = New-Object System.Windows.Forms.Form
 $form.Size = New-Object System.Drawing.Size(820, 620)
 $form.StartPosition = "CenterScreen"
 $form.Text = "Luca Tweaks"
 
+# Split container
 $splitContainer = New-Object System.Windows.Forms.SplitContainer
 $splitContainer.Dock = "Fill"
 $form.Controls.Add($splitContainer)
 
-# Ora che $form.Width è noto, imposta i valori
+# Configurazione split container
 $splitContainer.Panel1MinSize = 200
 $splitContainer.Panel2MinSize = 400
-
-# SplitterDistance deve essere compreso tra Panel1MinSize e (Width - Panel2MinSize)
-# Qui: tra 200 e (820 - 400) = 420
 $splitContainer.SplitterDistance = 300
 
-# Sidebar (Panel1)
+# Sidebar Panel1
 $sidebar = $splitContainer.Panel1
 $sidebar.BackColor = $colorPanel
 
@@ -156,7 +177,11 @@ $labelSidebarTitle.Top = 15
 $labelSidebarTitle.Left = [Math]::Max(10, ($sidebar.Width - $labelSidebarTitle.PreferredWidth) / 2)
 $sidebar.Controls.Add($labelSidebarTitle)
 
-# Pulsante toggle Num Lock (esempio sidebar)
+$form.Add_Shown({
+    $labelSidebarTitle.Left = [Math]::Max(10, ($sidebar.Width - $labelSidebarTitle.PreferredWidth) / 2)
+})
+
+# Pulsante toggle Num Lock
 $btnNumLock = New-Object System.Windows.Forms.Button
 $btnNumLock.Text = "Num Lock ON"
 $btnNumLock.Size = New-Object System.Drawing.Size(160, 40)
@@ -881,8 +906,7 @@ taskkill /f /im explorer.exe & start explorer & exit /b 0
 # Aggiungi al sidebar
 $sidebar.Controls.Add($btnWinScript)
 
-
-# Area principale (Panel2)
+# Panel principale Panel2
 $panel = $splitContainer.Panel2
 $panel.BackColor = $colorPanel
 
@@ -931,14 +955,21 @@ $checkboxes = @()
 
 # Posizione verticale iniziale per checkbox
 $posY = 10
+$widthSeparator = 580
 
-# Aggiungo categorie e tweaks
+# Aggiungo categorie, separatori e tweaks
 foreach ($category in $categories.GetEnumerator()) {
     # Label categoria
     $lblCat = New-CategoryLabel -Text $category.Key -X 10 -Y $posY
     $scrollCheckboxPanel.Controls.Add($lblCat)
-    $posY += 30
-
+    $posY += 28  # spazio per label
+    
+    # Separatore sotto la label
+    $sep = New-Separator -X 10 -Y $posY -Width $widthSeparator
+    $scrollCheckboxPanel.Controls.Add($sep)
+    $posY += 10  # spazio dopo separatore
+    
+    # Checkbox tweaks categoria
     foreach ($tweak in $category.Value) {
         $cb = New-DarkCheckBox -Text $tweak.Text -X 20 -Y $posY -TagData $tweak
         $scrollCheckboxPanel.Controls.Add($cb)
@@ -961,19 +992,20 @@ $btnDeselectAll.Add_Click({
 $btnApply = New-Object System.Windows.Forms.Button
 $btnApply.Text = "Applica Tweaks"
 $btnApply.Size = New-Object System.Drawing.Size(320, 50)
-$btnApply.BackColor = [System.Drawing.Color]::FromArgb(70,130,180)
+$btnApply.BackColor = $colorChecked
 $btnApply.ForeColor = [System.Drawing.Color]::White
 $btnApply.FlatStyle = 'Flat'
 $btnApply.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(40,90,140)
 $btnApply.Cursor = [System.Windows.Forms.Cursors]::Hand
 $btnApply.Font = New-Object System.Drawing.Font("Segoe UI", 12, [System.Drawing.FontStyle]::Bold)
 
-# Per posizionare il bottone nella parte bassa del panel principale, useremo un secondo panel sotto scrollCheckboxPanel
+# Panel sotto scrollCheckboxPanel per bottone Applica
 $bottomPanel = New-Object System.Windows.Forms.Panel
 $bottomPanel.Dock = [System.Windows.Forms.DockStyle]::Bottom
 $bottomPanel.Height = 70
 $bottomPanel.BackColor = $colorPanel
 $panel.Controls.Add($bottomPanel)
+
 $btnApply.Location = New-Object System.Drawing.Point(10, 10)
 $bottomPanel.Controls.Add($btnApply)
 
