@@ -195,10 +195,9 @@ $form.Controls.Add($btnApplyRegs)
 
 # Bottone 3: Prestazioni Elevate
 $btnPower = New-StylishButton -Text "Prestazioni Elevate" -X 450 -Y 440 -Width 200 -OnClick {
-    Write-Log "-- Tentativo attivazione profilo Prestazioni elevate..."
+    Write-Log "-- Avvio attivazione profilo Prestazioni elevate..."
 
-    # Script da eseguire in un processo elevato separato
-    $script = @"
+    $cmd = @"
 if (-not (powercfg /list | Select-String 'e9a42b02-d5df-448d-aa00-03f14749eb61')) {
     powercfg -duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61 | Out-Null
 }
@@ -207,22 +206,14 @@ powercfg /change monitor-timeout-ac 0
 powercfg /change monitor-timeout-dc 0
 "@
 
-    # Scrive script temporaneo
-    $tempFile = [IO.Path]::Combine([IO.Path]::GetTempPath(), "SetHighPerfProfile.ps1")
-    Set-Content -Path $tempFile -Value $script -Encoding UTF8 -Force
-
-    # Lancia PowerShell elevato in modo non bloccante (Start-Process con -Verb RunAs)
-    $psi = New-Object System.Diagnostics.ProcessStartInfo
-    $psi.FileName = "powershell.exe"
-    $psi.Arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$tempFile`""
-    $psi.Verb = "runas"
-    $psi.UseShellExecute = $true
     try {
-        [System.Diagnostics.Process]::Start($psi) | Out-Null
-        Write-Log "-- Profilo Prestazioni elevate avviato in processo elevato."
+        Start-Process -FilePath "powershell.exe" -ArgumentList "-NoProfile -ExecutionPolicy Bypass -Command `$cmd" -Verb RunAs -Wait
+        [System.Windows.Forms.MessageBox]::Show("Profilo Prestazioni Elevate attivato con successo!","Successo",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Information)
+        Write-Log "-- Profilo Prestazioni elevate attivato."
     }
     catch {
-        Write-Log "-- Errore avviando processo elevato: $_"
+        [System.Windows.Forms.MessageBox]::Show("Errore durante attivazione: $_","Errore",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Error)
+        Write-Log "-- Errore: $_"
     }
 }
 $form.Controls.Add($btnPower)
