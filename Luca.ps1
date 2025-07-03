@@ -193,42 +193,28 @@ $btnApplyRegs = New-StylishButton -Text "Applica Registry Tweaks" -X 230 -Y 440 
 }
 $form.Controls.Add($btnApplyRegs)
 
-# Bottone 3: Prestazioni Elevate con echo stile batch
+# Bottone 3: Prestazioni Elevate (senza pause, output diretto)
 $btnPower = New-StylishButton -Text "Prestazioni Elevate" -X 450 -Y 440 -Width 200 -OnClick {
-    Write-Log "🚀 Inizio ottimizzazioni..."
+    Write-Log "🚀 Attivazione profilo Prestazioni elevate..."
 
-    $cmd = @'
-echo ⚡ Attivazione del profilo "Prestazioni elevate"...
-powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-"if (-not (powercfg /list | Select-String 'e9a42b02-d5df-448d-aa00-03f14749eb61')) { ^
-    powercfg -duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61 | Out-Null ^
-} ^
-powercfg -setactive e9a42b02-d5df-448d-aa00-03f14749eb61; ^
-powercfg /change monitor-timeout-ac 0; ^
-powercfg /change monitor-timeout-dc 0; ^
-Write-Host '✅ Profilo attivato e timeout impostato su mai.'"
-
-echo.
-echo ✅ Ottimizzazioni completate. Riavvia il PC per applicare tutti i cambiamenti.
-pause
-'@
+    $cmd = 'powershell -NoProfile -ExecutionPolicy Bypass -Command "if (-not (powercfg /list | Select-String ''e9a42b02-d5df-448d-aa00-03f14749eb61'')) {powercfg -duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61 | Out-Null}; powercfg -setactive e9a42b02-d5df-448d-aa00-03f14749eb61; powercfg /change monitor-timeout-ac 0; powercfg /change monitor-timeout-dc 0; Write-Host ''✅ Profilo attivato e timeout impostato su mai.''"'
 
     try {
-        $processInfo = New-Object System.Diagnostics.ProcessStartInfo
-        $processInfo.FileName = "cmd.exe"
-        $processInfo.Arguments = "/c $cmd"
-        $processInfo.RedirectStandardOutput = $true
-        $processInfo.RedirectStandardError = $true
-        $processInfo.UseShellExecute = $false
-        $processInfo.CreateNoWindow = $true
+        $psi = New-Object System.Diagnostics.ProcessStartInfo
+        $psi.FileName = "cmd.exe"
+        $psi.Arguments = "/c $cmd"
+        $psi.RedirectStandardOutput = $true
+        $psi.RedirectStandardError = $true
+        $psi.UseShellExecute = $false
+        $psi.CreateNoWindow = $true
 
-        $process = New-Object System.Diagnostics.Process
-        $process.StartInfo = $processInfo
-        $process.Start() | Out-Null
+        $proc = New-Object System.Diagnostics.Process
+        $proc.StartInfo = $psi
+        $proc.Start() | Out-Null
 
-        $stdout = $process.StandardOutput.ReadToEnd()
-        $stderr = $process.StandardError.ReadToEnd()
-        $process.WaitForExit()
+        $stdout = $proc.StandardOutput.ReadToEnd()
+        $stderr = $proc.StandardError.ReadToEnd()
+        $proc.WaitForExit()
 
         if ($stdout) { Write-Log $stdout }
         if ($stderr) { Write-Log "Errore: $stderr" }
