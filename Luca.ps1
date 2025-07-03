@@ -197,23 +197,34 @@ $form.Controls.Add($btnApplyRegs)
 $btnPower = New-StylishButton -Text "Prestazioni Elevate" -X 450 -Y 440 -Width 200 -OnClick {
     Write-Log "-- Attivazione profilo Prestazioni elevate..."
 
-    $script = @"
+    $tempScriptPath = [IO.Path]::Combine([IO.Path]::GetTempPath(), "SetHighPerfProfile.ps1")
+
+    $scriptContent = @"
+# Controlla se esiste il profilo Prestazioni Elevate e duplicalo se manca
 if (-not (powercfg /list | Select-String 'e9a42b02-d5df-448d-aa00-03f14749eb61')) {
-    powercfg -duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61
+    powercfg -duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61 | Out-Null
 }
+# Attiva il profilo Prestazioni Elevate
 powercfg -setactive e9a42b02-d5df-448d-aa00-03f14749eb61
+# Disabilita timeout schermo AC/DC
 powercfg /change monitor-timeout-ac 0
 powercfg /change monitor-timeout-dc 0
 "@
 
-    $encodedCommand = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($script))
+    # Scrive lo script in file temporaneo
+    Set-Content -Path $tempScriptPath -Value $scriptContent -Encoding UTF8 -Force
 
     try {
-        Start-Process -FilePath "powershell.exe" -ArgumentList "-NoProfile -EncodedCommand $encodedCommand" -Verb RunAs -Wait
+        # Esegue lo script con elevazione e attende la fine
+        Start-Process -FilePath "powershell.exe" -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$tempScriptPath`"" -Verb RunAs -Wait
         Write-Log "-- Profilo Prestazioni elevate attivato."
     }
     catch {
         Write-Log "-- Errore durante l'attivazione del profilo: $_"
+    }
+    finally {
+        # Rimuove lo script temporaneo
+        Remove-Item $tempScriptPath -Force -ErrorAction SilentlyContinue
     }
 }
 $form.Controls.Add($btnPower)
