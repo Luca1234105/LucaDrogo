@@ -193,39 +193,48 @@ $btnApplyRegs = New-StylishButton -Text "Applica Registry Tweaks" -X 230 -Y 440 
 }
 $form.Controls.Add($btnApplyRegs)
 
-# Bottone 3: Prestazioni Elevate (imposta timeout schermo a "mai")
+# Bottone 3: Prestazioni Elevate con echo stile batch
 $btnPower = New-StylishButton -Text "Prestazioni Elevate" -X 450 -Y 440 -Width 200 -OnClick {
-    Write-Log "-- Impostazione timeout schermo a 'mai' per profilo attivo..."
+    Write-Log "🚀 Inizio ottimizzazioni..."
 
-    $command = @'
-powercfg /change monitor-timeout-ac 0;
-powercfg /change monitor-timeout-dc 0;
-Write-Host "✅ Timeout schermo impostato su mai per il piano energetico attivo."
+    $cmd = @'
+echo ⚡ Attivazione del profilo "Prestazioni elevate"...
+powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+"if (-not (powercfg /list | Select-String 'e9a42b02-d5df-448d-aa00-03f14749eb61')) { ^
+    powercfg -duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61 | Out-Null ^
+} ^
+powercfg -setactive e9a42b02-d5df-448d-aa00-03f14749eb61; ^
+powercfg /change monitor-timeout-ac 0; ^
+powercfg /change monitor-timeout-dc 0; ^
+Write-Host '✅ Profilo attivato e timeout impostato su mai.'"
+
+echo.
+echo ✅ Ottimizzazioni completate. Riavvia il PC per applicare tutti i cambiamenti.
+pause
 '@
 
     try {
-        $psi = New-Object System.Diagnostics.ProcessStartInfo
-        $psi.FileName = "powershell.exe"
-        $psi.Arguments = "-NoProfile -ExecutionPolicy Bypass -Command `"${command}`""
-        $psi.RedirectStandardOutput = $true
-        $psi.RedirectStandardError = $true
-        $psi.UseShellExecute = $false
-        $psi.CreateNoWindow = $true
+        $processInfo = New-Object System.Diagnostics.ProcessStartInfo
+        $processInfo.FileName = "cmd.exe"
+        $processInfo.Arguments = "/c $cmd"
+        $processInfo.RedirectStandardOutput = $true
+        $processInfo.RedirectStandardError = $true
+        $processInfo.UseShellExecute = $false
+        $processInfo.CreateNoWindow = $true
 
         $process = New-Object System.Diagnostics.Process
-        $process.StartInfo = $psi
+        $process.StartInfo = $processInfo
         $process.Start() | Out-Null
 
-        $output = $process.StandardOutput.ReadToEnd()
-        $errorOutput = $process.StandardError.ReadToEnd()
+        $stdout = $process.StandardOutput.ReadToEnd()
+        $stderr = $process.StandardError.ReadToEnd()
         $process.WaitForExit()
 
-        if ($output) { Write-Log $output }
-        if ($errorOutput) { Write-Log "Errore: $errorOutput" }
-        Write-Log "-- Comando eseguito."
+        if ($stdout) { Write-Log $stdout }
+        if ($stderr) { Write-Log "Errore: $stderr" }
     }
     catch {
-        Write-Log "-- Eccezione: $_"
+        Write-Log "Errore esecuzione comando: $_"
     }
 }
 $form.Controls.Add($btnPower)
