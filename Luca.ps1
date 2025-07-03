@@ -98,8 +98,9 @@ $form.Controls.Add($btnDebloat)
 $btnApplyRegs = New-StylishButton -Text "Applica Registry Tweaks" -X 230 -Y 440 -Width 200 -OnClick {
     Write-Log "-- Applicazione modifiche registro in corso..."
 
+    # Lista dei comandi reg da eseguire
     $tweaks = @(
-       'reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" /v RotatingLockScreenOverlayEnabled /t REG_DWORD /d 0 /f',
+        'reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" /v RotatingLockScreenOverlayEnabled /t REG_DWORD /d 0 /f',
         'reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v ShowSyncProviderNotifications /t REG_DWORD /d 0 /f',
         'reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v ShowCastToDevice /t REG_DWORD /d 0 /f',
         'reg add "HKLM\SOFTWARE\Microsoft\PolicyManager\current\device\Start" /v HideRecommendedSection /t REG_DWORD /d 1 /f',
@@ -157,18 +158,24 @@ $btnApplyRegs = New-StylishButton -Text "Applica Registry Tweaks" -X 230 -Y 440 
         'reg delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\MyComputer\NameSpace\{f86fa3ab-70d2-4fc7-9c99-fcbf05467f3a}" /f',
         'reg delete "HKLM\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Explorer\MyComputer\NameSpace\{f86fa3ab-70d2-4fc7-9c99-fcbf05467f3a}" /f',
         'reg delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\MyComputer\NameSpace\{3dfdf296-dbec-4fb4-81d1-6a3438bcf4de}" /f',
-        'reg delete "HKLM\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Explorer\MyComputer\NameSpace\{3dfdf296-dbec-4fb4-81d1-6a3438bcf4de}" /f'    )
+        'reg delete "HKLM\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Explorer\MyComputer\NameSpace\{3dfdf296-dbec-4fb4-81d1-6a3438bcf4de}" /f'
+    )
+
     foreach ($tweak in $tweaks) {
         try {
-            Set-ItemProperty -Path "Registry::$($tweak.Path)" -Name $tweak.Name -Value $tweak.Data -ErrorAction Stop
-            Write-Log "    Impostato $($tweak.Name) in $($tweak.Path) a $($tweak.Data)"
+            # Esegue ogni comando tramite cmd.exe
+            $output = cmd.exe /c $tweak 2>&1
+            Write-Log "Eseguito: $tweak"
+            if ($output) { Write-Log "Output: $output" }
         }
         catch {
-            Write-Log "    Errore su $($tweak.Name): $_"
+            Write-Log "Errore eseguendo: $tweak. Dettagli: $_"
         }
     }
+
     Write-Log "-- Tweaks applicati. Riavvia per sicurezza."
 }
+
 $form.Controls.Add($btnApplyRegs)
 
 # Bottone 3: Prestazioni Elevate
