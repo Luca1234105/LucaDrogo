@@ -94,7 +94,7 @@ $btnDebloat = New-StylishButton -Text "Esegui Debloat" -X 10 -Y 440 -OnClick {
 }
 $form.Controls.Add($btnDebloat)
 
-# Bottone 2: Applica Registry Tweaks
+# Bottone 2: Applica Registry Tweaks completi
 $btnApplyRegs = New-StylishButton -Text "Applica Registry Tweaks" -X 230 -Y 440 -Width 200 -OnClick {
     Write-Log "-- Applicazione modifiche registro in corso..."
 
@@ -108,23 +108,85 @@ $btnApplyRegs = New-StylishButton -Text "Applica Registry Tweaks" -X 230 -Y 440 
         @{ Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer'; Name = 'NoLowDiskSpaceChecks'; Type='DWORD'; Data=1 },
         @{ Path = 'HKCU:\Control Panel\Desktop'; Name = 'ShakeMinimizeWindows'; Type='SZ'; Data='0' },
         @{ Path = 'HKLM:\SOFTWARE\Microsoft\Windows\Windows Error Reporting'; Name = 'Disabled'; Type='DWORD'; Data=1 },
-        @{ Path = 'HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem'; Name = 'LongPathsEnabled'; Type='DWORD'; Data=1 }
-        # aggiungi qui gli altri tweak...
+        @{ Path = 'HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem'; Name = 'LongPathsEnabled'; Type='DWORD'; Data=1 },
+        @{ Path = 'HKLM:\Software\Microsoft\PCHealth\ErrorReporting'; Name = 'DoReport'; Type='DWORD'; Data=0 },
+        @{ Path = 'HKCU:\Software\Microsoft\Windows\Windows Error Reporting'; Name = 'Disabled'; Type='DWORD'; Data=1 },
+        @{ Path = 'HKLM:\Software\Microsoft\Windows\Windows Error Reporting'; Name = 'Disabled'; Type='DWORD'; Data=1 },
+        @{ Path = 'HKLM:\Software\Policies\Microsoft\Windows\Windows Error Reporting'; Name = 'Disabled'; Type='DWORD'; Data=1 },
+        @{ Path = 'HKCU:\Software\Classes\CLSID\{e88865ea-0e1c-4e20-9aa6-edcd0212c87c}'; Name = 'System.IsPinnedToNameSpaceTree'; Type='DWORD'; Data=0 },
+        @{ Path = 'HKCU:\Control Panel\Desktop'; Name = 'MenuShowDelay'; Type='SZ'; Data='0' },
+        @{ Path = 'HKCU:\Control Panel\Mouse'; Name = 'MouseHoverTime'; Type='SZ'; Data='10' },
+        @{ Path = 'HKLM:\Software\Microsoft\Dfrg\BootOptimizeFunction'; Name = 'Enable'; Type='SZ'; Data='y' },
+        @{ Path = 'HKLM:\Software\Microsoft\Windows\ScheduledDiagnostics'; Name = 'EnabledExecution'; Type='DWORD'; Data=0 },
+        @{ Path = 'HKLM:\Software\Microsoft\Windows NT\CurrentVersion\Schedule\Maintenance'; Name = 'MaintenanceDisabled'; Type='DWORD'; Data=1 },
+        @{ Path = 'HKLM:\Software\Policies\Microsoft\Windows\ScheduledDiagnostics'; Name = 'EnabledExecution'; Type='DWORD'; Data=0 },
+        @{ Path = 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer'; Name = 'NoLowDiskSpaceChecks'; Type='DWORD'; Data=1 },
+        @{ Path = 'HKLM:\Software\Policies\Microsoft\Windows\AppCompat'; Name = 'DisableUAR'; Type='DWORD'; Data=1 },
+        @{ Path = 'HKLM:\Software\Microsoft\Windows\CurrentVersion\WINEVT\Channels\Microsoft-Windows-Application-Experience/Steps-Recorder'; Name = 'Enabled'; Type='DWORD'; Data=0 },
+        @{ Path = 'HKCU:\System\GameConfigStore'; Name = 'GameDVR_Enabled'; Type='DWORD'; Data=0 },
+        @{ Path = 'HKLM:\Software\Policies\Microsoft\Windows\GameDVR'; Name = 'AllowgameDVR'; Type='DWORD'; Data=0 },
+        @{ Path = 'HKLM:\System\CurrentControlSet\Services\BcastDVRUserService'; Name = 'Start'; Type='DWORD'; Data=4 },
+        @{ Path = 'HKLM:\Software\Policies\Microsoft\Windows\System'; Name = 'AllowClipboardHistory'; Type='DWORD'; Data=0 },
+        @{ Path = 'HKLM:\Software\Policies\Microsoft\Windows\System'; Name = 'AllowCrossDeviceClipboard'; Type='DWORD'; Data=0 },
+        @{ Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\SmartActionPlatform\SmartClipboard'; Name = 'Disabled'; Type='DWORD'; Data=1 },
+        @{ Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced'; Name = 'DITest'; Type='DWORD'; Data=0 },
+        @{ Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced'; Name = 'EnableSnapAssistFlyout'; Type='DWORD'; Data=0 },
+        @{ Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced'; Name = 'EnableSnapBar'; Type='DWORD'; Data=0 },
+        @{ Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced'; Name = 'EnableTaskGroups'; Type='DWORD'; Data=0 },
+        @{ Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced'; Name = 'MultiTaskingAltTabFilter'; Type='DWORD'; Data=3 },
+        @{ Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager'; Name = 'ContentDeliveryAllowed'; Type='DWORD'; Data=0 },
+        @{ Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager'; Name = 'FeatureManagementEnabled'; Type='DWORD'; Data=0 },
+        @{ Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager'; Name = 'OemPreInstalledAppsEnabled'; Type='DWORD'; Data=0 },
+        @{ Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager'; Name = 'PreInstalledAppsEnabled'; Type='DWORD'; Data=0 },
+        @{ Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager'; Name = 'PreInstalledAppsEverEnabled'; Type='DWORD'; Data=0 },
+        @{ Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager'; Name = 'RotatingLockScreenEnabled'; Type='DWORD'; Data=0 },
+        @{ Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager'; Name = 'RotatingLockScreenOverlayEnabled'; Type='DWORD'; Data=0 },
+        @{ Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager'; Name = 'SilentInstalledAppsEnabled'; Type='DWORD'; Data=0 },
+        @{ Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager'; Name = 'SlideshowEnabled'; Type='DWORD'; Data=0 },
+        @{ Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager'; Name = 'SoftLandingEnabled'; Type='DWORD'; Data=0 },
+        @{ Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager'; Name = 'SubscribedContent-338388Enabled'; Type='DWORD'; Data=0 },
+        @{ Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager'; Name = 'SubscribedContent-88000326Enabled'; Type='DWORD'; Data=0 },
+        @{ Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager'; Name = 'SubscribedContentEnabled'; Type='DWORD'; Data=0 },
+        @{ Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager'; Name = 'SystemPaneSuggestionsEnabled'; Type='DWORD'; Data=0 },
+        @{ Path = 'HKLM:\Software\Policies\Microsoft\PushToInstall'; Name = 'DisabilitaPushToInstall'; Type='DWORD'; Data=1 },
+        # Qui i valori che si vogliono eliminare
+        @{ Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager\Subscriptions'; Name = ''; Type='DeleteKey'; Data=$null },
+        @{ Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager\SuggestedApps'; Name = ''; Type='DeleteKey'; Data=$null },
+        # Impostazioni per SvcHostSplitThresholdInKB
+        @{ Path = 'HKLM:\SYSTEM\CurrentControlSet\Control'; Name = 'SvcHostSplitThresholdInKB'; Type='DWORD'; Data=67108864 },
+        # Eliminazione namespace
+        @{ Path = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\MyComputer\NameSpace\{B4BFCC3A-DB2C-424C-B029-7FE99A87C641}'; Name = ''; Type='DeleteKey'; Data=$null },
+        @{ Path = 'HKLM:\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Explorer\MyComputer\NameSpace\{B4BFCC3A-DB2C-424C-B029-7FE99A87C641}'; Name = ''; Type='DeleteKey'; Data=$null },
+        @{ Path = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\MyComputer\NameSpace\{f86fa3ab-70d2-4fc7-9c99-fcbf05467f3a}'; Name = ''; Type='DeleteKey'; Data=$null },
+        @{ Path = 'HKLM:\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Explorer\MyComputer\NameSpace\{f86fa3ab-70d2-4fc7-9c99-fcbf05467f3a}'; Name = ''; Type='DeleteKey'; Data=$null },
+        @{ Path = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\MyComputer\NameSpace\{3dfdf296-dbec-4fb4-81d1-6a3438bcf4de}'; Name = ''; Type='DeleteKey'; Data=$null },
+        @{ Path = 'HKLM:\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Explorer\MyComputer\NameSpace\{3dfdf296-dbec-4fb4-81d1-6a3438bcf4de}'; Name = ''; Type='DeleteKey'; Data=$null },
+        # Disabilita prompt UAC agli amministratori
+        @{ Path = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'; Name = 'ConsentPromptBehaviorAdmin'; Type='DWORD'; Data=0 },
+        @{ Path = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'; Name = 'PromptOnSecureDesktop'; Type='DWORD'; Data=0 }
     )
 
     foreach ($tweak in $tweaks) {
         try {
-            # Verifica se la chiave esiste, se no la crea
-            if (-not (Test-Path $tweak.Path)) {
-                New-Item -Path $tweak.Path -Force | Out-Null
-                Write-Log "Chiave creata: $($tweak.Path)"
+            if ($tweak.Type -eq 'DeleteKey') {
+                if (Test-Path $tweak.Path) {
+                    Remove-Item -Path $tweak.Path -Recurse -Force
+                    Write-Log "Chiave eliminata: $($tweak.Path)"
+                } else {
+                    Write-Log "Chiave da eliminare non trovata: $($tweak.Path)"
+                }
             }
-            # Imposta il valore
-            Set-ItemProperty -Path $tweak.Path -Name $tweak.Name -Value $tweak.Data -Type $tweak.Type -Force
-            Write-Log "Impostato $($tweak.Name) in $($tweak.Path) a $($tweak.Data)"
+            else {
+                if (-not (Test-Path $tweak.Path)) {
+                    New-Item -Path $tweak.Path -Force | Out-Null
+                    Write-Log "Chiave creata: $($tweak.Path)"
+                }
+                Set-ItemProperty -Path $tweak.Path -Name $tweak.Name -Value $tweak.Data -Type $tweak.Type -Force
+                Write-Log "Impostato $($tweak.Name) in $($tweak.Path) a $($tweak.Data)"
+            }
         }
         catch {
-            Write-Log "Errore creando chiave $($tweak.Path): $($_)"
+            Write-Log "Errore su chiave $($tweak.Path): $($_)"
         }
     }
     Write-Log "-- Tweaks applicati. Riavvia per sicurezza."
