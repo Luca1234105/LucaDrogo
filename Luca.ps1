@@ -198,17 +198,21 @@ $btnPower = New-StylishButton -Text "Prestazioni Elevate" -X 450 -Y 440 -Width 2
     Write-Log "-- Attivazione profilo Prestazioni elevate..."
 
     try {
-        # Controlla se il profilo Prestazioni Elevate esiste, altrimenti lo duplica
-        $exists = powercfg /list | Select-String 'e9a42b02-d5df-448d-aa00-03f14749eb61'
-        if (-not $exists) {
-            powercfg -duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61 | Out-Null
-            Write-Log "-- Profilo Prestazioni elevate duplicato."
+        # Rilancio lo script elevato per eseguire i comandi powercfg
+        $elevatedScript = {
+            $exists = powercfg /list | Select-String 'e9a42b02-d5df-448d-aa00-03f14749eb61'
+            if (-not $exists) {
+                powercfg -duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61 | Out-Null
+            }
+            powercfg -setactive e9a42b02-d5df-448d-aa00-03f14749eb61
+            powercfg /change monitor-timeout-ac 0
+            powercfg /change monitor-timeout-dc 0
         }
-        # Imposta il profilo come attivo
-        powercfg -setactive e9a42b02-d5df-448d-aa00-03f14749eb61
-        # Disabilita timeout schermo sia da corrente alternata che batteria
-        powercfg /change monitor-timeout-ac 0
-        powercfg /change monitor-timeout-dc 0
+
+        # Converto il blocco script in stringa per Start-Process
+        $scriptBlockText = $elevatedScript.ToString()
+
+        Start-Process -FilePath powershell.exe -ArgumentList "-NoProfile -Command & { $scriptBlockText }" -Verb RunAs -Wait
 
         Write-Log "-- Profilo attivato e timeout impostato su mai."
     }
