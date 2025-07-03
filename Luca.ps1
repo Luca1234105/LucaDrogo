@@ -199,29 +199,43 @@ $btnPower = New-StylishButton -Text "Prestazioni Elevate" -X 450 -Y 440 -Width 2
 
     try {
         $tempScriptPath = [IO.Path]::Combine([IO.Path]::GetTempPath(), "SetHighPerfProfile.ps1")
+        $tempLogPath = [IO.Path]::Combine([IO.Path]::GetTempPath(), "SetHighPerfProfile.log")
+
         $scriptContent = @"
-# Imposta profilo Prestazioni elevate e disabilita timeout
-if (-not (powercfg /list | Select-String 'e9a42b02-d5df-448d-aa00-03f14749eb61')) {
-    powercfg -duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61 | Out-Null
+try {
+    if (-not (powercfg /list | Select-String 'e9a42b02-d5df-448d-aa00-03f14749eb61')) {
+        powercfg -duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61 | Out-Null
+    }
+    powercfg -setactive e9a42b02-d5df-448d-aa00-03f14749eb61
+    powercfg /change monitor-timeout-ac 0
+    powercfg /change monitor-timeout-dc 0
+    'SUCCESS' | Out-File -FilePath '$tempLogPath' -Encoding UTF8
 }
-powercfg -setactive e9a42b02-d5df-448d-aa00-03f14749eb61
-powercfg /change monitor-timeout-ac 0
-powercfg /change monitor-timeout-dc 0
+catch {
+    'ERROR: ' + \$_ | Out-File -FilePath '$tempLogPath' -Encoding UTF8
+}
 "@
 
         Set-Content -Path $tempScriptPath -Value $scriptContent -Encoding UTF8 -Force
 
         Start-Process -FilePath powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$tempScriptPath`"" -Verb RunAs -Wait
 
-        Remove-Item $tempScriptPath -Force
+        if (Test-Path $tempLogPath) {
+            $logContent = Get-Content $tempLogPath -Raw
+            Write-Log "-- Risultato script profilo: $logContent"
+            Remove-Item $tempLogPath -Force
+        } else {
+            Write-Log "-- Nessun log trovato dallo script di profilo."
+        }
 
-        Write-Log "-- Profilo attivato e timeout impostato su mai."
+        Remove-Item $tempScriptPath -Force
     }
     catch {
         Write-Log "-- Errore durante l'attivazione del profilo: $_"
     }
 }
 $form.Controls.Add($btnPower)
+
 
 
 # Bottone 4: Rimuovi AppX Inutili
