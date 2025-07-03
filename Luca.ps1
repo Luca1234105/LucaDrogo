@@ -36,7 +36,7 @@ function New-StylishButton {
 
 $form = New-Object System.Windows.Forms.Form
 $form.Text = "Luca Debloat Tool"
-$form.Size = New-Object System.Drawing.Size(700, 580)
+$form.Size = New-Object System.Drawing.Size(700, 700)
 $form.StartPosition = "CenterScreen"
 $form.BackColor = [System.Drawing.Color]::FromArgb(28, 28, 28)
 $form.ForeColor = [System.Drawing.Color]::White
@@ -197,19 +197,27 @@ $form.Controls.Add($btnApplyRegs)
 $btnPower = New-StylishButton -Text "Prestazioni Elevate" -X 450 -Y 440 -Width 200 -OnClick {
     Write-Log "-- Attivazione profilo Prestazioni elevate..."
 
-    $script = @"
-if (-not (powercfg /list | Select-String 'e9a42b02-d5df-448d-aa00-03f14749eb61')) {
-    powercfg -duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61 | Out-Null
-}
-powercfg -setactive e9a42b02-d5df-448d-aa00-03f14749eb61
-powercfg /change monitor-timeout-ac 0
-powercfg /change monitor-timeout-dc 0
-"@
+    try {
+        # Controlla se il profilo Prestazioni Elevate esiste, altrimenti lo duplica
+        $exists = powercfg /list | Select-String 'e9a42b02-d5df-448d-aa00-03f14749eb61'
+        if (-not $exists) {
+            powercfg -duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61 | Out-Null
+            Write-Log "-- Profilo Prestazioni elevate duplicato."
+        }
+        # Imposta il profilo come attivo
+        powercfg -setactive e9a42b02-d5df-448d-aa00-03f14749eb61
+        # Disabilita timeout schermo sia da corrente alternata che batteria
+        powercfg /change monitor-timeout-ac 0
+        powercfg /change monitor-timeout-dc 0
 
-    powershell -NoProfile -ExecutionPolicy Bypass -Command $script
-    Write-Log "-- Profilo attivato e timeout impostato su mai."
+        Write-Log "-- Profilo attivato e timeout impostato su mai."
+    }
+    catch {
+        Write-Log "-- Errore durante l'attivazione del profilo: $_"
+    }
 }
 $form.Controls.Add($btnPower)
+
 
 # Bottone 4: Rimuovi AppX Inutili
 $btnRemoveAppx = New-StylishButton -Text "Rimuovi AppX Inutili" -X 10 -Y 490 -Width 200 -OnClick {
