@@ -197,24 +197,24 @@ $form.Controls.Add($btnApplyRegs)
 $btnPower = New-StylishButton -Text "Prestazioni Elevate" -X 450 -Y 440 -Width 200 -OnClick {
     Write-Log "-- Attivazione profilo Prestazioni elevate..."
 
-    $commands = @(
-        'powercfg -duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61',
-        'powercfg -setactive e9a42b02-d5df-448d-aa00-03f14749eb61',
-        'powercfg /change monitor-timeout-ac 0',
-        'powercfg /change monitor-timeout-dc 0'
-    )
+    $script = @"
+if (-not (powercfg /list | Select-String 'e9a42b02-d5df-448d-aa00-03f14749eb61')) {
+    powercfg -duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61
+}
+powercfg -setactive e9a42b02-d5df-448d-aa00-03f14749eb61
+powercfg /change monitor-timeout-ac 0
+powercfg /change monitor-timeout-dc 0
+"@
 
-    foreach ($cmd in $commands) {
-        try {
-            Start-Process -FilePath "powershell.exe" -ArgumentList "-NoProfile -Command $cmd" -Verb RunAs -Wait
-            Write-Log "-- Comando eseguito: $cmd"
-        }
-        catch {
-            Write-Log "-- Errore eseguendo comando '$cmd': $_"
-        }
+    $encodedCommand = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($script))
+
+    try {
+        Start-Process -FilePath "powershell.exe" -ArgumentList "-NoProfile -EncodedCommand $encodedCommand" -Verb RunAs -Wait
+        Write-Log "-- Profilo Prestazioni elevate attivato."
     }
-
-    Write-Log "-- Profilo Prestazioni elevate applicato."
+    catch {
+        Write-Log "-- Errore durante l'attivazione del profilo: $_"
+    }
 }
 $form.Controls.Add($btnPower)
 
