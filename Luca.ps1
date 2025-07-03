@@ -193,37 +193,22 @@ $btnApplyRegs = New-StylishButton -Text "Applica Registry Tweaks" -X 230 -Y 440 
 }
 $form.Controls.Add($btnApplyRegs)
 
-# Bottone 3: Prestazioni Elevate (senza pause, output diretto)
+# Bottone 3: Prestazioni Elevate (lancio diretto e semplice con -Verb RunAs)
 $btnPower = New-StylishButton -Text "Prestazioni Elevate" -X 450 -Y 440 -Width 200 -OnClick {
     Write-Log "🚀 Attivazione profilo Prestazioni elevate..."
 
-    $cmd = 'powershell -NoProfile -ExecutionPolicy Bypass -Command "if (-not (powercfg /list | Select-String ''e9a42b02-d5df-448d-aa00-03f14749eb61'')) {powercfg -duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61 | Out-Null}; powercfg -setactive e9a42b02-d5df-448d-aa00-03f14749eb61; powercfg /change monitor-timeout-ac 0; powercfg /change monitor-timeout-dc 0; Write-Host ''✅ Profilo attivato e timeout impostato su mai.''"'
+    $arguments = '-NoProfile -ExecutionPolicy Bypass -Command "if (-not (powercfg /list | Select-String ''e9a42b02-d5df-448d-aa00-03f14749eb61'')) {powercfg -duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61}; powercfg -setactive e9a42b02-d5df-448d-aa00-03f14749eb61; powercfg /change monitor-timeout-ac 0; powercfg /change monitor-timeout-dc 0"'
 
     try {
-        $psi = New-Object System.Diagnostics.ProcessStartInfo
-        $psi.FileName = "cmd.exe"
-        $psi.Arguments = "/c $cmd"
-        $psi.RedirectStandardOutput = $true
-        $psi.RedirectStandardError = $true
-        $psi.UseShellExecute = $false
-        $psi.CreateNoWindow = $true
-
-        $proc = New-Object System.Diagnostics.Process
-        $proc.StartInfo = $psi
-        $proc.Start() | Out-Null
-
-        $stdout = $proc.StandardOutput.ReadToEnd()
-        $stderr = $proc.StandardError.ReadToEnd()
-        $proc.WaitForExit()
-
-        if ($stdout) { Write-Log $stdout }
-        if ($stderr) { Write-Log "Errore: $stderr" }
+        Start-Process -FilePath 'powershell.exe' -ArgumentList $arguments -Verb RunAs -Wait
+        Write-Log "✅ Profilo attivato e timeout impostato su mai."
     }
     catch {
-        Write-Log "Errore esecuzione comando: $_"
+        Write-Log "❌ Errore durante l'attivazione del profilo: $_"
     }
 }
 $form.Controls.Add($btnPower)
+
 
 
 
