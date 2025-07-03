@@ -198,21 +198,22 @@ $btnPower = New-StylishButton -Text "Prestazioni Elevate" -X 450 -Y 440 -Width 2
     Write-Log "-- Attivazione profilo Prestazioni elevate..."
 
     try {
-        # Rilancio lo script elevato per eseguire i comandi powercfg
-        $elevatedScript = {
-            $exists = powercfg /list | Select-String 'e9a42b02-d5df-448d-aa00-03f14749eb61'
-            if (-not $exists) {
-                powercfg -duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61 | Out-Null
-            }
-            powercfg -setactive e9a42b02-d5df-448d-aa00-03f14749eb61
-            powercfg /change monitor-timeout-ac 0
-            powercfg /change monitor-timeout-dc 0
-        }
+        $tempScriptPath = [IO.Path]::Combine([IO.Path]::GetTempPath(), "SetHighPerfProfile.ps1")
+        $scriptContent = @"
+# Imposta profilo Prestazioni elevate e disabilita timeout
+if (-not (powercfg /list | Select-String 'e9a42b02-d5df-448d-aa00-03f14749eb61')) {
+    powercfg -duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61 | Out-Null
+}
+powercfg -setactive e9a42b02-d5df-448d-aa00-03f14749eb61
+powercfg /change monitor-timeout-ac 0
+powercfg /change monitor-timeout-dc 0
+"@
 
-        # Converto il blocco script in stringa per Start-Process
-        $scriptBlockText = $elevatedScript.ToString()
+        Set-Content -Path $tempScriptPath -Value $scriptContent -Encoding UTF8 -Force
 
-        Start-Process -FilePath powershell.exe -ArgumentList "-NoProfile -Command & { $scriptBlockText }" -Verb RunAs -Wait
+        Start-Process -FilePath powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$tempScriptPath`"" -Verb RunAs -Wait
+
+        Remove-Item $tempScriptPath -Force
 
         Write-Log "-- Profilo attivato e timeout impostato su mai."
     }
