@@ -539,14 +539,55 @@ pause
 }
 $form.Controls.Add($btnVuoto2)
 
-# Bottone 6: Esempio nuovo bottone (modifica qui testo, posizione e azione)
-$btnNuovo = New-StylishButton -Text "Esegui Nuovo Script" -X 450 -Y 540 -Width 200 -OnClick {
-    # Qui dentro metti il codice che vuoi eseguire al click
-    Write-Log "-- Bottone Nuovo premuto!"
-    # Per esempio esegui uno script PowerShell o batch
-    Start-Process powershell -ArgumentList "-NoProfile -WindowStyle Hidden -Command `"Write-Output 'Script eseguito!'`""
+# Bottone 6: Tweaks Essenziali e Rimozione LMS
+$btnTweaksEssenziali = New-StylishButton -Text "Applica Tweaks Essenziali" -X 450 -Y 540 -Width 200 -OnClick {
+    Write-Log "-- Bottone Tweaks Essenziali premuto!"
+
+    # Disabilita Activity History (registro)
+    Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System" -Name "EnableActivityFeed" -Value 0 -Type DWord -ErrorAction SilentlyContinue
+    Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System" -Name "PublishUserActivities" -Value 0 -Type DWord -ErrorAction SilentlyContinue
+    Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System" -Name "UploadUserActivities" -Value 0 -Type DWord -ErrorAction SilentlyContinue
+
+    # Disabilita servizi HomeGroup
+    Get-Service -Name HomeGroupListener, HomeGroupProvider -ErrorAction SilentlyContinue | ForEach-Object {
+        Stop-Service $_.Name -Force -ErrorAction SilentlyContinue
+        Set-Service $_.Name -StartupType Manual -ErrorAction SilentlyContinue
+    }
+
+    # Disabilita Teredo (registro + netsh)
+    Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip6\Parameters" -Name "DisabledComponents" -Value 1 -Type DWord -ErrorAction SilentlyContinue
+    netsh interface teredo set state disabled
+
+    # Disabilita Wifi Sense (registro)
+    Set-ItemProperty -Path "HKLM:\Software\Microsoft\PolicyManager\default\WiFi" -Name "AllowWiFiHotSpotReporting" -Value 0 -Type DWord -ErrorAction SilentlyContinue
+    Set-ItemProperty -Path "HKLM:\Software\Microsoft\PolicyManager\default\WiFi" -Name "AllowAutoConnectToWiFiSenseHotspots" -Value 0 -Type DWord -ErrorAction SilentlyContinue
+
+    # Disabilita e rimuove servizio LMS
+    $serviceName = "LMS"
+    Stop-Service -Name $serviceName -Force -ErrorAction SilentlyContinue
+    Set-Service -Name $serviceName -StartupType Disabled -ErrorAction SilentlyContinue
+    sc.exe delete $serviceName
+
+    # Rimuove driver LMS dal driver store
+    $lmsDriverPackages = Get-ChildItem -Path "C:\Windows\System32\DriverStore\FileRepository" -Recurse -Filter "lms.inf*" -ErrorAction SilentlyContinue
+    foreach ($package in $lmsDriverPackages) {
+        pnputil /delete-driver $package.Name /uninstall /force
+    }
+
+    # Rimuove file LMS.exe da Program Files
+    $programDirs = @("C:\Program Files", "C:\Program Files (x86)")
+    foreach ($dir in $programDirs) {
+        $lmsFiles = Get-ChildItem -Path $dir -Recurse -Filter "LMS.exe" -ErrorAction SilentlyContinue
+        foreach ($file in $lmsFiles) {
+            icacls $file.FullName /grant Administrators:F /T /C /Q | Out-Null
+            takeown /F $file.FullName /A /R /D Y | Out-Null
+            Remove-Item $file.FullName -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    Write-Log "Tweaks essenziali e rimozione LMS completati."
 }
-$form.Controls.Add($btnNuovo)
+
 
 
 $form.Topmost = $true
