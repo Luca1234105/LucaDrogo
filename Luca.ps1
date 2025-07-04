@@ -193,35 +193,31 @@ $btnApplyRegs = New-StylishButton -Text "Applica Registry Tweaks" -X 230 -Y 440 
 }
 $form.Controls.Add($btnApplyRegs)
 
-# Bottone 3: Prestazioni Elevate (versione che esegue solo powercfg e mostra risultato)
+# Bottone 3: Prestazioni Elevate
 $btnPower = New-StylishButton -Text "Prestazioni Elevate" -X 450 -Y 440 -Width 200 -OnClick {
     Write-Log "-- Avvio attivazione profilo Prestazioni elevate..."
 
-    $script = {
-        if (-not (powercfg /list | Select-String 'e9a42b02-d5df-448d-aa00-03f14749eb61')) {
-            powercfg -duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61
+    try {
+        $existing = powercfg /list | Select-String "e9a42b02-d5df-448d-aa00-03f14749eb61"
+        if (-not $existing) {
+            powercfg -duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61 | Out-Null
+            Write-Log "-- Profilo duplicato (Prestazioni elevate)."
+        } else {
+            Write-Log "-- Profilo Prestazioni elevate già esistente."
         }
+
         powercfg -setactive e9a42b02-d5df-448d-aa00-03f14749eb61
         powercfg /change monitor-timeout-ac 0
         powercfg /change monitor-timeout-dc 0
 
-        # Restituisce il profilo attivo
-        powercfg /getactivescheme
-    }
-
-    try {
-        $result = Start-Process -FilePath "powershell.exe" -ArgumentList "-NoProfile -ExecutionPolicy Bypass -Command & { $($script.ToString()) }" -Verb RunAs -Wait -PassThru -RedirectStandardOutput "$env:TEMP\powercfg_out.txt"
-        Start-Sleep -Seconds 1
-        $output = Get-Content "$env:TEMP\powercfg_out.txt" -Raw
-        Write-Log "-- Output powercfg: $output"
-        [System.Windows.Forms.MessageBox]::Show("Output powercfg:`n$output", "Risultato", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+        Write-Log "-- Profilo attivato e timeout disabilitati."
     }
     catch {
-        Write-Log "-- Errore: $_"
-        [System.Windows.Forms.MessageBox]::Show("Errore: $_", "Errore", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+        Write-Log "-- Errore durante l'attivazione: $($_.Exception.Message)"
     }
 }
 $form.Controls.Add($btnPower)
+
 
 
 
