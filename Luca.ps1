@@ -540,7 +540,7 @@ pause
 $form.Controls.Add($btnVuoto2)
 
 # Bottone 6: Esempio nuovo bottone (modifica qui testo, posizione e azione)
-$btnNuovo = New-StylishButton -Text "Esegui Nuovo Script" -X 450 -Y 540 -Width 200 -OnClick {
+$btnNuovo = New-StylishButton -Text "Applica Tweaks Essenziali + Rimuovi LMS" -X 450 -Y 540 -Width 200 -OnClick {
     Write-Log "-- Bottone Nuovo premuto!"
 
     # Funzione con tutti i tweak da eseguire
