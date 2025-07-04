@@ -539,56 +539,14 @@ pause
 }
 $form.Controls.Add($btnVuoto2)
 
-# Bottone: Disattiva Tracciamento & LMS
-$btnTrackingLMS = New-StylishButton -Text "Disattiva Tracciamento & LMS" -X 10 -Y 440 -Width 200 -OnClick {
-    try {
-        # Cronologia attività
-        New-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System" -Force | Out-Null
-        Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System" -Name "EnableActivityFeed" -Type DWord -Value 0
-        Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System" -Name "PublishUserActivities" -Type DWord -Value 0
-        Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System" -Name "UploadUserActivities" -Type DWord -Value 0
-        [System.Windows.Forms.MessageBox]::Show("Cronologia attività disattivata.", "Info")
-
-        # HomeGroup
-        Set-Service -Name "HomeGroupListener" -StartupType Manual -ErrorAction SilentlyContinue
-        Set-Service -Name "HomeGroupProvider" -StartupType Manual -ErrorAction SilentlyContinue
-        [System.Windows.Forms.MessageBox]::Show("Servizi HomeGroup disattivati.", "Info")
-
-        # Teredo
-        Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip6\Parameters" -Name "DisabledComponents" -Type DWord -Value 1
-        Start-Process -FilePath "netsh" -ArgumentList "interface teredo set state disabled" -WindowStyle Hidden -Wait
-        [System.Windows.Forms.MessageBox]::Show("Teredo disattivato.", "Info")
-
-        # LMS Service e driver
-        $serviceName = "LMS"
-        Stop-Service -Name $serviceName -Force -ErrorAction SilentlyContinue
-        Set-Service -Name $serviceName -StartupType Disabled -ErrorAction SilentlyContinue
-        sc.exe delete $serviceName | Out-Null
-
-        $lmsDriverPackages = Get-ChildItem -Path "C:\Windows\System32\DriverStore\FileRepository" -Recurse -Filter "lms.inf*" -ErrorAction SilentlyContinue
-        foreach ($package in $lmsDriverPackages) {
-            pnputil /delete-driver $($package.Name) /uninstall /force | Out-Null
-        }
-
-        $programFilesDirs = @("C:\Program Files", "C:\Program Files (x86)")
-        foreach ($dir in $programFilesDirs) {
-            Get-ChildItem -Path $dir -Recurse -Filter "LMS.exe" -ErrorAction SilentlyContinue | ForEach-Object {
-                icacls $_.FullName /grant Administrators:F /T /C /Q | Out-Null
-                takeown /F $_.FullName /A /R /D Y | Out-Null
-                Remove-Item $_.FullName -Force -ErrorAction SilentlyContinue
-            }
-        }
-
-        [System.Windows.Forms.MessageBox]::Show("LMS disattivato e file rimossi.", "Info")
-    }
-    catch {
-        [System.Windows.Forms.MessageBox]::Show("Errore durante l'operazione:`n$_", "Errore")
-    }
+# Bottone 6: Esempio nuovo bottone (modifica qui testo, posizione e azione)
+$btnNuovo = New-StylishButton -Text "Esegui Nuovo Script" -X 450 -Y 540 -Width 200 -OnClick {
+    # Qui dentro metti il codice che vuoi eseguire al click
+    Write-Log "-- Bottone Nuovo premuto!"
+    # Per esempio esegui uno script PowerShell o batch
+    Start-Process powershell -ArgumentList "-NoProfile -WindowStyle Hidden -Command `"Write-Output 'Script eseguito!'`""
 }
-$form.Controls.Add($btnTrackingLMS)
-
-
-
+$form.Controls.Add($btnNuovo)
 
 
 $form.Topmost = $true
