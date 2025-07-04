@@ -539,6 +539,58 @@ pause
 }
 $form.Controls.Add($btnVuoto2)
 
+# Bottone: Disattiva Tracciamento & LMS
+$btnTrackingLMS = New-StylishButton -Text "Disattiva Tracciamento & LMS" -X 50 -Y 400 -Width 350 -OnClick {
+    Write-Log "-- Disattivazione cronologia attività, HomeGroup, Teredo e LMS..."
+
+    try {
+        # Cronologia attività
+        New-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System" -Force | Out-Null
+        Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System" -Name "EnableActivityFeed" -Type DWord -Value 0
+        Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System" -Name "PublishUserActivities" -Type DWord -Value 0
+        Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System" -Name "UploadUserActivities" -Type DWord -Value 0
+        Write-Log "-- Cronologia attività disattivata."
+
+        # HomeGroup
+        Set-Service -Name "HomeGroupListener" -StartupType Manual -ErrorAction SilentlyContinue
+        Set-Service -Name "HomeGroupProvider" -StartupType Manual -ErrorAction SilentlyContinue
+        Write-Log "-- Servizi HomeGroup disattivati."
+
+        # Teredo
+        Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip6\Parameters" -Name "DisabledComponents" -Type DWord -Value 1
+        Start-Process -FilePath "netsh" -ArgumentList "interface teredo set state disabled" -WindowStyle Hidden -Wait
+        Write-Log "-- Teredo disattivato."
+
+        # LMS Service e driver
+        $serviceName = "LMS"
+        Stop-Service -Name $serviceName -Force -ErrorAction SilentlyContinue
+        Set-Service -Name $serviceName -StartupType Disabled -ErrorAction SilentlyContinue
+        sc.exe delete $serviceName | Out-Null
+
+        $lmsDriverPackages = Get-ChildItem -Path "C:\Windows\System32\DriverStore\FileRepository" -Recurse -Filter "lms.inf*" -ErrorAction SilentlyContinue
+        foreach ($package in $lmsDriverPackages) {
+            pnputil /delete-driver $($package.Name) /uninstall /force | Out-Null
+        }
+
+        $programFilesDirs = @("C:\Program Files", "C:\Program Files (x86)")
+        foreach ($dir in $programFilesDirs) {
+            Get-ChildItem -Path $dir -Recurse -Filter "LMS.exe" -ErrorAction SilentlyContinue | ForEach-Object {
+                icacls $_.FullName /grant Administrators:F /T /C /Q | Out-Null
+                takeown /F $_.FullName /A /R /D Y | Out-Null
+                Remove-Item $_.FullName -Force -ErrorAction SilentlyContinue
+            }
+        }
+
+        Write-Log "-- LMS disattivato e file rimossi."
+    }
+    catch {
+        Write-Log "-- Errore durante l'operazione: $_"
+    }
+}
+$form.Controls.Add($btnTrackingLMS)
+
+
+
 
 $form.Topmost = $true
 $form.ShowDialog() | Out-Null
