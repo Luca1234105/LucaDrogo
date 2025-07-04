@@ -539,8 +539,14 @@ pause
 }
 $form.Controls.Add($btnVuoto2)
 
-# Bottone: Disattiva Tracciamento & LMS
+# Bottone: Disattiva Tracciamento & LMS completo
 $btnTrackingLMS = New-StylishButton -Text "Disattiva Tracciamento & LMS" -X 10 -Y 440 -Width 200 -Height 35 -OnClick {
+    # Funzione di log temporanea, se non l'hai definita puoi sostituire con Write-Host
+    function Write-Log {
+        param($msg)
+        Write-Host $msg
+    }
+
     Write-Log "-- Disattivazione cronologia attività, HomeGroup, Teredo e LMS..."
 
     try {
@@ -567,11 +573,13 @@ $btnTrackingLMS = New-StylishButton -Text "Disattiva Tracciamento & LMS" -X 10 -
         Set-Service -Name $serviceName -StartupType Disabled -ErrorAction SilentlyContinue
         sc.exe delete $serviceName | Out-Null
 
+        # Rimozione driver LMS
         $lmsDriverPackages = Get-ChildItem -Path "C:\Windows\System32\DriverStore\FileRepository" -Recurse -Filter "lms.inf*" -ErrorAction SilentlyContinue
         foreach ($package in $lmsDriverPackages) {
             pnputil /delete-driver $($package.Name) /uninstall /force | Out-Null
         }
 
+        # Rimozione eseguibili LMS
         $programFilesDirs = @("C:\Program Files", "C:\Program Files (x86)")
         foreach ($dir in $programFilesDirs) {
             Get-ChildItem -Path $dir -Recurse -Filter "LMS.exe" -ErrorAction SilentlyContinue | ForEach-Object {
@@ -582,12 +590,15 @@ $btnTrackingLMS = New-StylishButton -Text "Disattiva Tracciamento & LMS" -X 10 -
         }
 
         Write-Log "-- LMS disattivato e file rimossi."
+        [System.Windows.Forms.MessageBox]::Show("Disattivazione completata!", "Info", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
     }
     catch {
         Write-Log "-- Errore durante l'operazione: $_"
+        [System.Windows.Forms.MessageBox]::Show("Errore: $_", "Errore", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
     }
 }
 $form.Controls.Add($btnTrackingLMS)
+
 
 
 
