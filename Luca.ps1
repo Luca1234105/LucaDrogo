@@ -488,7 +488,7 @@ $form.Controls.Add($btnVuoto1)
 
 
 # Bottone Vuoto 2
-$btnVuoto2 = New-StylishButton -Text "Disattiva Attività Pianificate" -X 10 -Y 540 -Width 200 -OnClick {
+$btnVuoto2 = New-StylishButton -Text "Disattiva Attività Pianificate" -X 220 -Y 540 -Width 200 -OnClick {
     $batchScript = @"
 @echo off
 title Disattivazione attività pianificate inutili
