@@ -540,55 +540,80 @@ pause
 $form.Controls.Add($btnVuoto2)
 
 # Bottone 6: Esempio nuovo bottone (modifica qui testo, posizione e azione)
-$btnNuovo = New-StylishButton -Text "Applica Tweaks Essenziali + Rimuovi LMS" -X 450 -Y 540 -Width 200 -OnClick {
+$btnNuovo = New-StylishButton -Text "Esegui Nuovo Script" -X 450 -Y 540 -Width 200 -OnClick {
     Write-Log "-- Bottone Nuovo premuto!"
 
-    # --- Disable Activity History ---
-    Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System" -Name "EnableActivityFeed" -Value 0 -Type DWord -ErrorAction SilentlyContinue
-    Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System" -Name "PublishUserActivities" -Value 0 -Type DWord -ErrorAction SilentlyContinue
-    Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System" -Name "UploadUserActivities" -Value 0 -Type DWord -ErrorAction SilentlyContinue
+    # Funzione con tutti i tweak da eseguire
+    function ApplyTweaksAndRemoveLMS {
+        Write-Host "-- Tweaks iniziati."
 
-    # --- Disable HomeGroup Services ---
-    Get-Service -Name HomeGroupListener, HomeGroupProvider -ErrorAction SilentlyContinue | ForEach-Object {
-        Stop-Service $_.Name -Force -ErrorAction SilentlyContinue
-        Set-Service $_.Name -StartupType Manual -ErrorAction SilentlyContinue
-    }
+        # Disable Activity History tweaks (registro)
+        Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System" -Name "EnableActivityFeed" -Value 0 -Type DWord -ErrorAction SilentlyContinue
+        Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System" -Name "PublishUserActivities" -Value 0 -Type DWord -ErrorAction SilentlyContinue
+        Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System" -Name "UploadUserActivities" -Value 0 -Type DWord -ErrorAction SilentlyContinue
 
-    # --- Disable Teredo (registry + netsh) ---
-    Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip6\Parameters" -Name "DisabledComponents" -Value 1 -Type DWord -ErrorAction SilentlyContinue
-    netsh interface teredo set state disabled
+        # Disable Homegroup services
+        Set-Service -Name "HomeGroupListener" -StartupType Manual -ErrorAction SilentlyContinue
+        Set-Service -Name "HomeGroupProvider" -StartupType Manual -ErrorAction SilentlyContinue
+        Stop-Service -Name "HomeGroupListener" -Force -ErrorAction SilentlyContinue
+        Stop-Service -Name "HomeGroupProvider" -Force -ErrorAction SilentlyContinue
 
-    # --- Disable Wifi Sense ---
-    Set-ItemProperty -Path "HKLM:\Software\Microsoft\PolicyManager\default\WiFi" -Name "AllowWiFiHotSpotReporting" -Value 0 -Type DWord -ErrorAction SilentlyContinue
-    Set-ItemProperty -Path "HKLM:\Software\Microsoft\PolicyManager\default\WiFi" -Name "AllowAutoConnectToWiFiSenseHotspots" -Value 0 -Type DWord -ErrorAction SilentlyContinue
+        # Disable Teredo (registro + comando)
+        Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip6\Parameters" -Name "DisabledComponents" -Value 1 -Type DWord -ErrorAction SilentlyContinue
+        Start-Process -FilePath "netsh" -ArgumentList "interface teredo set state disabled" -Wait -NoNewWindow
 
-    # --- Disable and remove LMS service ---
-    $serviceName = "LMS"
-    Stop-Service -Name $serviceName -Force -ErrorAction SilentlyContinue
-    Set-Service -Name $serviceName -StartupType Disabled -ErrorAction SilentlyContinue
-    sc.exe delete $serviceName
+        # Disable Wifi Sense (registro)
+        Set-ItemProperty -Path "HKLM:\Software\Microsoft\PolicyManager\default\WiFi\AllowWiFiHotSpotReporting" -Name "Value" -Value 0 -Type DWord -ErrorAction SilentlyContinue
+        Set-ItemProperty -Path "HKLM:\Software\Microsoft\PolicyManager\default\WiFi\AllowAutoConnectToWiFiSenseHotspots" -Name "Value" -Value 0 -Type DWord -ErrorAction SilentlyContinue
 
-    # --- Remove LMS driver packages ---
-    $lmsDriverPackages = Get-ChildItem -Path "C:\Windows\System32\DriverStore\FileRepository" -Recurse -Filter "lms.inf*" -ErrorAction SilentlyContinue
-    foreach ($package in $lmsDriverPackages) {
-        pnputil /delete-driver $package.Name /uninstall /force
-    }
+        # Kill and disable LMS service
+        $serviceName = "LMS"
+        Write-Host "Stopping and disabling service: $serviceName"
+        Stop-Service -Name $serviceName -Force -ErrorAction SilentlyContinue
+        Set-Service -Name $serviceName -StartupType Disabled -ErrorAction SilentlyContinue
+        Write-Host "Removing service: $serviceName"
+        sc.exe delete $serviceName | Out-Null
 
-    # --- Remove LMS.exe files from Program Files ---
-    $programDirs = @("C:\Program Files", "C:\Program Files (x86)")
-    foreach ($dir in $programDirs) {
-        $lmsFiles = Get-ChildItem -Path $dir -Recurse -Filter "LMS.exe" -ErrorAction SilentlyContinue
-        foreach ($file in $lmsFiles) {
-            icacls $file.FullName /grant Administrators:F /T /C /Q | Out-Null
-            takeown /F $file.FullName /A /R /D Y | Out-Null
-            Remove-Item $file.FullName -Force -ErrorAction SilentlyContinue
+        # Remove LMS driver packages
+        Write-Host "Removing LMS driver packages"
+        $lmsDriverPackages = Get-ChildItem -Path "C:\Windows\System32\DriverStore\FileRepository" -Recurse -Filter "lms.inf*" -ErrorAction SilentlyContinue
+        foreach ($package in $lmsDriverPackages) {
+            Write-Host "Removing driver package: $($package.Name)"
+            pnputil /delete-driver $package.Name /uninstall /force | Out-Null
         }
+        if ($lmsDriverPackages.Count -eq 0) {
+            Write-Host "No LMS driver packages found in the driver store."
+        } else {
+            Write-Host "All found LMS driver packages have been removed."
+        }
+
+        # Search and delete LMS.exe files in Program Files folders
+        Write-Host "Searching and deleting LMS executable files"
+        $programFilesDirs = @("C:\Program Files", "C:\Program Files (x86)")
+        foreach ($dir in $programFilesDirs) {
+            $lmsFiles = Get-ChildItem -Path $dir -Recurse -Filter "LMS.exe" -ErrorAction SilentlyContinue
+            foreach ($file in $lmsFiles) {
+                Write-Host "Taking ownership of file: $($file.FullName)"
+                icacls $file.FullName /grant Administrators:F /T /C /Q | Out-Null
+                takeown /F $file.FullName /A /R /D Y | Out-Null
+                Write-Host "Deleting file: $($file.FullName)"
+                Remove-Item $file.FullName -Force -ErrorAction SilentlyContinue
+            }
+            if ($lmsFiles.Count -eq 0) {
+                Write-Host "No LMS.exe files found in $dir."
+            } else {
+                Write-Host "All found LMS.exe files in $dir have been deleted."
+            }
+        }
+
+        Write-Host "Tweaks e rimozione LMS completati."
     }
 
-    Write-Log "Tweaks essenziali e rimozione LMS completati."
+    # Eseguo la funzione
+    ApplyTweaksAndRemoveLMS
 }
-
 $form.Controls.Add($btnNuovo)
+
 
 
 
