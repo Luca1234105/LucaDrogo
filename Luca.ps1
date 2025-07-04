@@ -194,47 +194,28 @@ $btnApplyRegs = New-StylishButton -Text "Applica Registry Tweaks" -X 230 -Y 440 
 $form.Controls.Add($btnApplyRegs)
 
 # Bottone 3: Prestazioni Elevate
-$btnPower = New-Object System.Windows.Forms.Button
-$btnPower.Text = "Prestazioni Elevate"
-$btnPower.Location = New-Object System.Drawing.Point(50, 400)
-$btnPower.Size = New-Object System.Drawing.Size(150, 40)
-$btnPower.FlatStyle = "Flat"
-$btnPower.BackColor = [System.Drawing.Color]::FromArgb(50,50,50)
-$btnPower.ForeColor = [System.Drawing.Color]::White
+$btnPower = New-StylishButton -Text "Prestazioni Elevate" -X 450 -Y 440 -Width 200 -OnClick {
+    Write-Log "-- Avvio attivazione profilo Prestazioni elevate..."
 
-$btnPower.Add_Click({
-    $box.AppendText("-- Attivazione profilo Prestazioni elevate...`n")
     try {
-        # Controlla se esiste già un profilo Prestazioni Elevate
-        $existing = powercfg /list | Select-String "Prestazioni elevate"
+        $existing = powercfg /list | Select-String "e9a42b02-d5df-448d-aa00-03f14749eb61"
         if (-not $existing) {
             powercfg -duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61 | Out-Null
-            $box.AppendText("-- Profilo Prestazioni elevate duplicato.`n")
-        }
-
-        # Trova il GUID dinamico del profilo Prestazioni Elevate
-        $guid = powercfg /list | Where-Object { $_ -like "*Prestazioni elevate*" } | ForEach-Object {
-            ($_ -split '\s+')[3]
-        }
-
-        if ($guid) {
-            powercfg -setactive $guid
-            powercfg /change monitor-timeout-ac 0
-            powercfg /change monitor-timeout-dc 0
-            $box.AppendText("-- Profilo attivo: Prestazioni elevate ($guid)`n")
+            Write-Log "-- Profilo duplicato (Prestazioni elevate)."
         } else {
-            $box.AppendText("-- Errore: Profilo Prestazioni elevate non trovato.`n")
+            Write-Log "-- Profilo Prestazioni elevate già esistente."
         }
+
+        powercfg -setactive e9a42b02-d5df-448d-aa00-03f14749eb61
+        powercfg /change monitor-timeout-ac 0
+        powercfg /change monitor-timeout-dc 0
+
+        Write-Log "-- Profilo attivato e timeout disabilitati."
     }
     catch {
-        $box.AppendText("-- Errore durante attivazione: $_`n")
+        Write-Log "-- Errore durante l'attivazione: $($_.Exception.Message)"
     }
-
-    # Verifica e log finale del profilo attivo
-    $active = powercfg /getactivescheme
-    $box.AppendText("-- Profilo attualmente attivo: $active`n")
-})
-
+}
 $form.Controls.Add($btnPower)
 
 
