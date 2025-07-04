@@ -539,33 +539,29 @@ pause
 }
 $form.Controls.Add($btnVuoto2)
 
-# Bottone: Disattiva Tracciamento & LMS completo
-$btnTrackingLMS = New-StylishButton -Text "Disattiva Tracciamento & LMS" -X 10 -Y 440 -Width 200 -Height 35 -OnClick {
-    # Funzione di log temporanea, se non l'hai definita puoi sostituire con Write-Host
-    function Write-Log {
-        param($msg)
-        Write-Host $msg
-    }
-
-    Write-Log "-- Disattivazione cronologia attività, HomeGroup, Teredo e LMS..."
-
+# Bottone 2: Disattiva Tracciamento & LMS
+$btnDisattivaTrackingLMS = New-Object System.Windows.Forms.Button
+$btnDisattivaTrackingLMS.Location = New-Object System.Drawing.Point(10, 440)
+$btnDisattivaTrackingLMS.Size = New-Object System.Drawing.Size(200, 40)
+$btnDisattivaTrackingLMS.Text = "Disattiva Tracciamento & LMS"
+$btnDisattivaTrackingLMS.Add_Click({
     try {
         # Cronologia attività
         New-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System" -Force | Out-Null
         Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System" -Name "EnableActivityFeed" -Type DWord -Value 0
         Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System" -Name "PublishUserActivities" -Type DWord -Value 0
         Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System" -Name "UploadUserActivities" -Type DWord -Value 0
-        Write-Log "-- Cronologia attività disattivata."
+        [System.Windows.Forms.MessageBox]::Show("Cronologia attività disattivata.", "Info", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
 
         # HomeGroup
         Set-Service -Name "HomeGroupListener" -StartupType Manual -ErrorAction SilentlyContinue
         Set-Service -Name "HomeGroupProvider" -StartupType Manual -ErrorAction SilentlyContinue
-        Write-Log "-- Servizi HomeGroup disattivati."
+        [System.Windows.Forms.MessageBox]::Show("Servizi HomeGroup disattivati.", "Info", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
 
         # Teredo
         Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip6\Parameters" -Name "DisabledComponents" -Type DWord -Value 1
         Start-Process -FilePath "netsh" -ArgumentList "interface teredo set state disabled" -WindowStyle Hidden -Wait
-        Write-Log "-- Teredo disattivato."
+        [System.Windows.Forms.MessageBox]::Show("Teredo disattivato.", "Info", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
 
         # LMS Service e driver
         $serviceName = "LMS"
@@ -573,13 +569,11 @@ $btnTrackingLMS = New-StylishButton -Text "Disattiva Tracciamento & LMS" -X 10 -
         Set-Service -Name $serviceName -StartupType Disabled -ErrorAction SilentlyContinue
         sc.exe delete $serviceName | Out-Null
 
-        # Rimozione driver LMS
         $lmsDriverPackages = Get-ChildItem -Path "C:\Windows\System32\DriverStore\FileRepository" -Recurse -Filter "lms.inf*" -ErrorAction SilentlyContinue
         foreach ($package in $lmsDriverPackages) {
             pnputil /delete-driver $($package.Name) /uninstall /force | Out-Null
         }
 
-        # Rimozione eseguibili LMS
         $programFilesDirs = @("C:\Program Files", "C:\Program Files (x86)")
         foreach ($dir in $programFilesDirs) {
             Get-ChildItem -Path $dir -Recurse -Filter "LMS.exe" -ErrorAction SilentlyContinue | ForEach-Object {
@@ -589,16 +583,14 @@ $btnTrackingLMS = New-StylishButton -Text "Disattiva Tracciamento & LMS" -X 10 -
             }
         }
 
-        Write-Log "-- LMS disattivato e file rimossi."
-        [System.Windows.Forms.MessageBox]::Show("Disattivazione completata!", "Info", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+        [System.Windows.Forms.MessageBox]::Show("LMS disattivato e file rimossi.", "Info", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
     }
     catch {
-        Write-Log "-- Errore durante l'operazione: $_"
-        [System.Windows.Forms.MessageBox]::Show("Errore: $_", "Errore", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+        [System.Windows.Forms.MessageBox]::Show("Errore durante l'operazione:`n$_", "Errore", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
     }
-}
-$form.Controls.Add($btnTrackingLMS)
+})
 
+$form.Controls.Add($btnDisattivaTrackingLMS)
 
 
 
