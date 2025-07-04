@@ -539,29 +539,25 @@ pause
 }
 $form.Controls.Add($btnVuoto2)
 
-# Bottone 2: Disattiva Tracciamento & LMS
-$btnDisattivaTrackingLMS = New-Object System.Windows.Forms.Button
-$btnDisattivaTrackingLMS.Location = New-Object System.Drawing.Point(10, 440)
-$btnDisattivaTrackingLMS.Size = New-Object System.Drawing.Size(200, 40)
-$btnDisattivaTrackingLMS.Text = "Disattiva Tracciamento & LMS"
-$btnDisattivaTrackingLMS.Add_Click({
+# Bottone: Disattiva Tracciamento & LMS
+$btnTrackingLMS = New-StylishButton -Text "Disattiva Tracciamento & LMS" -X 10 -Y 440 -Width 200 -OnClick {
     try {
         # Cronologia attività
         New-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System" -Force | Out-Null
         Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System" -Name "EnableActivityFeed" -Type DWord -Value 0
         Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System" -Name "PublishUserActivities" -Type DWord -Value 0
         Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System" -Name "UploadUserActivities" -Type DWord -Value 0
-        [System.Windows.Forms.MessageBox]::Show("Cronologia attività disattivata.", "Info", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+        [System.Windows.Forms.MessageBox]::Show("Cronologia attività disattivata.", "Info")
 
         # HomeGroup
         Set-Service -Name "HomeGroupListener" -StartupType Manual -ErrorAction SilentlyContinue
         Set-Service -Name "HomeGroupProvider" -StartupType Manual -ErrorAction SilentlyContinue
-        [System.Windows.Forms.MessageBox]::Show("Servizi HomeGroup disattivati.", "Info", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+        [System.Windows.Forms.MessageBox]::Show("Servizi HomeGroup disattivati.", "Info")
 
         # Teredo
         Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip6\Parameters" -Name "DisabledComponents" -Type DWord -Value 1
         Start-Process -FilePath "netsh" -ArgumentList "interface teredo set state disabled" -WindowStyle Hidden -Wait
-        [System.Windows.Forms.MessageBox]::Show("Teredo disattivato.", "Info", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+        [System.Windows.Forms.MessageBox]::Show("Teredo disattivato.", "Info")
 
         # LMS Service e driver
         $serviceName = "LMS"
@@ -583,14 +579,14 @@ $btnDisattivaTrackingLMS.Add_Click({
             }
         }
 
-        [System.Windows.Forms.MessageBox]::Show("LMS disattivato e file rimossi.", "Info", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+        [System.Windows.Forms.MessageBox]::Show("LMS disattivato e file rimossi.", "Info")
     }
     catch {
-        [System.Windows.Forms.MessageBox]::Show("Errore durante l'operazione:`n$_", "Errore", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+        [System.Windows.Forms.MessageBox]::Show("Errore durante l'operazione:`n$_", "Errore")
     }
-})
+}
+$form.Controls.Add($btnTrackingLMS)
 
-$form.Controls.Add($btnDisattivaTrackingLMS)
 
 
 
