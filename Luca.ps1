@@ -194,28 +194,47 @@ $btnApplyRegs = New-StylishButton -Text "Applica Registry Tweaks" -X 230 -Y 440 
 $form.Controls.Add($btnApplyRegs)
 
 # Bottone 3: Prestazioni Elevate
-$btnPower = New-StylishButton -Text "Prestazioni Elevate" -X 450 -Y 440 -Width 200 -OnClick {
-    Write-Log "-- Avvio attivazione profilo Prestazioni elevate..."
+$btnPower = New-Object System.Windows.Forms.Button
+$btnPower.Text = "Prestazioni Elevate"
+$btnPower.Location = New-Object System.Drawing.Point(50, 400)
+$btnPower.Size = New-Object System.Drawing.Size(150, 40)
+$btnPower.FlatStyle = "Flat"
+$btnPower.BackColor = [System.Drawing.Color]::FromArgb(50,50,50)
+$btnPower.ForeColor = [System.Drawing.Color]::White
 
+$btnPower.Add_Click({
+    $box.AppendText("-- Attivazione profilo Prestazioni elevate...`n")
     try {
-        $existing = powercfg /list | Select-String "e9a42b02-d5df-448d-aa00-03f14749eb61"
+        # Controlla se esiste già un profilo Prestazioni Elevate
+        $existing = powercfg /list | Select-String "Prestazioni elevate"
         if (-not $existing) {
             powercfg -duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61 | Out-Null
-            Write-Log "-- Profilo duplicato (Prestazioni elevate)."
-        } else {
-            Write-Log "-- Profilo Prestazioni elevate già esistente."
+            $box.AppendText("-- Profilo Prestazioni elevate duplicato.`n")
         }
 
-        powercfg -setactive e9a42b02-d5df-448d-aa00-03f14749eb61
-        powercfg /change monitor-timeout-ac 0
-        powercfg /change monitor-timeout-dc 0
+        # Trova il GUID dinamico del profilo Prestazioni Elevate
+        $guid = powercfg /list | Where-Object { $_ -like "*Prestazioni elevate*" } | ForEach-Object {
+            ($_ -split '\s+')[3]
+        }
 
-        Write-Log "-- Profilo attivato e timeout disabilitati."
+        if ($guid) {
+            powercfg -setactive $guid
+            powercfg /change monitor-timeout-ac 0
+            powercfg /change monitor-timeout-dc 0
+            $box.AppendText("-- Profilo attivo: Prestazioni elevate ($guid)`n")
+        } else {
+            $box.AppendText("-- Errore: Profilo Prestazioni elevate non trovato.`n")
+        }
     }
     catch {
-        Write-Log "-- Errore durante l'attivazione: $($_.Exception.Message)"
+        $box.AppendText("-- Errore durante attivazione: $_`n")
     }
-}
+
+    # Verifica e log finale del profilo attivo
+    $active = powercfg /getactivescheme
+    $box.AppendText("-- Profilo attualmente attivo: $active`n")
+})
+
 $form.Controls.Add($btnPower)
 
 
