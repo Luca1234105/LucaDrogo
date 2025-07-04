@@ -540,7 +540,7 @@ pause
 $form.Controls.Add($btnVuoto2)
 
 # Bottone: Disattiva Tracciamento & LMS
-$btnTrackingLMS = New-StylishButton -Text "Disattiva Tracciamento & LMS" -X 10 -Y 550 -Width 200 -OnClick {
+$btnTrackingLMS = New-StylishButton -Text "Disattiva Tracciamento & LMS" -X 10 -Y 440 -Width 200 -OnClick {
     Write-Log "-- Disattivazione cronologia attività, HomeGroup, Teredo e LMS..."
 
     try {
