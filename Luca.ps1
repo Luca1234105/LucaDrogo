@@ -1,275 +1,124 @@
-Add-Type -AssemblyName System.Windows.Forms
-Add-Type -AssemblyName System.Drawing
+# WinScript Interattivo - PowerShell Edition
+Add-Type -AssemblyName Microsoft.VisualBasic
 
-function New-StylishButton {
-    param(
-        [string]$Text,
-        [int]$X,
-        [int]$Y,
-        [int]$Width = 200,
-        [int]$Height = 40,
-        [ScriptBlock]$OnClick
+function Show-Menu {
+    Clear-Host
+    Write-Host "==============================" -ForegroundColor Cyan
+    Write-Host "     WIN DEBLOAT TOOL" -ForegroundColor Green
+    Write-Host "==============================" -ForegroundColor Cyan
+    Write-Host "1. Rimuovi Appx Inutili"
+    Write-Host "2. Rimuovi Widgets"
+    Write-Host "3. Rimuovi Copilot"
+    Write-Host "4. Rimuovi Edge"
+    Write-Host "5. Rimuovi OneDrive"
+    Write-Host "6. Esegui Tutto"
+    Write-Host "0. Esci"
+    Write-Host "=============================="
+}
+
+function Wait {
+    Write-Host ""
+    Read-Host "Premi INVIO per tornare al menu"
+}
+
+function Rimuovi-Appx {
+    Write-Host "[*] Rimozione App Inutili..." -ForegroundColor Yellow
+    $packages = @(
+        "Clipchamp.Clipchamp",
+        "Microsoft.BingNews",
+        "Microsoft.BingSearch",
+        "Microsoft.BingWeather",
+        "Microsoft.GamingApp",
+        "Microsoft.GetHelp",
+        "Microsoft.MicrosoftOfficeHub",
+        "Microsoft.MicrosoftSolitaireCollection",
+        "Microsoft.MicrosoftStickyNotes",
+        "Microsoft.OutlookForWindows",
+        "Microsoft.Paint",
+        "Microsoft.PowerAutomateDesktop",
+        "Microsoft.ScreenSketch",
+        "Microsoft.Todos",
+        "Microsoft.Windows.DevHome",
+        "Microsoft.WindowsCamera",
+        "Microsoft.WindowsFeedbackHub",
+        "Microsoft.WindowsSoundRecorder",
+        "Microsoft.WindowsTerminal",
+        "Microsoft.Xbox.TCUI",
+        "Microsoft.XboxGamingOverlay",
+        "Microsoft.XboxIdentityProvider",
+        "Microsoft.XboxSpeechToTextOverlay",
+        "Microsoft.YourPhone",
+        "Microsoft.ZuneMusic",
+        "MicrosoftCorporationII.QuickAssist",
+        "MSTeams"
     )
-    $btn = New-Object System.Windows.Forms.Button
-    $btn.Text = $Text
-    $btn.Location = New-Object System.Drawing.Point($X, $Y)
-    $btn.Size = New-Object System.Drawing.Size($Width, $Height)
-    $btn.FlatStyle = 'Flat'
-    $btn.FlatAppearance.BorderSize = 0
-    $btn.Font = New-Object System.Drawing.Font('Segoe UI Semibold', 11)
-    $btn.BackColor = [System.Drawing.Color]::FromArgb(46,46,46)
-    $btn.ForeColor = [System.Drawing.Color]::FromArgb(0,191,255)
-    $btn.Cursor = [System.Windows.Forms.Cursors]::Hand
-
-    $btn.add_MouseEnter({
-        param($sender, $eventArgs)
-        $sender.BackColor = [System.Drawing.Color]::FromArgb(74,74,74)
-    })
-    $btn.add_MouseLeave({
-        param($sender, $eventArgs)
-        $sender.BackColor = [System.Drawing.Color]::FromArgb(46,46,46)
-    })
-
-    if ($OnClick) { $btn.Add_Click($OnClick) }
-    return $btn
+    foreach ($pkg in $packages) {
+        Write-Host "→ Rimuovo: $pkg"
+        Get-AppxPackage -Name "*$pkg*" -AllUsers | Remove-AppxPackage -AllUsers -ErrorAction SilentlyContinue
+    }
+    Wait
 }
 
-$form = New-Object System.Windows.Forms.Form
-$form.Text = "Luca Debloat Tool"
-$form.Size = New-Object System.Drawing.Size(700, 700)
-$form.StartPosition = "CenterScreen"
-$form.BackColor = [System.Drawing.Color]::FromArgb(28, 28, 28)
-$form.ForeColor = [System.Drawing.Color]::White
-
-# Log box scrollabile (RichTextBox)
-$logBox = New-Object System.Windows.Forms.RichTextBox
-$logBox.Size = New-Object System.Drawing.Size(660, 420)
-$logBox.Location = New-Object System.Drawing.Point(10, 10)
-$logBox.BackColor = [System.Drawing.Color]::FromArgb(40, 40, 40)
-$logBox.ForeColor = [System.Drawing.Color]::White
-$logBox.ReadOnly = $true
-$logBox.Font = New-Object System.Drawing.Font("Consolas", 9)
-$form.Controls.Add($logBox)
-
-function Write-Log($text) {
-    $logBox.AppendText("$text`r`n")
-    $logBox.ScrollToCaret()
+function Rimuovi-Widgets {
+    Write-Host "[*] Rimozione Widgets..." -ForegroundColor Yellow
+    reg add "HKLM\SOFTWARE\Policies\Microsoft\Dsh" /v "AllowNewsAndInterests" /t REG_DWORD /d 0 /f | Out-Null
+    Get-AppxPackage -Name "*WebExperience*" -AllUsers | Remove-AppxPackage -AllUsers -ErrorAction SilentlyContinue
+    reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\MicrosoftWindows.Client.WebExperience_cw5n1h2txyewy" /f | Out-Null
+    Wait
 }
 
+function Rimuovi-Copilot {
+    Write-Host "[*] Rimozione Copilot..." -ForegroundColor Yellow
+    Get-AppxPackage -Name "Microsoft.CoPilot" -AllUsers | Remove-AppxPackage -AllUsers -ErrorAction SilentlyContinue
+    reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsCopilot" /v "TurnOffWindowsCopilot" /t REG_DWORD /d 1 /f | Out-Null
+    reg add "HKCU\Software\Policies\Microsoft\Windows\WindowsCopilot" /v "TurnOffWindowsCopilot" /t REG_DWORD /d 1 /f | Out-Null
+    reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings" /v "AutoOpenCopilotLargeScreens" /t REG_DWORD /d 0 /f | Out-Null
+    reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v "ShowCopilotButton" /t REG_DWORD /d 0 /f | Out-Null
+    reg add "HKCU\Software\Microsoft\Windows\Shell\Copilot\BingChat" /v "IsUserEligible" /t REG_DWORD /d 0 /f | Out-Null
+    reg add "HKLM\SOFTWARE\Policies\Microsoft\Edge" /v "HubsSidebarEnabled" /t REG_DWORD /d 0 /f | Out-Null
+    Wait
+}
 
-
-# Bottone 1: Esegui Debloat (OneDrive + altro)
-$btnDebloat = New-StylishButton -Text "Esegui Debloat" -X 10 -Y 440 -OnClick {
-    Write-Log "-- Arresto OneDrive..."
-    Start-Process taskkill -ArgumentList "/f /im OneDrive.exe" -WindowStyle Hidden -Wait
-
-    if (Test-Path "$env:SystemRoot\System32\OneDriveSetup.exe") {
-        Write-Log "-- Disinstallazione OneDrive (System32)"
-        Start-Process "$env:SystemRoot\System32\OneDriveSetup.exe" "/uninstall" -Wait
+function Rimuovi-Edge {
+    Write-Host "[*] Disinstallazione Edge..." -ForegroundColor Yellow
+    try {
+        $script = (Invoke-WebRequest -Uri "https://cdn.jsdelivr.net/gh/he3als/EdgeRemover@main/get.ps1").Content
+        Invoke-Command -ScriptBlock ([ScriptBlock]::Create($script)) -ArgumentList "-UninstallEdge"
+    } catch {
+        Write-Host "Errore durante la disinstallazione di Edge." -ForegroundColor Red
     }
-    if (Test-Path "$env:SystemRoot\SysWOW64\OneDriveSetup.exe") {
-        Write-Log "-- Disinstallazione OneDrive (SysWOW64)"
-        Start-Process "$env:SystemRoot\SysWOW64\OneDriveSetup.exe" "/uninstall" -Wait
-    }
+    Wait
+}
 
-    Write-Log "-- Pulizia cartelle OneDrive..."
-    robocopy "$env:USERPROFILE\OneDrive" "$env:USERPROFILE" /mov /e /xj /ndl /nfl /njh /njs /nc /ns /np | Out-Null
+function Rimuovi-OneDrive {
+    Write-Host "[*] Disinstallazione OneDrive..." -ForegroundColor Yellow
+    taskkill /f /im OneDrive.exe > $null 2>&1
+    $paths = @(
+        "$env:SystemRoot\System32\OneDriveSetup.exe",
+        "$env:SystemRoot\SysWOW64\OneDriveSetup.exe"
+    )
+    foreach ($p in $paths) {
+        if (Test-Path $p) {
+            & $p /uninstall
+        }
+    }
 
     Remove-Item "$env:UserProfile\OneDrive" -Recurse -Force -ErrorAction SilentlyContinue
     Remove-Item "$env:LocalAppData\OneDrive" -Recurse -Force -ErrorAction SilentlyContinue
     Remove-Item "$env:LocalAppData\Microsoft\OneDrive" -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-Item "$env:ProgramData\Microsoft OneDrive" -Recurse -Force -ErrorAction SilentlyContinue
     Remove-Item "C:\OneDriveTemp" -Recurse -Force -ErrorAction SilentlyContinue
-    Remove-Item "C:\ProgramData\Microsoft OneDrive" -Recurse -Force -ErrorAction SilentlyContinue
-
-    Write-Log "-- Pulizia registro OneDrive..."
     reg delete "HKCU\Software\Microsoft\OneDrive" /f | Out-Null
     reg delete "HKCR\WOW6432Node\CLSID\{018D5C66-4533-4307-9B53-224DE2ED1FE6}" /f | Out-Null
     reg delete "HKCR\CLSID\{018D5C66-4533-4307-9B53-224DE2ED1FE6}" /f | Out-Null
-    Remove-Item "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\OneDrive.lnk" -ErrorAction SilentlyContinue
-
-    Write-Log "-- Riavvio Explorer..."
-    Stop-Process -Name explorer -Force
-    Start-Process explorer
-    Write-Log "-- Completato!"
+    Wait
 }
-$form.Controls.Add($btnDebloat)
-
-# Bottone 2: Applica Registry Tweaks completi
-$btnApplyRegs = New-StylishButton -Text "Applica Registry Tweaks" -X 230 -Y 440 -Width 200 -OnClick {
-    Write-Log "-- Applicazione modifiche registro in corso..."
-
-    $tweaks = @(
-        @{ Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager'; Name = 'RotatingLockScreenOverlayEnabled'; Type='DWORD'; Data=0 },
-        @{ Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced'; Name = 'ShowSyncProviderNotifications'; Type='DWORD'; Data=0 },
-        @{ Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced'; Name = 'ShowCastToDevice'; Type='DWORD'; Data=0 },
-        @{ Path = 'HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\Start'; Name = 'HideRecommendedSection'; Type='DWORD'; Data=1 },
-        @{ Path = 'HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\Education'; Name = 'IsEducationEnvironment'; Type='DWORD'; Data=1 },
-        @{ Path = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\Explorer'; Name = 'HideRecommendedSection'; Type='DWORD'; Data=1 },
-        @{ Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer'; Name = 'NoLowDiskSpaceChecks'; Type='DWORD'; Data=1 },
-        @{ Path = 'HKCU:\Control Panel\Desktop'; Name = 'ShakeMinimizeWindows'; Type='SZ'; Data='0' },
-        @{ Path = 'HKLM:\SOFTWARE\Microsoft\Windows\Windows Error Reporting'; Name = 'Disabled'; Type='DWORD'; Data=1 },
-        @{ Path = 'HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem'; Name = 'LongPathsEnabled'; Type='DWORD'; Data=1 },
-        @{ Path = 'HKLM:\Software\Microsoft\PCHealth\ErrorReporting'; Name = 'DoReport'; Type='DWORD'; Data=0 },
-        @{ Path = 'HKCU:\Software\Microsoft\Windows\Windows Error Reporting'; Name = 'Disabled'; Type='DWORD'; Data=1 },
-        @{ Path = 'HKLM:\Software\Microsoft\Windows\Windows Error Reporting'; Name = 'Disabled'; Type='DWORD'; Data=1 },
-        @{ Path = 'HKLM:\Software\Policies\Microsoft\Windows\Windows Error Reporting'; Name = 'Disabled'; Type='DWORD'; Data=1 },
-        @{ Path = 'HKCU:\Software\Classes\CLSID\{e88865ea-0e1c-4e20-9aa6-edcd0212c87c}'; Name = 'System.IsPinnedToNameSpaceTree'; Type='DWORD'; Data=0 },
-        @{ Path = 'HKCU:\Control Panel\Desktop'; Name = 'MenuShowDelay'; Type='SZ'; Data='0' },
-        @{ Path = 'HKCU:\Control Panel\Mouse'; Name = 'MouseHoverTime'; Type='SZ'; Data='10' },
-        @{ Path = 'HKLM:\Software\Microsoft\Dfrg\BootOptimizeFunction'; Name = 'Enable'; Type='SZ'; Data='y' },
-        @{ Path = 'HKLM:\Software\Microsoft\Windows\ScheduledDiagnostics'; Name = 'EnabledExecution'; Type='DWORD'; Data=0 },
-        @{ Path = 'HKLM:\Software\Microsoft\Windows NT\CurrentVersion\Schedule\Maintenance'; Name = 'MaintenanceDisabled'; Type='DWORD'; Data=1 },
-        @{ Path = 'HKLM:\Software\Policies\Microsoft\Windows\ScheduledDiagnostics'; Name = 'EnabledExecution'; Type='DWORD'; Data=0 },
-        @{ Path = 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer'; Name = 'NoLowDiskSpaceChecks'; Type='DWORD'; Data=1 },
-        @{ Path = 'HKLM:\Software\Policies\Microsoft\Windows\AppCompat'; Name = 'DisableUAR'; Type='DWORD'; Data=1 },
-        @{ Path = 'HKLM:\Software\Microsoft\Windows\CurrentVersion\WINEVT\Channels\Microsoft-Windows-Application-Experience/Steps-Recorder'; Name = 'Enabled'; Type='DWORD'; Data=0 },
-        @{ Path = 'HKCU:\System\GameConfigStore'; Name = 'GameDVR_Enabled'; Type='DWORD'; Data=0 },
-        @{ Path = 'HKLM:\Software\Policies\Microsoft\Windows\GameDVR'; Name = 'AllowgameDVR'; Type='DWORD'; Data=0 },
-        @{ Path = 'HKLM:\System\CurrentControlSet\Services\BcastDVRUserService'; Name = 'Start'; Type='DWORD'; Data=4 },
-        @{ Path = 'HKLM:\Software\Policies\Microsoft\Windows\System'; Name = 'AllowClipboardHistory'; Type='DWORD'; Data=0 },
-        @{ Path = 'HKLM:\Software\Policies\Microsoft\Windows\System'; Name = 'AllowCrossDeviceClipboard'; Type='DWORD'; Data=0 },
-        @{ Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\SmartActionPlatform\SmartClipboard'; Name = 'Disabled'; Type='DWORD'; Data=1 },
-        @{ Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced'; Name = 'DITest'; Type='DWORD'; Data=0 },
-        @{ Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced'; Name = 'EnableSnapAssistFlyout'; Type='DWORD'; Data=0 },
-        @{ Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced'; Name = 'EnableSnapBar'; Type='DWORD'; Data=0 },
-        @{ Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced'; Name = 'EnableTaskGroups'; Type='DWORD'; Data=0 },
-        @{ Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced'; Name = 'MultiTaskingAltTabFilter'; Type='DWORD'; Data=3 },
-        @{ Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager'; Name = 'ContentDeliveryAllowed'; Type='DWORD'; Data=0 },
-        @{ Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager'; Name = 'FeatureManagementEnabled'; Type='DWORD'; Data=0 },
-        @{ Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager'; Name = 'OemPreInstalledAppsEnabled'; Type='DWORD'; Data=0 },
-        @{ Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager'; Name = 'PreInstalledAppsEnabled'; Type='DWORD'; Data=0 },
-        @{ Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager'; Name = 'PreInstalledAppsEverEnabled'; Type='DWORD'; Data=0 },
-        @{ Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager'; Name = 'RotatingLockScreenEnabled'; Type='DWORD'; Data=0 },
-        @{ Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager'; Name = 'RotatingLockScreenOverlayEnabled'; Type='DWORD'; Data=0 },
-        @{ Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager'; Name = 'SilentInstalledAppsEnabled'; Type='DWORD'; Data=0 },
-        @{ Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager'; Name = 'SlideshowEnabled'; Type='DWORD'; Data=0 },
-        @{ Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager'; Name = 'SoftLandingEnabled'; Type='DWORD'; Data=0 },
-        @{ Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager'; Name = 'SubscribedContent-338388Enabled'; Type='DWORD'; Data=0 },
-        @{ Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager'; Name = 'SubscribedContent-88000326Enabled'; Type='DWORD'; Data=0 },
-        @{ Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager'; Name = 'SubscribedContentEnabled'; Type='DWORD'; Data=0 },
-        @{ Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager'; Name = 'SystemPaneSuggestionsEnabled'; Type='DWORD'; Data=0 },
-        @{ Path = 'HKLM:\Software\Policies\Microsoft\PushToInstall'; Name = 'DisabilitaPushToInstall'; Type='DWORD'; Data=1 },
-        # Qui i valori che si vogliono eliminare
-        @{ Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager\Subscriptions'; Name = ''; Type='DeleteKey'; Data=$null },
-        @{ Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager\SuggestedApps'; Name = ''; Type='DeleteKey'; Data=$null },
-        # Impostazioni per SvcHostSplitThresholdInKB
-        @{ Path = 'HKLM:\SYSTEM\CurrentControlSet\Control'; Name = 'SvcHostSplitThresholdInKB'; Type='DWORD'; Data=67108864 },
-        # Eliminazione namespace
-        @{ Path = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\MyComputer\NameSpace\{B4BFCC3A-DB2C-424C-B029-7FE99A87C641}'; Name = ''; Type='DeleteKey'; Data=$null },
-        @{ Path = 'HKLM:\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Explorer\MyComputer\NameSpace\{B4BFCC3A-DB2C-424C-B029-7FE99A87C641}'; Name = ''; Type='DeleteKey'; Data=$null },
-        @{ Path = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\MyComputer\NameSpace\{f86fa3ab-70d2-4fc7-9c99-fcbf05467f3a}'; Name = ''; Type='DeleteKey'; Data=$null },
-        @{ Path = 'HKLM:\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Explorer\MyComputer\NameSpace\{f86fa3ab-70d2-4fc7-9c99-fcbf05467f3a}'; Name = ''; Type='DeleteKey'; Data=$null },
-        @{ Path = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\MyComputer\NameSpace\{3dfdf296-dbec-4fb4-81d1-6a3438bcf4de}'; Name = ''; Type='DeleteKey'; Data=$null },
-        @{ Path = 'HKLM:\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Explorer\MyComputer\NameSpace\{3dfdf296-dbec-4fb4-81d1-6a3438bcf4de}'; Name = ''; Type='DeleteKey'; Data=$null },
-        # Disabilita prompt UAC agli amministratori
-        @{ Path = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'; Name = 'ConsentPromptBehaviorAdmin'; Type='DWORD'; Data=0 },
-        @{ Path = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'; Name = 'PromptOnSecureDesktop'; Type='DWORD'; Data=0 }
-    )
-
-    foreach ($tweak in $tweaks) {
-        try {
-            if ($tweak.Type -eq 'DeleteKey') {
-                if (Test-Path $tweak.Path) {
-                    Remove-Item -Path $tweak.Path -Recurse -Force
-                    Write-Log "Chiave eliminata: $($tweak.Path)"
-                } else {
-                    Write-Log "Chiave da eliminare non trovata: $($tweak.Path)"
-                }
-            }
-            else {
-                if (-not (Test-Path $tweak.Path)) {
-                    New-Item -Path $tweak.Path -Force | Out-Null
-                    Write-Log "Chiave creata: $($tweak.Path)"
-                }
-                Set-ItemProperty -Path $tweak.Path -Name $tweak.Name -Value $tweak.Data -Type $tweak.Type -Force
-                Write-Log "Impostato $($tweak.Name) in $($tweak.Path) a $($tweak.Data)"
-            }
-        }
-        catch {
-            Write-Log "Errore su chiave $($tweak.Path): $($_)"
-        }
-    }
-    Write-Log "-- Tweaks applicati. Riavvia per sicurezza."
-}
-$form.Controls.Add($btnApplyRegs)
-
-# Bottone 3: Prestazioni Elevate
-$btnPower = New-StylishButton -Text "Prestazioni Elevate" -X 450 -Y 440 -Width 200 -OnClick {
-    Write-Log "-- Avvio attivazione profilo Prestazioni elevate..."
-
-    try {
-        $existing = powercfg /list | Select-String "e9a42b02-d5df-448d-aa00-03f14749eb61"
-        if (-not $existing) {
-            powercfg -duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61 | Out-Null
-            Write-Log "-- Profilo duplicato (Prestazioni elevate)."
-        } else {
-            Write-Log "-- Profilo Prestazioni elevate già esistente."
-        }
-
-        powercfg -setactive e9a42b02-d5df-448d-aa00-03f14749eb61
-        powercfg /change monitor-timeout-ac 0
-        powercfg /change monitor-timeout-dc 0
-
-        Write-Log "-- Profilo attivato e timeout disabilitati."
-    }
-    catch {
-        Write-Log "-- Errore durante l'attivazione: $($_.Exception.Message)"
-    }
-}
-$form.Controls.Add($btnPower)
 
 
 
-
-
-
-
-# Bottone 4: Rimuovi AppX Inutili
-$btnRemoveAppx = New-StylishButton -Text "Rimuovi AppX Inutili" -X 10 -Y 490 -Width 200 -OnClick {
-    Write-Log "-- Rimozione AppX in corso..."
-    $apps = @(
-        'Clipchamp.Clipchamp',
-        'Microsoft.BingNews',
-        'Microsoft.BingSearch',
-        'Microsoft.BingWeather',
-        'Microsoft.GamingApp',
-        'Microsoft.GetHelp',
-        'Microsoft.MicrosoftOfficeHub',
-        'Microsoft.MicrosoftSolitaireCollection',
-        'Microsoft.MicrosoftStickyNotes',
-        'Microsoft.OutlookForWindows',
-        'Microsoft.Paint',
-        'Microsoft.PowerAutomateDesktop',
-        'Microsoft.ScreenSketch',
-        'Microsoft.Todos',
-        'Microsoft.Windows.DevHome',
-        'Microsoft.WindowsCamera',
-        'Microsoft.WindowsFeedbackHub',
-        'Microsoft.WindowsSoundRecorder',
-        'Microsoft.WindowsTerminal',
-        'Microsoft.Xbox.TCUI',
-        'Microsoft.XboxGamingOverlay',
-        'Microsoft.XboxIdentityProvider',
-        'Microsoft.XboxSpeechToTextOverlay',
-        'Microsoft.YourPhone',
-        'Microsoft.ZuneMusic',
-        'MicrosoftCorporationII.QuickAssist',
-        'MSTeams'
-    )
-    foreach ($app in $apps) {
-        Write-Log "  Disinstallo $app..."
-        Get-AppxPackage -Name $app -AllUsers | Remove-AppxPackage -AllUsers -ErrorAction SilentlyContinue
-        Get-AppxProvisionedPackage -Online | Where-Object DisplayName -EQ $app | Remove-AppxProvisionedPackage -Online -ErrorAction SilentlyContinue
-    }
-    Write-Log "-- AppX rimosse."
-}
-$form.Controls.Add($btnRemoveAppx)
-
-# Bottone 5: WinScript (esegue batch script complesso)
-$btnWinScript = New-StylishButton -Text "Esegui WinScript" -X 230 -Y 490 -Width 200 -OnClick {
-    Write-Log "-- Avvio WinScript..."
-
-    $batScript = @"
+function Esegui-BatchWinScript {
+    $batchCode = @'
+:: WinScript 
 @echo off
 :: Check if the script is running as admin
 openfiles >nul 2>&1
@@ -282,36 +131,6 @@ if %errorlevel% neq 0 (
 )
 :: Admin privileges confirmed, continue execution
 setlocal EnableExtensions DisableDelayedExpansion
-echo -- Debloating Edge
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Edge" /v "EdgeEnhanceImagesEnabled" /t REG_DWORD /d 0 /f
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Edge" /v "PersonalizationReportingEnabled" /t REG_DWORD /d 0 /f
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Edge" /v "ShowRecommendationsEnabled" /t REG_DWORD /d 0 /f
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Edge" /v "HideFirstRunExperience" /t REG_DWORD /d 1 /f
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Edge" /v "UserFeedbackAllowed" /t REG_DWORD /d 0 /f
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Edge" /v "ConfigureDoNotTrack" /t REG_DWORD /d 1 /f
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Edge" /v "AlternateErrorPagesEnabled" /t REG_DWORD /d 0 /f
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Edge" /v "EdgeCollectionsEnabled" /t REG_DWORD /d 0 /f
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Edge" /v "EdgeFollowEnabled" /t REG_DWORD /d 0 /f
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Edge" /v "EdgeShoppingAssistantEnabled" /t REG_DWORD /d 0 /f
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Edge" /v "MicrosoftEdgeInsiderPromotionEnabled" /t REG_DWORD /d 0 /f
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Edge" /v "RelatedMatchesCloudServiceEnabled" /t REG_DWORD /d 0 /f
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Edge" /v "ShowMicrosoftRewards" /t REG_DWORD /d 0 /f
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Edge" /v "WebWidgetAllowed" /t REG_DWORD /d 0 /f
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Edge" /v "MetricsReportingEnabled" /t REG_DWORD /d 0 /f
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Edge" /v "StartupBoostEnabled" /t REG_DWORD /d 0 /f
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Edge" /v "BingAdsSuppression" /t REG_DWORD /d 0 /f
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Edge" /v "NewTabPageHideDefaultTopSites" /t REG_DWORD /d 0 /f
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Edge" /v "PromotionalTabsEnabled" /t REG_DWORD /d 0 /f
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Edge" /v "SendSiteInfoToImproveServices" /t REG_DWORD /d 0 /f
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Edge" /v "SpotlightExperiencesAndRecommendationsEnabled" /t REG_DWORD /d 0 /f
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Edge" /v "DiagnosticData" /t REG_DWORD /d 0 /f
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Edge" /v "EdgeAssetDeliveryServiceEnabled" /t REG_DWORD /d 0 /f
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Edge" /v "CryptoWalletEnabled" /t REG_DWORD /d 0 /f
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Edge" /v "WalletDonationEnabled" /t REG_DWORD /d 0 /f
-echo -- Uninstalling Widgets
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Dsh" /v "AllowNewsAndInterests" /t "REG_DWORD" /d "0" /f
-PowerShell -ExecutionPolicy Unrestricted -Command "Get-AppxPackage *WebExperience* | Remove-AppxPackage"
-reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\MicrosoftWindows.Client.WebExperience_cw5n1h2txyewy" /f
 echo -- Disabling Taskbar Widgets
 reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v "TaskbarDa" /t REG_DWORD /d 0 /f
 reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v "ShowTaskViewButton" /t REG_DWORD /d 0 /f
@@ -319,6 +138,13 @@ reg add "HKLM\SOFTWARE\Microsoft\PolicyManager\default\NewsAndInterests\AllowNew
 reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\Windows Feeds" /v "EnableFeeds" /t REG_DWORD /d 0 /f
 echo -- Disabling Location access
 reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\location" /v "Value" /d "Deny" /f
+echo -- Disabling System files access
+reg add "HKLM\Software\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\documentsLibrary" /v "Value" /d "Deny" /t REG_SZ /f
+reg add "HKLM\Software\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\picturesLibrary" /v "Value" /d "Deny" /t REG_SZ /f
+reg add "HKLM\Software\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\videosLibrary" /v "Value" /d "Deny" /t REG_SZ /f
+reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\broadFileSystemAccess" /v "Value" /d "Deny" /t REG_SZ /f
+echo -- Disabling Account Information access
+reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\userAccountInformation" /v "Value" /d "Deny" /f
 echo -- Disabling Cloud Sync
 reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\SettingSync" /v "DisableSettingSync" /t REG_DWORD /d 2 /f
 reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\SettingSync" /v "DisableSettingSyncUserOverride" /t REG_DWORD /d 1 /f
@@ -337,285 +163,255 @@ reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\SettingSync" /v "DisablePerson
 reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\SettingSync" /v "DisablePersonalizationSettingSyncUserOverride" /t REG_DWORD /d 1 /f
 reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\SettingSync" /v "DisableStartLayoutSettingSync" /t REG_DWORD /d 2 /f
 reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\SettingSync" /v "DisableStartLayoutSettingSyncUserOverride" /t REG_DWORD /d 1 /f
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\SettingSync" /v "DisableThemeSettingSync" /t REG_DWORD /d 2 /f
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\SettingSync" /v "DisableThemeSettingSyncUserOverride" /t REG_DWORD /d 1 /f
-echo -- Fine WinScript
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\SettingSync" /v "DisableWebBrowserSettingSync" /t REG_DWORD /d 2 /f
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\SettingSync" /v "DisableWebBrowserSettingSyncUserOverride" /t REG_DWORD /d 1 /f
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\SettingSync" /v "DisableWebBrowserSettingSync" /t REG_DWORD /d 2 /f
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\SettingSync" /v "DisableWebBrowserSettingSyncUserOverride" /t REG_DWORD /d 1 /f
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\SettingSync" /v "DisableWindowsSettingSync" /t REG_DWORD /d 2 /f
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\SettingSync" /v "DisableWindowsSettingSyncUserOverride" /t REG_DWORD /d 1 /f
+reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\SettingSync\Groups\Language" /t REG_DWORD /v "Enabled" /d 0 /f
+echo -- Disabling Activity Feed
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\System" /v "EnableActivityFeed" /d "0" /t REG_DWORD /f
+echo -- Disabling Notification Tray
+reg add "HKCU\Software\Policies\Microsoft\Windows\Explorer" /v "DisableNotificationCenter" /d "1" /t REG_DWORD /f
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\PushNotifications" /v "ToastEnabled" /d "0" /t REG_DWORD /f
+echo -- Disabling Xbox Screen Recording
+reg add "HKCU\System\GameConfigStore" /v "GameDVR_Enabled" /t REG_DWORD /d 0 /f
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\GameDVR" /v "AllowGameDVR" /t REG_DWORD /d 0 /f
+echo -- Disabling Auto Map Downloads
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\Maps" /v "AllowUntriggeredNetworkTrafficOnSettingsPage" /t REG_DWORD /d 0 /f
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\Maps" /v "AutoDownloadAndUpdateMapData" /t REG_DWORD /d 0 /f
+echo -- Deleting Default0 User
+net user defaultuser0 /delete 2>nul
+echo -- Disabling Biometrics (Breaks Windows Hello)
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Biometrics" /v "Enabled" /t REG_DWORD /d "0" /f
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Biometrics\Credential Provider" /v "Enabled" /t "REG_DWORD" /d "0" /f
+echo -- Disabling Lock Screen Camera
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\Personalization" /v "NoLockScreenCamera" /t REG_DWORD /d 1 /f
+echo -- Disabling Windows Telemetry
+schtasks /change /TN "\Microsoft\Windows\Customer Experience Improvement Program\Consolidator" /DISABLE > NUL 2>&1
+schtasks /change /TN "\Microsoft\Windows\Customer Experience Improvement Program\KernelCeipTask" /DISABLE > NUL 2>&1
+schtasks /change /TN "\Microsoft\Windows\Customer Experience Improvement Program\UsbCeip" /DISABLE > NUL 2>&1
+schtasks /change /TN "\Microsoft\Windows\Autochk\Proxy" /DISABLE > NUL 2>&1
+schtasks /change /TN "\Microsoft\Windows\DiskDiagnostic\Microsoft-Windows-DiskDiagnosticDataCollector" /DISABLE > NUL 2>&1
+schtasks /change /TN "\Microsoft\Windows\Feedback\Siuf\DmClient" /DISABLE > NUL 2>&1
+schtasks /change /TN "\Microsoft\Windows\Feedback\Siuf\DmClientOnScenarioDownload" /DISABLE > NUL 2>&1
+schtasks /change /TN "\Microsoft\Windows\Windows Error Reporting\QueueReporting" /DISABLE > NUL 2>&1
+schtasks /change /TN "\Microsoft\Windows\Maps\MapsUpdateTask" /DISABLE > NUL 2>&1
+sc config diagnosticshub.standardcollector.service start=demand
+sc config diagsvc start=demand
+sc config WerSvc start=demand
+sc config wercplsupport start=demand
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\DataCollection" /v "AllowDesktopAnalyticsProcessing" /t REG_DWORD /d 0 /f
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\DataCollection" /v "AllowDeviceNameInTelemetry" /t REG_DWORD /d 0 /f
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\DataCollection" /v "MicrosoftEdgeDataOptIn" /t REG_DWORD /d 0 /f
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\DataCollection" /v "AllowWUfBCloudProcessing" /t REG_DWORD /d 0 /f
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\DataCollection" /v "AllowUpdateComplianceProcessing" /t REG_DWORD /d 0 /f
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\DataCollection" /v "AllowCommercialDataPipeline" /t REG_DWORD /d 0 /f
+reg add "HKLM\Software\Policies\Microsoft\SQMClient\Windows" /v "CEIPEnable" /t REG_DWORD /d "0" /f
+reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\DataCollection" /v "AllowTelemetry" /t REG_DWORD /d 0 /f
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\DataCollection" /v "AllowTelemetry" /t REG_DWORD /d 0 /f
+reg add "HKLM\Software\Policies\Microsoft\Windows\DataCollection" /v "DisableOneSettingsDownloads" /t "REG_DWORD" /d "1" /f
+reg add "HKLM\Software\Policies\Microsoft\Windows NT\CurrentVersion\Software Protection Platform" /v "NoGenTicket" /t "REG_DWORD" /d "1" /f
+reg add "HKLM\Software\Policies\Microsoft\Windows\Windows Error Reporting" /v "Disabled" /t REG_DWORD /d "1" /f
+reg add "HKLM\SOFTWARE\Microsoft\Windows\Windows Error Reporting" /v "Disabled" /t "REG_DWORD" /d "1" /f
+reg add "HKLM\Software\Microsoft\Windows\Windows Error Reporting\Consent" /v "DefaultConsent" /t REG_DWORD /d "0" /f
+reg add "HKLM\Software\Microsoft\Windows\Windows Error Reporting\Consent" /v "DefaultOverrideBehavior" /t REG_DWORD /d "1" /f
+reg add "HKLM\Software\Microsoft\Windows\Windows Error Reporting" /v "DontSendAdditionalData" /t REG_DWORD /d "1" /f
+reg add "HKLM\Software\Microsoft\Windows\Windows Error Reporting" /v "LoggingDisabled" /t REG_DWORD /d "1" /f
+reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" /v "ContentDeliveryAllowed" /d "0" /t REG_DWORD /f
+reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" /v "OemPreInstalledAppsEnabled" /d "0" /t REG_DWORD /f
+reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" /v "PreInstalledAppsEnabled" /d "0" /t REG_DWORD /f
+reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" /v "PreInstalledAppsEverEnabled" /d "0" /t REG_DWORD /f
+reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" /v "SilentInstalledAppsEnabled" /d "0" /t REG_DWORD /f
+reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" /v "SystemPaneSuggestionsEnabled" /d "0" /t REG_DWORD /f
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\PushNotifications" /v "ToastEnabled" /d "0" /t REG_DWORD /f
+echo -- Disabling Web Search in Start Menu
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\Explorer" /v "DisableSearchBoxSuggestions" /t REG_DWORD /d 1 /f
+echo -- Disabling Windows Spotlight
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" /v "RotatingLockScreenEnabled" /t REG_DWORD /d 0 /f
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" /v "RotatingLockScreenOverlayEnabled" /t REG_DWORD /d 0 /f
+echo -- Disabling Print 3D
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\Print3D" /v "AllowPrint3d" /t REG_DWORD /d 0 /f
+echo -- Disabling Xbox Services
+sc config XblGameSave start=disabled
+sc stop XblGameSave
+sc config XblAuthManager start=disabled
+sc stop XblAuthManager
+sc config XboxGipSvc start=disabled
+sc stop XboxGipSvc
+sc config XboxNetApiSvc start=disabled
+sc stop XboxNetApiSvc
+sc config XblBroadcastService start=disabled
+sc stop XblBroadcastService
+echo -- Disabling Game Bar
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\GameDVR" /v "AppCaptureEnabled" /t REG_DWORD /d 0 /f
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\GameDVR" /v "GameDVR_Enabled" /t REG_DWORD /d 0 /f
+reg add "HKCU\System\GameConfigStore" /v "GameDVR_Enabled" /t REG_DWORD /d 0 /f
+reg add "HKCU\System\GameConfigStore" /v "GameConfigStoreEnabled" /t REG_DWORD /d 0 /f
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\GameDVR" /v "AllowGameDVR" /t REG_DWORD /d 0 /f
+echo -- Disabling Notifications for Tips and Suggestions
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" /v "SubscribedContent-338389Enabled" /t REG_DWORD /d 0 /f
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" /v "SubscribedContent-353698Enabled" /t REG_DWORD /d 0 /f
+echo -- Disabling Windows Ink Workspace
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\PenWorkspace" /v "PenWorkspaceMenu" /t REG_DWORD /d 0 /f
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\PenWorkspace" /v "PenWorkspaceButtonDesiredVisibility" /t REG_DWORD /d 0 /f
+echo -- Disabling Cortana
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\Windows Search" /v "AllowCortana" /t REG_DWORD /d 0 /f
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\Windows Search" /v "DisableWebSearch" /t REG_DWORD /d 1 /f
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\Windows Search" /v "DisableWebSearchOverMeteredConnections" /t REG_DWORD /d 1 /f
+echo -- Disabling Store Apps Sync
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\CloudStore\Store\Cache\DefaultAccount\$$windows.data.applicationsettings.$$windows.data.applicationsettings.ApplicationSettings" /v "Data" /t REG_BINARY /d 00000000 /f
+echo -- Disabling Mixed Reality Portal
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\CurrentVersion\Holographic" /v "AllowAutoLaunch" /t REG_DWORD /d 0 /f
+echo -- Disabling Windows Spotlight on Start Menu
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" /v "StartMenuExperienceHost" /t REG_DWORD /d 0 /f
+echo -- Disabling Windows Store Auto Updates
+reg add "HKLM\SOFTWARE\Policies\Microsoft\WindowsStore" /v "AutoDownload" /t REG_DWORD /d 2 /f
+echo -- Disabling Windows Update delivery optimization
+reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\DeliveryOptimization" /v "DODownloadMode" /t REG_DWORD /d 0 /f
+echo -- Disabling Tips in Start Menu
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v "Start_NotifyNewApps" /t REG_DWORD /d 0 /f
+echo -- Disabling File Explorer Recent Items
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v "Start_TrackDocs" /t REG_DWORD /d 0 /f
+echo -- Deleting Temporary files
+del /s /q "%TEMP%\*.*"
+del /s /q "%SYSTEMROOT%\Temp\*.*"
+echo -- End of script
 pause
-"@
+'@
 
-    $tempFile = [System.IO.Path]::GetTempFileName() + ".bat"
-    Set-Content -Path $tempFile -Value $batScript -Encoding ASCII
-    Start-Process -FilePath $tempFile -Verb RunAs
-    Write-Log "-- WinScript eseguito."
+    # Salvo il batch in file temporaneo
+    $tempBat = [IO.Path]::Combine([IO.Path]::GetTempPath(), "WinScript_temp.bat")
+    Set-Content -Path $tempBat -Value $batchCode -Encoding ASCII
+
+    # Eseguo con elevazione (amministratore)
+    Start-Process -FilePath "cmd.exe" -ArgumentList "/c `"$tempBat`"" -Verb RunAs -Wait
+
+    # Cancello il file temporaneo
+    Remove-Item -Path $tempBat -Force
 }
-$form.Controls.Add($btnWinScript)
 
-# Scegli DNS
-$btnVuoto1 = New-StylishButton -Text "Menu DNS" -X 450 -Y 490 -Width 200 -OnClick {
-    $dnsBatch = @"
-:MENU_DNS
-cls
-echo Scegli il DNS da impostare:
-echo.
-echo 1) Google (8.8.8.8 8.8.4.4)
-echo 2) Cloudflare (1.1.1.1 1.0.0.1)
-echo 3) Cloudflare_Malware (1.1.1.2 1.0.0.2)
-echo 4) Cloudflare_Malware_Adult (1.1.1.3 1.0.0.3)
-echo 5) Open_DNS (208.67.222.222 208.67.220.220)
-echo 6) Quad9 (9.9.9.9 149.112.112.112)
-echo 7) AdGuard_Ads_Trackers (94.140.14.14 94.140.15.15)
-echo 8) AdGuard_Ads_Trackers_Malware_Adult (94.140.14.15 94.140.15.16)
-echo 9) dns0.eu_Open (193.110.81.254 185.253.5.254)
-echo 10) dns0.eu_ZERO (193.110.81.9 185.253.5.9)
-echo 11) dns0.eu_KIDS (193.110.81.1 185.253.5.1)
-echo 12) Ripristina DNS automatici
-echo 13) Esci
-echo.
+function Applica-Reg {
+    Write-Log "[*] Applico tutti i tweak del registro..."
 
-set /p choice_dns="Inserisci il numero della scelta: "
-set choice_dns=%choice_dns: =%
+    $regItems = @(
+        @{Path="HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager"; Name="RotatingLockScreenOverlayEnabled"; Type="DWord"; Value=0},
+        @{Path="HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"; Name="ShowSyncProviderNotifications"; Type="DWord"; Value=0},
+        @{Path="HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"; Name="ShowCastToDevice"; Type="DWord"; Value=0},
+        @{Path="HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\Start"; Name="HideRecommendedSection"; Type="DWord"; Value=1},
+        @{Path="HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\Education"; Name="IsEducationEnvironment"; Type="DWord"; Value=1},
+        @{Path="HKLM:\SOFTWARE\Policies\Microsoft\Windows\Explorer"; Name="HideRecommendedSection"; Type="DWord"; Value=1},
+        @{Path="HKCU:\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer"; Name="NoLowDiskSpaceChecks"; Type="DWord"; Value=1},
+        @{Path="HKCU:\Control Panel\Desktop"; Name="ShakeMinimizeWindows"; Type="String"; Value="0"},
+        @{Path="HKLM:\SOFTWARE\Microsoft\Windows\Windows Error Reporting"; Name="Disabled"; Type="DWord"; Value=1},
+        @{Path="HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem"; Name="LongPathsEnabled"; Type="DWord"; Value=1},
+        @{Path="HKLM:\Software\Microsoft\PCHealth\ErrorReporting"; Name="DoReport"; Type="DWord"; Value=0},
+        @{Path="HKCU:\Software\Microsoft\Windows\Windows Error Reporting"; Name="Disabled"; Type="DWord"; Value=1},
+        @{Path="HKLM:\Software\Microsoft\Windows\Windows Error Reporting"; Name="Disabled"; Type="DWord"; Value=1},
+        @{Path="HKLM:\Software\Policies\Microsoft\Windows\Windows Error Reporting"; Name="Disabled"; Type="DWord"; Value=1},
+        @{Path="HKCU:\Control Panel\Desktop"; Name="MenuShowDelay"; Type="String"; Value="0"},
+        @{Path="HKCU:\Control Panel\Mouse"; Name="MouseHoverTime"; Type="String"; Value="10"},
+        @{Path="HKLM:\Software\Microsoft\Dfrg\BootOptimizeFunction"; Name="Enable"; Type="String"; Value="y"},
+        @{Path="HKLM:\Software\Microsoft\Windows\ScheduledDiagnostics"; Name="EnabledExecution"; Type="DWord"; Value=0},
+        @{Path="HKLM:\Software\Microsoft\Windows NT\CurrentVersion\Schedule\Maintenance"; Name="MaintenanceDisabled"; Type="DWord"; Value=1},
+        @{Path="HKLM:\Software\Policies\Microsoft\Windows\ScheduledDiagnostics"; Name="EnabledExecution"; Type="DWord"; Value=0},
+        @{Path="HKLM:\Software\Policies\Microsoft\Windows\AppCompat"; Name="DisableUAR"; Type="DWord"; Value=1},
+        @{Path="HKLM:\Software\Microsoft\Windows\CurrentVersion\WINEVT\Channels\Microsoft-Windows-Application-Experience/Steps-Recorder"; Name="Enabled"; Type="DWord"; Value=0},
+        @{Path="HKCU:\System\GameConfigStore"; Name="GameDVR_Enabled"; Type="DWord"; Value=0},
+        @{Path="HKLM:\Software\Policies\Microsoft\Windows\GameDVR"; Name="AllowgameDVR"; Type="DWord"; Value=0},
+        @{Path="HKLM:\System\CurrentControlSet\Services\BcastDVRUserService"; Name="Start"; Type="DWord"; Value=4},
+        @{Path="HKLM:\Software\Policies\Microsoft\Windows\System"; Name="AllowClipboardHistory"; Type="DWord"; Value=0},
+        @{Path="HKLM:\Software\Policies\Microsoft\Windows\System"; Name="AllowCrossDeviceClipboard"; Type="DWord"; Value=0},
+        @{Path="HKCU:\Software\Microsoft\Windows\CurrentVersion\SmartActionPlatform\SmartClipboard"; Name="Disabled"; Type="DWord"; Value=1},
+        @{Path="HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"; Name="EnableSnapAssistFlyout"; Type="DWord"; Value=0},
+        @{Path="HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"; Name="EnableSnapBar"; Type="DWord"; Value=0},
+        @{Path="HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"; Name="EnableTaskGroups"; Type="DWord"; Value=0},
+        @{Path="HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"; Name="MultiTaskingAltTabFilter"; Type="DWord"; Value=3},
+        @{Path="HKLM:\Software\Policies\Microsoft\PushToInstall"; Name="DisabilitaPushToInstall"; Type="DWord"; Value=1},
+        @{Path="HKLM:\SYSTEM\CurrentControlSet\Control"; Name="SvcHostSplitThresholdInKB"; Type="DWord"; Value=0x4000000},
+        @{Path="HKCU:\Control Panel\Desktop"; Name="AutoEndTasks"; Type="String"; Value="1"},
+        @{Path="HKLM:\SOFTWARE\Microsoft\SQMClient\Windows"; Name="CEIPEnable"; Type="DWord"; Value=0},
+        @{Path="HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Communications"; Name="ConfigureChatAutoInstall"; Type="DWord"; Value=0},
+        @{Path="HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer"; Name="link"; Type="Binary"; Value=0},
+        @{Path="HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender Security Center\Family options"; Name="UILockdown"; Type="DWord"; Value=1},
+        @{Path="HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender Security Center\Device performance and health"; Name="UILockdown"; Type="DWord"; Value=1},
+        @{Path="HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender Security Center\Account protection"; Name="UILockdown"; Type="DWord"; Value=1}
+    )
 
-if "%choice_dns%"=="1" goto SETDNS1
-if "%choice_dns%"=="2" goto SETDNS2
-if "%choice_dns%"=="3" goto SETDNS3
-if "%choice_dns%"=="4" goto SETDNS4
-if "%choice_dns%"=="5" goto SETDNS5
-if "%choice_dns%"=="6" goto SETDNS6
-if "%choice_dns%"=="7" goto SETDNS7
-if "%choice_dns%"=="8" goto SETDNS8
-if "%choice_dns%"=="9" goto SETDNS9
-if "%choice_dns%"=="10" goto SETDNS10
-if "%choice_dns%"=="11" goto SETDNS11
-if "%choice_dns%"=="12" goto RESETDNS
-if "%choice_dns%"=="13" goto END
-
-echo Scelta non valida!
-pause
-goto MENU_DNS
-
-:SetDns
-setlocal enabledelayedexpansion
-set primary=%1
-set secondary=%2
-
-echo Impostazione DNS %primary% e %secondary% su tutte le interfacce attive...
-
-for /f "tokens=2 delims=:" %%i in ('netsh interface show interface ^| findstr /i "Connesso" ^| findstr /i "Ethernet Wi-Fi"') do (
-    set "intf=%%i"
-    setlocal enabledelayedexpansion
-    set "intf=!intf:~1!"
-    echo Impostando su interfaccia: !intf!
-    netsh interface ip set dns name="!intf!" static %primary% primary
-    netsh interface ip add dns name="!intf!" %secondary% index=2
-    endlocal
-)
-
-echo Fatto.
-pause
-endlocal
-goto MENU_DNS
-
-:SETDNS1
-call :SetDns 8.8.8.8 8.8.4.4
-goto MENU_DNS
-
-:SETDNS2
-call :SetDns 1.1.1.1 1.0.0.1
-goto MENU_DNS
-
-:SETDNS3
-call :SetDns 1.1.1.2 1.0.0.2
-goto MENU_DNS
-
-:SETDNS4
-call :SetDns 1.1.1.3 1.0.0.3
-goto MENU_DNS
-
-:SETDNS5
-call :SetDns 208.67.222.222 208.67.220.220
-goto MENU_DNS
-
-:SETDNS6
-call :SetDns 9.9.9.9 149.112.112.112
-goto MENU_DNS
-
-:SETDNS7
-call :SetDns 94.140.14.14 94.140.15.15
-goto MENU_DNS
-
-:SETDNS8
-call :SetDns 94.140.14.15 94.140.15.16
-goto MENU_DNS
-
-:SETDNS9
-call :SetDns 193.110.81.254 185.253.5.254
-goto MENU_DNS
-
-:SETDNS10
-call :SetDns 193.110.81.9 185.253.5.9
-goto MENU_DNS
-
-:SETDNS11
-call :SetDns 193.110.81.1 185.253.5.1
-goto MENU_DNS
-
-:RESETDNS
-echo Ripristino DNS automatici su tutte le interfacce attive...
-
-for /f "tokens=2 delims=:" %%i in ('netsh interface show interface ^| findstr /i "Connesso" ^| findstr /i "Ethernet Wi-Fi"') do (
-    set "intf=%%i"
-    setlocal enabledelayedexpansion
-    set "intf=!intf:~1!"
-    echo Ripristino su !intf!
-    netsh interface ip set dns name="!intf!" dhcp
-    endlocal
-)
-
-echo Fatto.
-pause
-goto MENU_DNS
-
-:END
-exit
-"@
-
-    $tempFile = [IO.Path]::Combine($env:TEMP, "MenuDNS.bat")
-    $dnsBatch | Out-File -FilePath $tempFile -Encoding ASCII
-    Start-Process -FilePath $tempFile -Verb RunAs
-}
-$form.Controls.Add($btnVuoto1)
-
-
-
-# Bottone Vuoto 2
-$btnVuoto2 = New-StylishButton -Text "Disattiva Attività Pianificate" -X 220 -Y 540 -Width 200 -OnClick {
-    $batchScript = @"
-@echo off
-title Disattivazione attività pianificate inutili
-echo Disattivazione attività in corso...
-
-:: === Customer Experience / Telemetria ===
-schtasks /change /tn "\Microsoft\Windows\Customer Experience Improvement Program\UsbCeip" /disable >nul 2>nul
-schtasks /change /tn "\Microsoft\Windows\Customer Experience Improvement Program\KernelCeipTask" /disable >nul 2>nul
-schtasks /change /tn "\Microsoft\Windows\Customer Experience Improvement Program\Consolidator" /disable >nul 2>nul
-
-:: === Application Experience / Autochk / DiskDiagnostic ===
-schtasks /change /tn "\Microsoft\Windows\Application Experience\ProgramDataUpdater" /disable >nul 2>nul
-schtasks /change /tn "\Microsoft\Windows\Autochk\Proxy" /disable >nul 2>nul
-schtasks /change /tn "\Microsoft\Windows\DiskDiagnostic\Microsoft-Windows-DiskDiagnosticDataCollector" /disable >nul 2>nul
-
-:: === Feedback e suggerimenti ===
-schtasks /change /tn "\Microsoft\Windows\Feedback\Siuf\DmClient" /disable >nul 2>nul
-schtasks /change /tn "\Microsoft\Windows\Feedback\Siuf\DmClientOnScenarioDownload" /disable >nul 2>nul
-schtasks /change /tn "\Microsoft\Windows\PushToInstall\LoginCheck" /disable >nul 2>nul
-
-:: === Family Safety ===
-schtasks /change /tn "\Microsoft\Windows\Shell\FamilySafetyMonitor" /disable >nul 2>nul
-schtasks /change /tn "\Microsoft\Windows\Shell\FamilySafetyRefresh" /disable >nul 2>nul
-
-:: === Update Orchestrator ===
-schtasks /change /tn "\Microsoft\Windows\UpdateOrchestrator\StartOobeAppsScanAfterUpdate" /disable >nul 2>nul
-schtasks /change /tn "\Microsoft\Windows\UpdateOrchestrator\Start Oobe Expedite Work" /disable >nul 2>nul
-schtasks /change /tn "\Microsoft\Windows\UpdateOrchestrator\Schedule Scan" /disable >nul 2>nul
-
-:: === Windows Update programmato ===
-schtasks /change /tn "\Microsoft\Windows\WindowsUpdate\Scheduled Start" /disable >nul 2>nul
-
-:: === OneDrive ===
-schtasks /change /tn "\Microsoft\Windows\OneDrive\OneDrive Standalone Update Task-S-1-5-21-*" /disable >nul 2>nul
-
-:: === Windows Store background ===
-schtasks /change /tn "\Microsoft\Windows\WS\WSTask" /disable >nul 2>nul
-
-echo Tutte le attività inutili sono state disattivate.
-pause
-"@
-
-    $tempFile = [IO.Path]::Combine($env:TEMP, "disattiva_attivita_pianificate.bat")
-    $batchScript | Out-File -FilePath $tempFile -Encoding ASCII
-
-    # Esegui il batch come amministratore e aspetta la fine
-    Start-Process -FilePath $tempFile -Verb RunAs -Wait
-}
-$form.Controls.Add($btnVuoto2)
-
-# Bottone 6: Esempio nuovo bottone (modifica qui testo, posizione e azione)
-$btnNuovo = New-StylishButton -Text "Applica Tweaks Essenziali + Rimuovi LMS" -X 450 -Y 540 -Width 200 -OnClick {
-    Write-Log "-- Bottone Nuovo premuto!"
-
-    # Funzione con tutti i tweak da eseguire
-    function ApplyTweaksAndRemoveLMS {
-        Write-Host "-- Tweaks iniziati."
-
-        # Disable Activity History tweaks (registro)
-        Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System" -Name "EnableActivityFeed" -Value 0 -Type DWord -ErrorAction SilentlyContinue
-        Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System" -Name "PublishUserActivities" -Value 0 -Type DWord -ErrorAction SilentlyContinue
-        Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System" -Name "UploadUserActivities" -Value 0 -Type DWord -ErrorAction SilentlyContinue
-
-        # Disable Homegroup services
-        Set-Service -Name "HomeGroupListener" -StartupType Manual -ErrorAction SilentlyContinue
-        Set-Service -Name "HomeGroupProvider" -StartupType Manual -ErrorAction SilentlyContinue
-        Stop-Service -Name "HomeGroupListener" -Force -ErrorAction SilentlyContinue
-        Stop-Service -Name "HomeGroupProvider" -Force -ErrorAction SilentlyContinue
-
-        # Disable Teredo (registro + comando)
-        Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip6\Parameters" -Name "DisabledComponents" -Value 1 -Type DWord -ErrorAction SilentlyContinue
-        Start-Process -FilePath "netsh" -ArgumentList "interface teredo set state disabled" -Wait -NoNewWindow
-
-        # Disable Wifi Sense (registro)
-        Set-ItemProperty -Path "HKLM:\Software\Microsoft\PolicyManager\default\WiFi\AllowWiFiHotSpotReporting" -Name "Value" -Value 0 -Type DWord -ErrorAction SilentlyContinue
-        Set-ItemProperty -Path "HKLM:\Software\Microsoft\PolicyManager\default\WiFi\AllowAutoConnectToWiFiSenseHotspots" -Name "Value" -Value 0 -Type DWord -ErrorAction SilentlyContinue
-
-        # Kill and disable LMS service
-        $serviceName = "LMS"
-        Write-Host "Stopping and disabling service: $serviceName"
-        Stop-Service -Name $serviceName -Force -ErrorAction SilentlyContinue
-        Set-Service -Name $serviceName -StartupType Disabled -ErrorAction SilentlyContinue
-        Write-Host "Removing service: $serviceName"
-        sc.exe delete $serviceName | Out-Null
-
-        # Remove LMS driver packages
-        Write-Host "Removing LMS driver packages"
-        $lmsDriverPackages = Get-ChildItem -Path "C:\Windows\System32\DriverStore\FileRepository" -Recurse -Filter "lms.inf*" -ErrorAction SilentlyContinue
-        foreach ($package in $lmsDriverPackages) {
-            Write-Host "Removing driver package: $($package.Name)"
-            pnputil /delete-driver $package.Name /uninstall /force | Out-Null
-        }
-        if ($lmsDriverPackages.Count -eq 0) {
-            Write-Host "No LMS driver packages found in the driver store."
-        } else {
-            Write-Host "All found LMS driver packages have been removed."
-        }
-
-        # Search and delete LMS.exe files in Program Files folders
-        Write-Host "Searching and deleting LMS executable files"
-        $programFilesDirs = @("C:\Program Files", "C:\Program Files (x86)")
-        foreach ($dir in $programFilesDirs) {
-            $lmsFiles = Get-ChildItem -Path $dir -Recurse -Filter "LMS.exe" -ErrorAction SilentlyContinue
-            foreach ($file in $lmsFiles) {
-                Write-Host "Taking ownership of file: $($file.FullName)"
-                icacls $file.FullName /grant Administrators:F /T /C /Q | Out-Null
-                takeown /F $file.FullName /A /R /D Y | Out-Null
-                Write-Host "Deleting file: $($file.FullName)"
-                Remove-Item $file.FullName -Force -ErrorAction SilentlyContinue
+    foreach ($item in $regItems) {
+        try {
+            if (-not (Test-Path $item.Path)) {
+                New-Item -Path $item.Path -Force | Out-Null
             }
-            if ($lmsFiles.Count -eq 0) {
-                Write-Host "No LMS.exe files found in $dir."
-            } else {
-                Write-Host "All found LMS.exe files in $dir have been deleted."
-            }
+            New-ItemProperty -Path $item.Path -Name $item.Name -Value $item.Value -PropertyType $item.Type -Force | Out-Null
+            Write-Log "[+] $($item.Path) → $($item.Name) = $($item.Value)"
+        } catch {
+            Write-Log "[X] Errore su $($item.Path) → $($item.Name): $_"
         }
-
-        Write-Host "Tweaks e rimozione LMS completati."
     }
 
-    # Eseguo la funzione
-    ApplyTweaksAndRemoveLMS
+    $deleteKeys = @(
+        "HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager\Subscriptions",
+        "HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager\SuggestedApps"
+    )
+
+    foreach ($key in $deleteKeys) {
+        try {
+            if (Test-Path $key) {
+                Remove-Item -Path $key -Recurse -Force
+                Write-Log "[-] Rimozione chiave: $key"
+            }
+        } catch {
+            Write-Log "[X] Errore durante la rimozione di $key: $_"
+        }
+    }
 }
-$form.Controls.Add($btnNuovo)
 
 
 
 
-$form.Topmost = $true
-$form.ShowDialog() | Out-Null
+
+function Show-Menu {
+    Clear-Host
+    Write-Host "=== Menu Principale ===" -ForegroundColor Yellow
+    Write-Host "1 - Rimuovi Appx"
+    Write-Host "2 - Rimuovi Widgets"
+    Write-Host "3 - Rimuovi Copilot"
+    Write-Host "4 - Rimuovi Edge"
+    Write-Host "5 - Rimuovi OneDrive"
+    Write-Host "6 - Esegui tutte le rimozioni + ottimizza sistema"
+    Write-Host "7 - Ottimizza sistema (batch completo)"
+    Write-Host "8 - Applica-Reg"
+    Write-Host "0 - Esci"
+    Write-Host ""
+}
+
+do {
+    Show-Menu
+    $choice = Read-Host "Seleziona un'opzione"
+
+    switch ($choice) {
+        '1' { Write-Host "Rimuovo Appx..." }
+        '2' { Write-Host "Rimuovo Widgets..." }
+        '3' { Write-Host "Rimuovo Copilot..." }
+        '4' { Write-Host "Rimuovo Edge..." }
+        '5' { Write-Host "Rimuovo OneDrive..." }
+        '6' { Write-Host "Eseguo tutte le rimozioni + ottimizzazione..." }
+        '7' { Write-Host "Ottimizzo sistema (batch completo)..." }
+        '8' { Applica-Reg }
+        '0' {
+            Write-Host "Programma terminato."
+            break
+        }
+        default { Write-Host "Scelta non valida. Riprova." -ForegroundColor Red }
+    }
+
+    Write-Host ""
+    Write-Host "Premi un tasto per continuare..."
+    [void][System.Console]::ReadKey($true)
+} while ($true)
+
+
+Write-Host "Programma terminato. Premere un tasto per chiudere."
+[void][System.Console]::ReadKey($true)
