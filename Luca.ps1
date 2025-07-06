@@ -428,7 +428,7 @@ $btnApplyRegTweaks = New-Button "Applica Modifiche Registro Sicurezza" (New-Obje
 $form.Controls.Add($btnApplyRegTweaks)
 $btnApplyRegTweaks.Add_Click({ Apply-RegistryTweaks })
 
-$btnHideFamilyOptions = New-Button "🔒 Nascondi Opzioni Famiglia" (New-Object System.Drawing.Point(120,420))
+$btnHideFamilyOptions = New-Button "🔒 Nascondi Opzioni Famiglia" (New-Object System.Drawing.Point(120,180))
 $form.Controls.Add($btnHideFamilyOptions)
 $btnHideFamilyOptions.Add_Click({ Apply-UILockdown })
 
