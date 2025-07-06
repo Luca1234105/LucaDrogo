@@ -1,23 +1,3 @@
-Certainly\! It looks like you're aiming to gather all your scripts into one comprehensive PowerShell GUI application. That's a great approach for simplifying your system maintenance tasks.
-
-You've already provided a solid base, including:
-
-  * **GUI Framework:** Using `System.Windows.Forms` for the graphical interface.
-  * **Styling:** Defined colors for a dark theme.
-  * **Button Functions:** `New-Button` and `New-SmallButton` for consistent styling and hover effects.
-  * **Core Functions:** Scripts to remove Microsoft apps, OneDrive, disable Copilot, remove Widgets, remove Edge, disable various services, and install apps from a specific folder (`E:\App`).
-  * **Utility Functions:** Toggling Dark Mode, Taskbar Search, Visual Effects, and the Task View Button.
-  * **New `Invoke-RegImporter` Function:** To import `.reg` files from `E:\Script\Esegui`.
-
-To ensure everything is included and organized, I'll provide the complete PowerShell script below. This script consolidates all the functions and integrates the new `.reg` importer into your sidebar.
-
------
-
-## **Luca Tweaks GUI Script**
-
-Here's the full script. You can copy and paste this into an elevated PowerShell window.
-
-```powershell
 Add-Type -AssemblyName System.Windows.Forms,System.Drawing
 
 # REGIONE: COLORI
@@ -79,12 +59,15 @@ function Remove-AppxPackageSafe {
         Get-AppxProvisionedPackage -Online | Where-Object { $_.PackageName -like "$PackageName*" } | Remove-AppxProvisionedPackage -Online
         Write-Host "$PackageName rimosso."
     } catch {
-        Write-Host "Errore nella rimozione di $PackageName"
+        # Assegna $_.Exception.Message a una variabile temporanea per evitare errori di parsing
+        $errorMessage = $_.Exception.Message
+        Write-Host "Errore nella rimozione di $($PackageName): $errorMessage" # Added $($PackageName)
     }
 }
 
 # Rimuove diverse app Microsoft predefinite.
 function Remove-MicrosoftApps {
+    Write-Host "Inizio rimozione app Microsoft..."
     $apps = @(
         "Clipchamp.Clipchamp",
         "Microsoft.BingNews",
@@ -116,16 +99,21 @@ function Remove-MicrosoftApps {
         "Microsoft.WindowsAlarms"
     )
     foreach ($app in $apps) {
+        Write-Host "Tentativo di rimozione: $app"
         try {
             Get-AppxPackage -AllUsers -Name $app | Remove-AppxPackage -ErrorAction SilentlyContinue
-        } catch {}
+        } catch {
+            # Assegna $_.Exception.Message a una variabile temporanea per evitare errori di parsing
+            $errorMessage = $_.Exception.Message
+            Write-Warning "Impossibile rimuovere $($app): $errorMessage" # FIX APPLICATO QUI
+        }
     }
 
     # Percorso cartella Accessibility
     $accessibilityPath = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Accessibility"
 
     if (Test-Path $accessibilityPath) {
-
+        Write-Host "Tentativo di rimozione cartella Accessibility: $accessibilityPath"
         # Rimuove attributi sola lettura e sistema a tutti i file e cartelle
         Get-ChildItem -LiteralPath $accessibilityPath -Recurse -Force | ForEach-Object {
             try { $_.Attributes = 'Normal' } catch {}
@@ -136,10 +124,13 @@ function Remove-MicrosoftApps {
             Remove-Item -LiteralPath $accessibilityPath -Recurse -Force -ErrorAction Stop
             Write-Host "Cartella Accessibility rimossa con Remove-Item."
         } catch {
-            Write-Warning "Remove-Item fallito: $_"
+            # Assegna $_.Exception.Message a una variabile temporanea per evitare errori di parsing
+            $errorMessage = $_.Exception.Message
+            Write-Warning "Remove-Item fallito per cartella Accessibility: $errorMessage"
             # Ultima risorsa: prova a rimuovere con cmd
             $cmd = "rd /s /q `"$accessibilityPath`""
-            Start-Process -FilePath cmd.exe -ArgumentList "/c $cmd" -Wait -NoNewWindow # Added -NoNewWindow to run cmd silently
+            Write-Host "Tentativo di rimozione cartella Accessibility con cmd: $cmd"
+            Start-Process -FilePath cmd.exe -ArgumentList "/c $cmd" -Wait -NoNewWindow
             if (-not (Test-Path $accessibilityPath)) {
                 Write-Host "Cartella Accessibility rimossa con cmd."
             } else {
@@ -156,48 +147,63 @@ function Remove-MicrosoftApps {
 # Rimuove OneDrive dal sistema.
 function Remove-OneDrive {
     Write-Host "Rimuovo OneDrive..."
-    taskkill /f /im OneDrive.exe > $null 2>&1
-    if (Test-Path "$env:SystemRoot\System32\OneDriveSetup.exe") {
-        & "$env:SystemRoot\System32\OneDriveSetup.exe" /uninstall
+    try {
+        taskkill /f /im OneDrive.exe > $null 2>&1
+        if (Test-Path "$env:SystemRoot\System32\OneDriveSetup.exe") {
+            & "$env:SystemRoot\System32\OneDriveSetup.exe" /uninstall
+        }
+        if (Test-Path "$env:SystemRoot\SysWOW64\OneDriveSetup.exe") {
+            & "$env:SystemRoot\SysWOW64\OneDriveSetup.exe" /uninstall
+        }
+        robocopy "$env:USERPROFILE\OneDrive" "$env:USERPROFILE" /mov /e /xj /ndl /nfl /njh /njs /nc /ns /np | Out-Null
+        reg delete "HKEY_CLASSES_ROOT\WOW6432Node\CLSID\{018D5C66-4533-4307-9B53-224DE2ED1FE6}" /f | Out-Null
+        reg delete "HKEY_CLASSES_ROOT\CLSID\{018D5C66-4533-4307-9B53-224DE2ED1FE6}" /f | Out-Null
+        Remove-Item "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\OneDrive.lnk" -Force -ErrorAction SilentlyContinue
+        powershell -Command "Get-ScheduledTask -TaskPath '\' -TaskName 'OneDrive*' -ErrorAction SilentlyContinue | Unregister-ScheduledTask -Confirm:`$false" | Out-Null
+        Remove-Item "$env:UserProfile\OneDrive" -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item "$env:LocalAppData\OneDrive" -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item "$env:LocalAppData\Microsoft\OneDrive" -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item "$env:ProgramData\Microsoft OneDrive" -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item "C:\OneDriveTemp" -Recurse -Force -ErrorAction SilentlyContinue
+        reg delete "HKEY_CURRENT_USER\Software\Microsoft\OneDrive" /f | Out-Null
+        [System.Windows.Forms.MessageBox]::Show("OneDrive rimosso con successo!","Successo",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Information)
+    } catch {
+        # Assegna $_.Exception.Message a una variabile temporanea per evitare errori di parsing
+        $errorMessage = $_.Exception.Message
+        [System.Windows.Forms.MessageBox]::Show("Errore durante la rimozione di OneDrive: $errorMessage","Errore",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Error)
     }
-    if (Test-Path "$env:SystemRoot\SysWOW64\OneDriveSetup.exe") {
-        & "$env:SystemRoot\SysWOW64\OneDriveSetup.exe" /uninstall
-    }
-    # Using robocopy for moving content before full removal
-    robocopy "$env:USERPROFILE\OneDrive" "$env:USERPROFILE" /mov /e /xj /ndl /nfl /njh /njs /nc /ns /np | Out-Null
-    reg delete "HKEY_CLASSES_ROOT\WOW6432Node\CLSID\{018D5C66-4533-4307-9B53-224DE2ED1FE6}" /f | Out-Null
-    reg delete "HKEY_CLASSES_ROOT\CLSID\{018D5C66-4533-4307-9B53-224DE2ED1FE6}" /f | Out-Null
-    Remove-Item "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\OneDrive.lnk" -Force -ErrorAction SilentlyContinue
-    powershell -Command "Get-ScheduledTask -TaskPath '\' -TaskName 'OneDrive*' -ErrorAction SilentlyContinue | Unregister-ScheduledTask -Confirm:`$false" | Out-Null
-    Remove-Item "$env:UserProfile\OneDrive" -Recurse -Force -ErrorAction SilentlyContinue
-    Remove-Item "$env:LocalAppData\OneDrive" -Recurse -Force -ErrorAction SilentlyContinue
-    Remove-Item "$env:LocalAppData\Microsoft\OneDrive" -Recurse -Force -ErrorAction SilentlyContinue
-    Remove-Item "$env:ProgramData\Microsoft OneDrive" -Recurse -Force -ErrorAction SilentlyContinue
-    Remove-Item "C:\OneDriveTemp" -Recurse -Force -ErrorAction SilentlyContinue
-    reg delete "HKEY_CURRENT_USER\Software\Microsoft\OneDrive" /f | Out-Null
-    [System.Windows.Forms.MessageBox]::Show("OneDrive rimosso con successo!","Successo",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Information)
 }
 
 # Disabilita Microsoft Copilot.
 function Disable-Copilot {
     Write-Host "Disabilito Copilot..."
-    Get-AppxPackage Microsoft.CoPilot | Remove-AppxPackage -ErrorAction SilentlyContinue
-    reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsCopilot" /v "TurnOffWindowsCopilot" /t REG_DWORD /d 1 /f | Out-Null
-    reg add "HKCU\Software\Policies\Microsoft\Windows\WindowsCopilot" /v "TurnOffWindowsCopilot" /t REG_DWORD /d 1 /f | Out-Null
-    reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings" /v "AutoOpenCopilotLargeScreens" /t REG_DWORD /d 0 /f | Out-Null
-    reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v "ShowCopilotButton" /t REG_DWORD /d 0 /f | Out-Null
-    reg add "HKCU\Software\Microsoft\Windows\Shell\Copilot\BingChat" /v "IsUserEligible" /t REG_DWORD /d 0 /f | Out-Null
-    reg add "HKLM\SOFTWARE\Policies\Microsoft\Edge" /v "HubsSidebarEnabled" /t REG_DWORD /d 0 /f | Out-Null
-    [System.Windows.Forms.MessageBox]::Show("Copilot disabilitato!","Successo",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Information)
+    try {
+        Get-AppxPackage Microsoft.CoPilot | Remove-AppxPackage -ErrorAction SilentlyContinue
+        reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsCopilot" /v "TurnOffWindowsCopilot" /t REG_DWORD /d 1 /f | Out-Null
+        reg add "HKCU\Software\Policies\Microsoft\Windows\WindowsCopilot" /v "TurnOffWindowsCopilot" /t REG_DWORD /d 1 /f | Out-Null
+        reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings" /v "AutoOpenCopilotLargeScreens" /t REG_DWORD /d 0 /f | Out-Null
+        reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v "ShowCopilotButton" /t REG_DWORD /d 0 /f | Out-Null
+        reg add "HKCU\Software\Microsoft\Windows\Shell\Copilot\BingChat" /v "IsUserEligible" /t REG_DWORD /d 0 /f | Out-Null
+        reg add "HKLM\SOFTWARE\Policies\Microsoft\Edge" /v "HubsSidebarEnabled" /t REG_DWORD /d 0 /f | Out-Null
+        [System.Windows.Forms.MessageBox]::Show("Copilot disabilitato!","Successo",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Information)
+    } catch {
+        $errorMessage = $_.Exception.Message
+        [System.Windows.Forms.MessageBox]::Show("Errore durante la disabilitazione di Copilot: $errorMessage","Errore",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Error)
+    }
 }
 
 # Rimuove i Widgets di Windows.
 function Remove-Widgets {
     Write-Host "Rimuovo Widgets..."
-    reg add "HKLM\SOFTWARE\Policies\Microsoft\Dsh" /v "AllowNewsAndInterests" /t REG_DWORD /d 0 /f | Out-Null
-    Get-AppxPackage *WebExperience* | Remove-AppxPackage -ErrorAction SilentlyContinue
-    reg delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\MicrosoftWindows.Client.WebExperience_cw5n1h2txyewy" /f | Out-Null
-    [System.Windows.Forms.MessageBox]::Show("Widgets rimossi!","Successo",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Information)
+    try {
+        reg add "HKLM\SOFTWARE\Policies\Microsoft\Dsh" /v "AllowNewsAndInterests" /t REG_DWORD /d 0 /f | Out-Null
+        Get-AppxPackage *WebExperience* | Remove-AppxPackage -ErrorAction SilentlyContinue
+        reg delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\MicrosoftWindows.Client.WebExperience_cw5n1h2txyewy" /f | Out-Null
+        [System.Windows.Forms.MessageBox]::Show("Widgets rimossi!","Successo",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Information)
+    } catch {
+        $errorMessage = $_.Exception.Message
+        [System.Windows.Forms.MessageBox]::Show("Errore durante la rimozione dei Widgets: $errorMessage","Errore",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Error)
+    }
 }
 
 # Rimuove Microsoft Edge Chromium.
@@ -210,12 +216,14 @@ function Remove-Edge {
         & $sb -UninstallEdge
         [System.Windows.Forms.MessageBox]::Show("Microsoft Edge rimosso!","Successo",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Information)
     } catch {
-        [System.Windows.Forms.MessageBox]::Show("Errore durante la rimozione di Microsoft Edge: $($_.Exception.Message)","Errore",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Error)
+        $errorMessage = $_.Exception.Message
+        [System.Windows.Forms.MessageBox]::Show("Errore durante la rimozione di Microsoft Edge: $errorMessage","Errore",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Error)
     }
 }
 
 # Disattiva una lista predefinita di servizi di Windows tramite uno script batch.
 function Invoke-DisattivaServizi {
+    Write-Host "Disattivo servizi..."
     $batContent = @"
 @echo off
 :: Elevazione automatica se non è già admin
@@ -309,12 +317,18 @@ exit
 "@
 
     $tempBat = [System.IO.Path]::Combine($env:TEMP, "DisattivaServizi.bat")
-    [System.IO.File]::WriteAllText($tempBat, $batContent)
-    Start-Process -FilePath $tempBat -Verb RunAs
+    try {
+        [System.IO.File]::WriteAllText($tempBat, $batContent)
+        Start-Process -FilePath $tempBat -Verb RunAs
+    } catch {
+        $errorMessage = $_.Exception.Message
+        [System.Windows.Forms.MessageBox]::Show("Errore durante la disattivazione dei servizi: $errorMessage","Errore",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Error)
+    }
 }
 
 # Installa app eseguibili, MSI, batch o PowerShell da una cartella specificata (E:\App).
 function Invoke-AppInstaller {
+    Write-Host "Avvio installazione app da E:\App..."
     $batContent = @"
 @echo off
 setlocal enabledelayedexpansion
@@ -407,12 +421,18 @@ exit /b
 "@
 
     $tempBat = [System.IO.Path]::Combine($env:TEMP, "InstallerAppScript.bat")
-    [System.IO.File]::WriteAllText($tempBat, $batContent)
-    Start-Process -FilePath $tempBat -Verb RunAs
+    try {
+        [System.IO.File]::WriteAllText($tempBat, $batContent)
+        Start-Process -FilePath $tempBat -Verb RunAs
+    } catch {
+        $errorMessage = $_.Exception.Message
+        [System.Windows.Forms.MessageBox]::Show("Errore durante l'installazione delle app: $errorMessage","Errore",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Error)
+    }
 }
 
 # Attiva/Disattiva la modalità scura di Windows.
 function Invoke-WinUtilDarkMode {
+    Write-Host "Toggle Dark Mode..."
     try {
         $Path = "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize"
         $current = Get-ItemPropertyValue -Path $Path -Name AppsUseLightTheme -ErrorAction SilentlyContinue
@@ -422,11 +442,15 @@ function Invoke-WinUtilDarkMode {
         Set-ItemProperty -Path $Path -Name SystemUsesLightTheme -Value $newValue
         $msg = if ($newValue -eq 0) { "Dark Mode attivata." } else { "Dark Mode disattivata." }
         [System.Windows.Forms.MessageBox]::Show($msg)
-    } catch { [System.Windows.Forms.MessageBox]::Show("Errore: $($_.Exception.Message)") }
+    } catch { 
+        $errorMessage = $_.Exception.Message
+        [System.Windows.Forms.MessageBox]::Show("Errore: $errorMessage") 
+    }
 }
 
 # Attiva/Disattiva la barra di ricerca sulla Taskbar.
 function Invoke-WinUtilTaskbarSearch {
+    Write-Host "Toggle Taskbar Search..."
     try {
         $Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Search"
         $current = Get-ItemPropertyValue -Path $Path -Name SearchboxTaskbarMode -ErrorAction SilentlyContinue
@@ -435,22 +459,28 @@ function Invoke-WinUtilTaskbarSearch {
         Set-ItemProperty -Path $Path -Name SearchboxTaskbarMode -Value $newValue
         $msg = if ($newValue -eq 0) { "Taskbar Search disattivata." } else { "Taskbar Search attivata." }
         [System.Windows.Forms.MessageBox]::Show($msg)
-    } catch { [System.Windows.Forms.MessageBox]::Show("Errore: $($_.Exception.Message)") }
+    } catch { 
+        $errorMessage = $_.Exception.Message
+        [System.Windows.Forms.MessageBox]::Show("Errore: $errorMessage") 
+    }
 }
 
 # Applica effetti visivi personalizzati per le prestazioni.
 function Toggle-CustomVisualEffects {
+    Write-Host "Applico effetti visivi personalizzati..."
     try {
         # Corresponds to "Adjust for best performance"
         Set-ItemProperty -Path "HKCU:\Control Panel\Desktop" -Name "UserPreferencesMask" -Type Binary -Value ([byte[]](144,18,3,128,16,0,0,0))
         [System.Windows.Forms.MessageBox]::Show("Effetti visivi personalizzati applicati. Potrebbe essere necessario riavviare o effettuare il logout per vedere tutte le modifiche.","Info",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Information)
     } catch {
-        [System.Windows.Forms.MessageBox]::Show("Errore nell'applicazione degli effetti visivi: $($_.Exception.Message)")
+        $errorMessage = $_.Exception.Message
+        [System.Windows.Forms.MessageBox]::Show("Errore nell'applicazione degli effetti visivi: $errorMessage")
     }
 }
 
 # Attiva/Disattiva il pulsante Vista Attività sulla Taskbar.
 function Toggle-ShowTaskViewButton {
+    Write-Host "Toggle Pulsante Vista Attività..."
     try {
         $key = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
         $current = Get-ItemPropertyValue -Path $key -Name ShowTaskViewButton -ErrorAction SilentlyContinue
@@ -459,11 +489,15 @@ function Toggle-ShowTaskViewButton {
         Set-ItemProperty -Path $key -Name ShowTaskViewButton -Value $newValue
         $msg = if ($newValue -eq 0) { "Pulsante Vista Attività disattivato." } else { "Pulsante Vista Attività attivato." }
         [System.Windows.Forms.MessageBox]::Show($msg)
-    } catch { [System.Windows.Forms.MessageBox]::Show("Errore: $($_.Exception.Message)") }
+    } catch { 
+        $errorMessage = $_.Exception.Message
+        [System.Windows.Forms.MessageBox]::Show("Errore: $errorMessage") 
+    }
 }
 
 # Importa file .reg da una cartella specificata (E:\Script\Esegui).
 function Invoke-RegImporter {
+    Write-Host "Avvio importazione file .reg da E:\Script\Esegui..."
     $batContent = @"
 @echo off
 setlocal enabledelayedexpansion
@@ -544,11 +578,97 @@ exit /b
 "@
 
     $tempBat = [System.IO.Path]::Combine($env:TEMP, "RegImporterScript.bat")
-    [System.IO.File]::WriteAllText($tempBat, $batContent)
-    # Use -Wait to keep the PowerShell GUI responsive until the batch finishes, if desired.
-    # Start-Process -FilePath $tempBat -Verb RunAs -Wait
-    Start-Process -FilePath $tempBat -Verb RunAs
+    try {
+        [System.IO.File]::WriteAllText($tempBat, $batContent)
+        Start-Process -FilePath $tempBat -Verb RunAs
+    } catch {
+        $errorMessage = $_.Exception.Message
+        [System.Windows.Forms.MessageBox]::Show("Errore durante l'importazione dei file .reg: $errorMessage","Errore",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Error)
+    }
 }
+
+# Nuova funzione: Disabilita Teredo
+function Disable-Teredo {
+    Write-Host "Disabilito Teredo..."
+    try {
+        Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip6\Parameters" -Name "DisabledComponents" -Value 1 -Force -ErrorAction Stop
+        netsh interface teredo set state disabled | Out-Null
+        [System.Windows.Forms.MessageBox]::Show("Teredo disabilitato! Potrebbe essere necessario un riavvio per applicare completamente le modifiche.","Successo",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Information)
+    } catch {
+        $errorMessage = $_.Exception.Message
+        [System.Windows.Forms.MessageBox]::Show("Errore durante la disabilitazione di Teredo: $errorMessage","Errore",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Error)
+    }
+}
+
+# Nuova funzione: Kill LMS (Intel Management and Security Application Local Management Service)
+function Kill-LMS {
+    Write-Host "Kill LMS (Intel Management and Security Application Local Management Service)..."
+    try {
+        $serviceName = "LMS"
+        Write-Host "Arresto e disabilitazione del servizio: $serviceName"
+        Stop-Service -Name $serviceName -Force -ErrorAction SilentlyContinue;
+        Set-Service -Name $serviceName -StartupType Disabled -ErrorAction SilentlyContinue;
+
+        Write-Host "Rimozione del servizio: $serviceName";
+        sc.exe delete $serviceName | Out-Null;
+
+        Write-Host "Rimozione dei pacchetti driver LMS";
+        $lmsDriverPackages = Get-ChildItem -Path "C:\Windows\System32\DriverStore\FileRepository" -Recurse -Filter "lms.inf*" -ErrorAction SilentlyContinue;
+        foreach ($package in $lmsDriverPackages) {
+            Write-Host "Rimozione pacchetto driver: $($package.Name)";
+            # Use pnputil with /force to ensure removal even if in use
+            pnputil /delete-driver "$($package.Name)" /uninstall /force | Out-Null;
+        }
+        if ($lmsDriverPackages.Count -eq 0) {
+            Write-Host "Nessun pacchetto driver LMS trovato nel driver store."
+        } else {
+            Write-Host "Tutti i pacchetti driver LMS trovati sono stati rimossi."
+        }
+
+        Write-Host "Ricerca ed eliminazione dei file eseguibili LMS";
+        $programFilesDirs = @("C:\Program Files", "C:\Program Files (x86)");
+        $lmsFiles = @();
+        foreach ($dir in $programFilesDirs) {
+            $lmsFiles += Get-ChildItem -Path $dir -Recurse -Filter "LMS.exe" -ErrorAction SilentlyContinue;
+        }
+        foreach ($file in $lmsFiles) {
+            Write-Host "Acquisizione proprietà del file: $($file.FullName)";
+            # Take ownership and grant full control to Administrators
+            & icacls "$($file.FullName)" /grant Administrators:F /T /C /Q | Out-Null;
+            & takeown /F "$($file.FullName)" /A /R /D Y | Out-Null;
+            Write-Host "Eliminazione del file: $($file.FullName)";
+            Remove-Item "$($file.FullName)" -Force -ErrorAction SilentlyContinue;
+        }
+        if ($lmsFiles.Count -eq 0) {
+            Write-Host "Nessun file LMS.exe trovato nelle directory Program Files."
+        } else {
+            Write-Host "Tutti i file LMS.exe trovati sono stati eliminati."
+        }
+        [System.Windows.Forms.MessageBox]::Show("Il servizio Intel LMS vPro è stato disabilitato, rimosso e bloccato.","Successo",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Information)
+    } catch {
+        $errorMessage = $_.Exception.Message
+        [System.Windows.Forms.MessageBox]::Show("Errore durante la rimozione di LMS: $errorMessage","Errore",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Error)
+    }
+}
+
+# Nuova funzione: Disabilita Wifi-Sense
+function Disable-WifiSense {
+    Write-Host "Disabilito Wifi-Sense..."
+    try {
+        Set-ItemProperty -Path "HKLM:\Software\Microsoft\PolicyManager\default\WiFi\AllowWiFiHotSpotReporting" -Name "Value" -Type DWord -Value 0 -Force -ErrorAction Stop
+        Set-ItemProperty -Path "HKLM:\Software\Microsoft\PolicyManager\default\WiFi\AllowAutoConnectToWiFiSenseHotspots" -Name "Value" -Type DWord -Value 0 -Force -ErrorAction Stop
+        [System.Windows.Forms.MessageBox]::Show("Wifi-Sense disabilitato!","Successo",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Information)
+    } catch {
+        $errorMessage = $_.Exception.Message
+        [System.Windows.Forms.MessageBox]::Show("Errore durante la disabilitazione di Wifi-Sense: $errorMessage","Errore",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Error)
+    }
+}
+
+# Placeholder per la gestione DNS (richiederebbe un controllo ComboBox)
+function Handle-DNS {
+    [System.Windows.Forms.MessageBox]::Show("La gestione DNS richiede una selezione specifica (es. un menu a tendina). Questa funzione è un placeholder.","Informazione",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Information)
+}
+
 # FINE REGIONE: FUNZIONI PRINCIPALI
 
 # REGIONE: CREAZIONE FORM PRINCIPALE E LAYOUT
@@ -557,6 +677,7 @@ $form.Text = "Luca Tweaks"
 $form.Size = New-Object System.Drawing.Size(1100, 720)
 $form.StartPosition = "CenterScreen"
 $form.BackColor = $colorFormBack
+$form.ForeColor = $colorText # Ensure form text is visible
 $form.FormBorderStyle = "FixedSingle"
 $form.MaximizeBox = $false # Impedisce la massimizzazione
 
@@ -629,8 +750,25 @@ $form.Controls.Add($btnRemoveEdge)
 $btnDisableServices = New-Button "Disattiva Servizi" ([System.Drawing.Point]::new($bigStartX, $bigStartY + $bigSpacingY*5))
 $btnDisableServices.Add_Click({ Invoke-DisattivaServizi })
 $form.Controls.Add($btnDisableServices)
+
+# NUOVI PULSANTI GRANDI
+$btnDisableTeredo = New-Button "Disabilita Teredo" ([System.Drawing.Point]::new($bigStartX, $bigStartY + $bigSpacingY*6))
+$btnDisableTeredo.Add_Click({ Disable-Teredo })
+$form.Controls.Add($btnDisableTeredo)
+
+$btnKillLMS = New-Button "Kill Intel LMS" ([System.Drawing.Point]::new($bigStartX, $bigStartY + $bigSpacingY*7))
+$btnKillLMS.Add_Click({ Kill-LMS })
+$form.Controls.Add($btnKillLMS)
+
+$btnDisableWifiSense = New-Button "Disabilita Wifi-Sense" ([System.Drawing.Point]::new($bigStartX, $bigStartY + $bigSpacingY*8))
+$btnDisableWifiSense.Add_Click({ Disable-WifiSense })
+$form.Controls.Add($btnDisableWifiSense)
+
+$btnDNS = New-Button "Gestione DNS (Info)" ([System.Drawing.Point]::new($bigStartX, $bigStartY + $bigSpacingY*9))
+$btnDNS.Add_Click({ Handle-DNS })
+$form.Controls.Add($btnDNS)
+
 # FINE REGIONE: CREAZIONE FORM PRINCIPALE E LAYOUT
 
 # MOSTRA FORM
 [void]$form.ShowDialog()
-```
