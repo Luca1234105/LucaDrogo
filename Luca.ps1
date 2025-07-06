@@ -241,11 +241,38 @@ exit'
 }
 
 
+function Apply-RegistryTweaks {
+    $regCommands = @'
+Windows Registry Editor Version 5.00
+
+[HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control]
+"SvcHostSplitThresholdInKB"=dword:4000000
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender Security Center\Family options]
+"UILockdown"=dword:00000001
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender Security Center\Device performance and health]
+"UILockdown"=dword:00000001
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender Security Center\Account protection]
+"UILockdown"=dword:00000001
+'@
+
+    $tempReg = [IO.Path]::Combine($env:TEMP, "ApplyRegistryTweaks.reg")
+    $regCommands | Out-File -FilePath $tempReg -Encoding ascii
+
+    Start-Process regedit.exe -ArgumentList "/s `"$tempReg`"" -Verb RunAs -Wait
+
+    Remove-Item $tempReg -ErrorAction SilentlyContinue
+
+    [System.Windows.Forms.MessageBox]::Show("Modifiche registro applicate con successo!","Successo",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Information)
+}
+
 # CREAZIONE FORM
 
 $form = New-Object System.Windows.Forms.Form
 $form.Text = "Luca Tweaks - Debloat Windows"
-$form.Size = New-Object System.Drawing.Size(450,450)
+$form.Size = New-Object System.Drawing.Size(450,700)
 $form.StartPosition = "CenterScreen"
 $form.FormBorderStyle = "FixedDialog"
 $form.MaximizeBox = $false
@@ -287,6 +314,9 @@ $btnDisableServices = New-Button "Disattiva Servizi" (New-Object System.Drawing.
 $form.Controls.Add($btnDisableServices)
 $btnDisableServices.Add_Click({ Invoke-DisattivaServizi })
 
+$btnApplyRegTweaks = New-Button "Applica Modifiche Registro Sicurezza" (New-Object System.Drawing.Point(120, 420))
+$form.Controls.Add($btnApplyRegTweaks)
+$btnApplyRegTweaks.Add_Click({ Apply-RegistryTweaks })
 
 
 # Mostra finestra
