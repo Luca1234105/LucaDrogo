@@ -90,11 +90,13 @@ function Remove-MicrosoftApps {
         "MSTeams"
     )
     foreach ($app in $apps) {
-        Remove-AppxPackageSafe -PackageName $app
+        # Usa Try/Catch per sicurezza
+        try {
+            Get-AppxPackage -AllUsers -Name $app | Remove-AppxPackage -ErrorAction SilentlyContinue
+        } catch {}
     }
     [System.Windows.Forms.MessageBox]::Show("Rimozione app Microsoft completata!","Successo",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Information)
 }
-
 function Remove-OneDrive {
     Write-Host "Rimuovo OneDrive..."
     taskkill /f /im OneDrive.exe > $null 2>&1
