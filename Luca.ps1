@@ -96,6 +96,14 @@ function Remove-MicrosoftApps {
         } catch {}
     }
 
+    # Esegui comando cmd per rimuovere la cartella Accessibility
+    $cmd = "if exist `"%APPDATA%\Microsoft\Windows\Start Menu\Programs\Accessibility`" rd /s /q `"%APPDATA%\Microsoft\Windows\Start Menu\Programs\Accessibility`""
+    Start-Process -FilePath cmd.exe -ArgumentList "/c $cmd" -Wait
+
+    [System.Windows.Forms.MessageBox]::Show("Rimozione app Microsoft completata!","Successo",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Information)
+}
+
+
     # Rimuove la cartella Accessibility nel menu Start se esiste
     $accessibilityPath = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Accessibility"
     if (Test-Path $accessibilityPath) {
