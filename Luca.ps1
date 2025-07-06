@@ -87,16 +87,17 @@ function Remove-MicrosoftApps {
         "Microsoft.YourPhone",
         "Microsoft.ZuneMusic",
         "MicrosoftCorporationII.QuickAssist",
-        "MSTeams"
+        "MSTeams",
+        "Microsoft.WindowsAlarms"    # <-- Aggiunto Orologio
     )
     foreach ($app in $apps) {
-        # Usa Try/Catch per sicurezza
         try {
             Get-AppxPackage -AllUsers -Name $app | Remove-AppxPackage -ErrorAction SilentlyContinue
         } catch {}
     }
     [System.Windows.Forms.MessageBox]::Show("Rimozione app Microsoft completata!","Successo",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Information)
 }
+
 function Remove-OneDrive {
     Write-Host "Rimuovo OneDrive..."
     taskkill /f /im OneDrive.exe > $null 2>&1
