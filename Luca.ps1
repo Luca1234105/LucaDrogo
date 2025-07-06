@@ -336,8 +336,8 @@ function Toggle-CustomVisualEffects {
             Set-ItemProperty -Path $regPathDWM -Name ColorPrevalence -Value 0 -ErrorAction SilentlyContinue
             Set-ItemProperty -Path $regPathDWM -Name EnableWindowColorization -Value 0 -ErrorAction SilentlyContinue
 
-            [System.Windows.Forms.MessageBox]::Show("Modalità Personalizzata attivata, effetti visivi modificati.","Info",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Information
-            )
+           [System.Windows.Forms.MessageBox]::Show("Modalità Personalizzata attivata, effetti visivi modificati.","Info",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Information)
+
         }
     }
     catch {
