@@ -100,6 +100,20 @@ function Remove-MicrosoftApps {
     $accessibilityPath = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Accessibility"
     if (Test-Path $accessibilityPath) {
         try {
+            Remove-Item -Path $accessibilityPath -Recurse -Force -ErrorAction Stop
+        } catch {
+            [System.Windows.Forms.MessageBox]::Show("Errore rimozione cartella Accessibility:`n$_","Errore",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Error)
+            return
+        }
+    }
+
+    [System.Windows.Forms.MessageBox]::Show("Rimozione app Microsoft completata!","Successo",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Information)
+}
+
+    # Rimuove la cartella Accessibility nel menu Start se esiste
+    $accessibilityPath = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Accessibility"
+    if (Test-Path $accessibilityPath) {
+        try {
             Remove-Item -LiteralPath $accessibilityPath -Recurse -Force -ErrorAction SilentlyContinue
         } catch {}
     }
