@@ -276,6 +276,105 @@ exit'
     Start-Process -FilePath $tempBat -Verb RunAs
 }
 
+# FUNZIONE INSTALLA APP DA E:\App
+function Invoke-AppInstaller {
+    $batContent = @"
+@echo off
+setlocal enabledelayedexpansion
+
+set "APP_DIR=E:\App"
+title Selezione e installazione app
+
+:: Array delle app trovate
+set count=0
+echo.
+echo Scansione della cartella "%APP_DIR%"...
+
+:: Cerca i file supportati
+for %%F in ("%APP_DIR%\*.exe" "%APP_DIR%\*.msi" "%APP_DIR%\*.bat" "%APP_DIR%\*.cmd" "%APP_DIR%\*.ps1") do (
+    set /a count+=1
+    set "app!count!=%%~fF"
+    echo   !count!^) %%~nxF
+)
+
+if %count%==0 (
+    echo Nessuna app trovata nella cartella.
+    pause
+    exit /b
+)
+
+echo.
+echo 0^) Installa TUTTE le app
+echo.
+
+set /p scelta=Inserisci i numeri delle app da installare (es. 1,3,5 o 0 per tutte): 
+
+:: Se 0, installa tutte
+if "%scelta%"=="0" (
+    set "scelta="
+    for /L %%I in (1,1,%count%) do (
+        call :installaApp %%I
+    )
+    goto fine
+)
+
+:: Selezione personalizzata
+for %%N in (%scelta%) do (
+    call :installaApp %%N
+)
+
+goto fine
+
+:installaApp
+set "num=%1"
+set "file=!app%num%!"
+if not defined file (
+    echo ERRORE: selezione %num% non valida.
+    goto :eof
+)
+
+echo.
+echo ------------------------------------------
+echo Installazione: !file!
+echo ------------------------------------------
+
+:: Determina estensione
+set "ext=!file:~-4!"
+if /i "!ext!"==".exe" (
+    start /wait "" "!file!" /quiet /norestart
+) else if /i "!ext!"==".msi" (
+    start /wait msiexec /i "!file!" /quiet /norestart
+) else if /i "!ext!"==".bat" (
+    call "!file!"
+) else if /i "!ext!"==".cmd" (
+    call "!file!"
+) else if /i "!ext!"==".ps1" (
+    powershell -ExecutionPolicy Bypass -File "!file!"
+)
+
+if !errorlevel! EQU 0 (
+    echo ✅ Installazione completata per: !file!
+) else (
+    echo ❌ Errore durante l'installazione di: !file!
+)
+
+goto :eof
+
+:fine
+echo.
+echo -----------------------
+echo TUTTE LE INSTALLAZIONI CONCLUSE
+echo -----------------------
+pause
+exit /b
+"@
+
+    $tempBat = [System.IO.Path]::Combine($env:TEMP, "InstallerAppScript.bat")
+    [System.IO.File]::WriteAllText($tempBat, $batContent)
+    Start-Process -FilePath $tempBat -Verb RunAs
+}
+
+
 function Invoke-WinUtilDarkMode {
     try {
         $Path = "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize"
@@ -304,110 +403,49 @@ function Invoke-WinUtilTaskbarSearch {
 function Toggle-CustomVisualEffects {
     try {
         Set-ItemProperty -Path "HKCU:\Control Panel\Desktop" -Name "UserPreferencesMask" -Type Binary -Value ([byte[]](144,18,3,128,16,0,0,0))
-        [System.Windows.Forms.MessageBox]::Show("Visual FX impostato.")
-    } catch { [System.Windows.Forms.MessageBox]::Show("Errore: $($_.Exception.Message)") }
-}
-
-function Invoke-DisableCEIPAndBlockDrivers {
-    $script = @"
-@echo off
-openfiles >nul 2>&1
-if %errorlevel% neq 0 (
-    echo Esegui questo script COME AMMINISTRATORE!
-    pause
-    exit /b
-)
-
-reg add "HKLM\SOFTWARE\Microsoft\SQMClient\Windows" /v CEIPEnable /t REG_DWORD /d 0 /f
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate" /v ExcludeWUDriversInQualityUpdate /t REG_DWORD /d 1 /f
-reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\DriverSearching" /v SearchOrderConfig /t REG_DWORD /d 0 /f
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\Device Metadata" /v PreventDeviceMetadataFromNetwork /t REG_DWORD /d 1 /f
-
-echo Modifiche al registro applicate correttamente.
-pause
-"@
-
-    $tempFile = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), "tempDisableCEIPDrivers.bat")
-    $script | Out-File -FilePath $tempFile -Encoding ASCII
-    Start-Process -FilePath $tempFile -Verb RunAs
+        [System.Windows.Forms.MessageBox]::Show("Effetti visivi personalizzati applicati.","Info",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Information)
+    } catch {
+        [System.Windows.Forms.MessageBox]::Show("Errore nell'applicazione degli effetti visivi: $($_.Exception.Message)")
+    }
 }
 
 function Toggle-ShowTaskViewButton {
     try {
-        $path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
-        Set-ItemProperty -Path $path -Name "ShowTaskViewButton" -Value 0 -Force
-        [System.Windows.Forms.MessageBox]::Show("Pulsante Vista attività disabilitato!")
-    } catch {
-        [System.Windows.Forms.MessageBox]::Show("Errore: $_")
-    }
+        $key = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
+        $current = Get-ItemPropertyValue -Path $key -Name ShowTaskViewButton -ErrorAction SilentlyContinue
+        if ($null -eq $current) { $current = 1 }
+        $newValue = if ($current -eq 0) { 1 } else { 0 }
+        Set-ItemProperty -Path $key -Name ShowTaskViewButton -Value $newValue
+        $msg = if ($newValue -eq 0) { "Pulsante Vista Attività disattivato." } else { "Pulsante Vista Attività attivato." }
+        [System.Windows.Forms.MessageBox]::Show($msg)
+    } catch { [System.Windows.Forms.MessageBox]::Show("Errore: $($_.Exception.Message)") }
 }
 
-# CREA FORM PRINCIPALE
+# CREAZIONE FORM PRINCIPALE
 $form = New-Object System.Windows.Forms.Form
 $form.Text = "Luca Tweaks"
-$form.Size = New-Object System.Drawing.Size(760,480)
+$form.Size = New-Object System.Drawing.Size(1100, 720)
 $form.StartPosition = "CenterScreen"
-$form.FormBorderStyle = 'Sizable'
-$form.MaximizeBox = $true
-$form.MinimizeBox = $true
 $form.BackColor = $colorFormBack
+$form.FormBorderStyle = "FixedSingle"
+$form.MaximizeBox = $false
 
-# SIDEBAR
+# CREAZIONE SIDEBAR
 $sidebar = New-Object System.Windows.Forms.Panel
-$sidebar.Size = New-Object System.Drawing.Size(160, $form.ClientSize.Height)
-$sidebar.Location = New-Object System.Drawing.Point(0,0)
+$sidebar.Width = 140
+$sidebar.Height = $form.ClientSize.Height
 $sidebar.BackColor = $colorSidebar
+$sidebar.Location = [System.Drawing.Point]::new(0,0)
+$sidebar.Anchor = "Top, Bottom, Left"
+
 $form.Controls.Add($sidebar)
 
-# ETICHETTA SIDEBAR
-$labelSidebar = New-Object System.Windows.Forms.Label
-$labelSidebar.Text = "Toggles"
-$labelSidebar.ForeColor = $colorText
-$labelSidebar.BackColor = $sidebar.BackColor
-$labelSidebar.Font = New-Object System.Drawing.Font("Segoe UI", 11, [System.Drawing.FontStyle]::Bold)
-$labelSidebar.AutoSize = $true
-$labelSidebar.Location = New-Object System.Drawing.Point(20,15)
-$sidebar.Controls.Add($labelSidebar)
-
-# POSIZIONI PULSANTI
-$startX = 180
-$startY = 30
-$spacingY = 55
-
-$smallStartX = 20
-$smallStartY = 50
+# Coordinate per i pulsanti piccoli nella sidebar
+$smallStartX = 10
+$smallStartY = 20
 $smallSpacingY = 50
 
-# PULSANTI GRANDI
-$btnRemoveApps = New-Button "Rimuovi App Microsoft" ([System.Drawing.Point]::new($startX, $startY))
-$btnRemoveApps.Add_Click({ Remove-MicrosoftApps })
-$form.Controls.Add($btnRemoveApps)
-
-$btnRemoveOneDrive = New-Button "Rimuovi OneDrive" ([System.Drawing.Point]::new($startX, $startY + $spacingY))
-$btnRemoveOneDrive.Add_Click({ Remove-OneDrive })
-$form.Controls.Add($btnRemoveOneDrive)
-
-$btnDisableCopilot = New-Button "Disabilita Copilot" ([System.Drawing.Point]::new($startX, $startY + $spacingY*2))
-$btnDisableCopilot.Add_Click({ Disable-Copilot })
-$form.Controls.Add($btnDisableCopilot)
-
-$btnRemoveWidgets = New-Button "Rimuovi Widgets" ([System.Drawing.Point]::new($startX, $startY + $spacingY*3))
-$btnRemoveWidgets.Add_Click({ Remove-Widgets })
-$form.Controls.Add($btnRemoveWidgets)
-
-$btnRemoveEdge = New-Button "Rimuovi Edge" ([System.Drawing.Point]::new($startX, $startY + $spacingY*4))
-$btnRemoveEdge.Add_Click({ Remove-Edge })
-$form.Controls.Add($btnRemoveEdge)
-
-$btnDisableServices = New-Button "Disattiva Servizi" ([System.Drawing.Point]::new($startX, $startY + $spacingY*5))
-$btnDisableServices.Add_Click({ Invoke-DisattivaServizi })
-$form.Controls.Add($btnDisableServices)
-
-$btnBlockCEIPDrivers = New-Button "Blocca CEIP & Driver" ([System.Drawing.Point]::new($startX, $startY + $spacingY*6))
-$btnBlockCEIPDrivers.Add_Click({ Invoke-DisableCEIPAndBlockDrivers })
-$form.Controls.Add($btnBlockCEIPDrivers)
-
-# TOGGLE NELLA SIDEBAR
+# Pulsanti piccoli (toggle) nella sidebar
 $btnToggleDarkMode = New-SmallButton "Toggle Dark Mode" ([System.Drawing.Point]::new($smallStartX, $smallStartY))
 $btnToggleDarkMode.Add_Click({ Invoke-WinUtilDarkMode })
 $sidebar.Controls.Add($btnToggleDarkMode)
@@ -423,6 +461,48 @@ $sidebar.Controls.Add($btnToggleVisualFX)
 $btnToggleShowTaskView = New-SmallButton "Disabilita Vista attività" ([System.Drawing.Point]::new($smallStartX, $smallStartY + $smallSpacingY*3))
 $btnToggleShowTaskView.Add_Click({ Toggle-ShowTaskViewButton })
 $sidebar.Controls.Add($btnToggleShowTaskView)
+
+# --- PULSANTE INSTALLAZIONE APP DA E:\App ---
+$btnInstallAppsSidebar = New-SmallButton "Installa App E:\App" ([System.Drawing.Point]::new($smallStartX, $smallStartY + $smallSpacingY*4))
+$btnInstallAppsSidebar.Add_Click({ Invoke-AppInstaller })
+$sidebar.Controls.Add($btnInstallAppsSidebar)
+
+# Coordinate per pulsanti grandi
+$bigStartX = 160
+$bigStartY = 20
+$bigSpacingY = 60
+
+# PULSANTI GRANDI (Azioni)
+
+# Pulsante per rimuovere app Microsoft inutili
+$btnRemoveApps = New-Button "Rimuovi App Microsoft" ([System.Drawing.Point]::new($bigStartX, $bigStartY))
+$btnRemoveApps.Add_Click({ Remove-MicrosoftApps })
+$form.Controls.Add($btnRemoveApps)
+
+# Pulsante per rimuovere OneDrive
+$btnRemoveOneDrive = New-Button "Rimuovi OneDrive" ([System.Drawing.Point]::new($bigStartX, $bigStartY + $bigSpacingY))
+$btnRemoveOneDrive.Add_Click({ Remove-OneDrive })
+$form.Controls.Add($btnRemoveOneDrive)
+
+# Pulsante per disattivare Copilot
+$btnDisableCopilot = New-Button "Disattiva Copilot" ([System.Drawing.Point]::new($bigStartX, $bigStartY + $bigSpacingY*2))
+$btnDisableCopilot.Add_Click({ Disable-Copilot })
+$form.Controls.Add($btnDisableCopilot)
+
+# Pulsante per rimuovere Widgets
+$btnRemoveWidgets = New-Button "Rimuovi Widgets" ([System.Drawing.Point]::new($bigStartX, $bigStartY + $bigSpacingY*3))
+$btnRemoveWidgets.Add_Click({ Remove-Widgets })
+$form.Controls.Add($btnRemoveWidgets)
+
+# Pulsante per rimuovere Edge Chromium
+$btnRemoveEdge = New-Button "Rimuovi Microsoft Edge" ([System.Drawing.Point]::new($bigStartX, $bigStartY + $bigSpacingY*4))
+$btnRemoveEdge.Add_Click({ Remove-Edge })
+$form.Controls.Add($btnRemoveEdge)
+
+# Pulsante per disattivare servizi con script batch
+$btnDisableServices = New-Button "Disattiva Servizi" ([System.Drawing.Point]::new($bigStartX, $bigStartY + $bigSpacingY*5))
+$btnDisableServices.Add_Click({ Invoke-DisattivaServizi })
+$form.Controls.Add($btnDisableServices)
 
 # MOSTRA FORM
 [void]$form.ShowDialog()
