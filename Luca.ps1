@@ -273,86 +273,14 @@ function Invoke-WinUtilTaskbarSearch {
 
 function Toggle-CustomVisualEffects {
     try {
-        # Percorsi chiavi di registro
-        $regPathVisualFX = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects"
-        $regPathDesktop = "HKCU:\Control Panel\Desktop"
-        $regPathWindowMetrics = "HKCU:\Control Panel\Desktop\WindowMetrics"
-        $regPathDWM = "HKCU:\Software\Microsoft\Windows\DWM"
-        $regPathExplorerAdv = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
-
-        # Leggi valore attuale VisualFXSetting, default 0 se non esiste
-        $currentVisualFX = 0
-if (Test-Path $regPathVisualFX) {
-    try {
-        $currentVisualFX = Get-ItemPropertyValue -Path $regPathVisualFX -Name VisualFXSetting -ErrorAction Stop
-    } catch {
-        # La proprietà non esiste, crea la chiave con valore di default
-        New-ItemProperty -Path $regPathVisualFX -Name VisualFXSetting -Value 0 -PropertyType DWord -Force | Out-Null
-        $currentVisualFX = 0
-    }
-} else {
-    New-Item -Path $regPathVisualFX -Force | Out-Null
-    New-ItemProperty -Path $regPathVisualFX -Name VisualFXSetting -Value 0 -PropertyType DWord -Force | Out-Null
-}
-
-
-        if ($currentVisualFX -eq 3) {
-            # Se modalità personalizzata è attiva, allora disabilita (torna a default)
-            # Valori "default" che riattivano gli effetti (puoi adattare se vuoi)
-            Set-ItemProperty -Path $regPathVisualFX -Name VisualFXSetting -Value 1 -ErrorAction SilentlyContinue
-
-            Set-ItemProperty -Path $regPathDesktop -Name FontSmoothing -Value "0" -ErrorAction SilentlyContinue
-            Set-ItemProperty -Path $regPathDesktop -Name DragFullWindows -Value "0" -ErrorAction SilentlyContinue
-
-            Set-ItemProperty -Path $regPathWindowMetrics -Name FontSmoothingType -Value 0 -ErrorAction SilentlyContinue
-
-            Set-ItemProperty -Path $regPathDWM -Name EnableAeroPeek -Value 1 -ErrorAction SilentlyContinue
-            Set-ItemProperty -Path $regPathExplorerAdv -Name TaskbarAnimations -Value 1 -ErrorAction SilentlyContinue
-            Set-ItemProperty -Path $regPathExplorerAdv -Name ListviewAlphaSelect -Value 1 -ErrorAction SilentlyContinue
-            Set-ItemProperty -Path $regPathExplorerAdv -Name ListviewShadow -Value 1 -ErrorAction SilentlyContinue
-            Set-ItemProperty -Path $regPathExplorerAdv -Name ListviewWatermark -Value 1 -ErrorAction SilentlyContinue
-            Set-ItemProperty -Path $regPathExplorerAdv -Name ListviewHoverSelect -Value 1 -ErrorAction SilentlyContinue
-            Set-ItemProperty -Path $regPathExplorerAdv -Name DisablePreviewDesktop -Value 0 -ErrorAction SilentlyContinue
-
-            Set-ItemProperty -Path $regPathDWM -Name ColorPrevalence -Value 1 -ErrorAction SilentlyContinue
-            Set-ItemProperty -Path $regPathDWM -Name EnableWindowColorization -Value 1 -ErrorAction SilentlyContinue
-
-            [System.Windows.Forms.MessageBox]::Show("Modalità Personalizzata disattivata, effetti visivi ripristinati.","Info",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Information)
-        }
-        else {
-            # Attiva modalità personalizzata con valori specificati
-            if (-not (Test-Path $regPathVisualFX)) { New-Item -Path $regPathVisualFX -Force | Out-Null }
-            if (-not (Test-Path $regPathDesktop)) { New-Item -Path $regPathDesktop -Force | Out-Null }
-            if (-not (Test-Path $regPathWindowMetrics)) { New-Item -Path $regPathWindowMetrics -Force | Out-Null }
-            if (-not (Test-Path $regPathDWM)) { New-Item -Path $regPathDWM -Force | Out-Null }
-            if (-not (Test-Path $regPathExplorerAdv)) { New-Item -Path $regPathExplorerAdv -Force | Out-Null }
-
-            Set-ItemProperty -Path $regPathVisualFX -Name VisualFXSetting -Value 3 -ErrorAction SilentlyContinue
-
-            Set-ItemProperty -Path $regPathDesktop -Name FontSmoothing -Value "2" -ErrorAction SilentlyContinue
-            Set-ItemProperty -Path $regPathDesktop -Name DragFullWindows -Value "1" -ErrorAction SilentlyContinue
-
-            Set-ItemProperty -Path $regPathWindowMetrics -Name FontSmoothingType -Value 2 -ErrorAction SilentlyContinue
-
-            Set-ItemProperty -Path $regPathDWM -Name EnableAeroPeek -Value 0 -ErrorAction SilentlyContinue
-            Set-ItemProperty -Path $regPathExplorerAdv -Name TaskbarAnimations -Value 0 -ErrorAction SilentlyContinue
-            Set-ItemProperty -Path $regPathExplorerAdv -Name ListviewAlphaSelect -Value 0 -ErrorAction SilentlyContinue
-            Set-ItemProperty -Path $regPathExplorerAdv -Name ListviewShadow -Value 0 -ErrorAction SilentlyContinue
-            Set-ItemProperty -Path $regPathExplorerAdv -Name ListviewWatermark -Value 0 -ErrorAction SilentlyContinue
-            Set-ItemProperty -Path $regPathExplorerAdv -Name ListviewHoverSelect -Value 0 -ErrorAction SilentlyContinue
-            Set-ItemProperty -Path $regPathExplorerAdv -Name DisablePreviewDesktop -Value 1 -ErrorAction SilentlyContinue
-
-            Set-ItemProperty -Path $regPathDWM -Name ColorPrevalence -Value 0 -ErrorAction SilentlyContinue
-            Set-ItemProperty -Path $regPathDWM -Name EnableWindowColorization -Value 0 -ErrorAction SilentlyContinue
-
-           [System.Windows.Forms.MessageBox]::Show("Modalità Personalizzata attivata, effetti visivi modificati.","Info",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Information)
-
-        }
+        Set-ItemProperty -Path "HKCU:\Control Panel\Desktop" -Name "UserPreferencesMask" -Type Binary -Value ([byte[]](144,18,3,128,16,0,0,0)) -ErrorAction Stop
+        [System.Windows.Forms.MessageBox]::Show("UserPreferencesMask impostato con successo.","Info",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Information)
     }
     catch {
-        [System.Windows.Forms.MessageBox]::Show("Errore durante il toggle modalità personalizzata:`n$($_.Exception.Message)","Errore",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Error)
+        [System.Windows.Forms.MessageBox]::Show("Errore durante l'impostazione di UserPreferencesMask:`n$($_.Exception.Message)","Errore",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Error)
     }
 }
+
 
 
 # CREAZIONE FORM
