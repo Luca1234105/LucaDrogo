@@ -241,102 +241,115 @@ exit'
 }
 
 
+Add-Type -AssemblyName System.Windows.Forms
+
 function Apply-RegistryTweaks {
-    # === DWORD Settings ===
-    Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control" -Name "SvcHostSplitThresholdInKB" -Type DWord -Value 0x4000000
-    Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" -Name "LongPathsEnabled" -Type DWord -Value 1
-    Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer" -Name "HubMode" -Type DWord -Value 1
+    try {
+        # Imposta valore DWORD SvcHostSplitThresholdInKB
+        Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control" -Name "SvcHostSplitThresholdInKB" -Value 0x4000000 -Type DWord
 
-    # === Transparency Off ===
-    $themePath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize"
-    if (-not (Test-Path $themePath)) { New-Item -Path $themePath -Force | Out-Null }
-    Set-ItemProperty -Path $themePath -Name "EnableTransparency" -Type DWord -Value 0
+        # Rimuove cartelle Desktop, Videos, Music da Explorer
+        $guidsToRemove = @(
+            "{B4BFCC3A-DB2C-424C-B029-7FE99A87C641}",
+            "{f86fa3ab-70d2-4fc7-9c99-fcbf05467f3a}",
+            "{3dfdf296-dbec-4fb4-81d1-6a3438bcf4de}"
+        )
+        foreach ($guid in $guidsToRemove) {
+            Remove-Item -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\MyComputer\NameSpace\$guid" -Recurse -Force -ErrorAction SilentlyContinue
+            Remove-Item -Path "HKLM:\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Explorer\MyComputer\NameSpace\$guid" -Recurse -Force -ErrorAction SilentlyContinue
+        }
 
-    # === Sticky/Toggle Keys ===
-    Set-ItemProperty -Path "HKCU:\Control Panel\Accessibility\StickyKeys" -Name "Flags" -Type String -Value "2"
-    Set-ItemProperty -Path "HKCU:\Control Panel\Accessibility\ToggleKeys" -Name "Flags" -Type String -Value "34"
+        # Rimuove OneDrive da Explorer
+        $onedriveGUID = "{018D5C66-4533-4307-9B53-224DE2ED1FE6}"
+        Remove-Item -Path "HKCR:\CLSID\$onedriveGUID" -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item -Path "HKCR:\Wow6432Node\CLSID\$onedriveGUID" -Recurse -Force -ErrorAction SilentlyContinue
 
-    # === No Low Disk Space Notification ===
-    $lowDiskPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer"
-    if (-not (Test-Path $lowDiskPath)) { New-Item -Path $lowDiskPath -Force | Out-Null }
-    Set-ItemProperty -Path $lowDiskPath -Name "NoLowDiskSpaceChecks" -Type DWord -Value 1
+        # Disabilita System.IsPinnedToNameSpaceTree su OneDrive
+        New-ItemProperty -Path "HKCR:\CLSID\$onedriveGUID" -Name "System.IsPinnedToNameSpaceTree" -PropertyType DWord -Value 0 -Force | Out-Null
+        New-ItemProperty -Path "HKCR:\Wow6432Node\CLSID\$onedriveGUID" -Name "System.IsPinnedToNameSpaceTree" -PropertyType DWord -Value 0 -Force | Out-Null
 
-    # === ShakeMinimize ===
-    Set-ItemProperty -Path "HKCU:\Control Panel\Desktop" -Name "ShakeMinimizeWindows" -Type String -Value "0"
+        # Nasconde Removable Drives
+        $removableGUID = "{F5FB2C77-0E2F-4A16-A381-3E560C68BC83}"
+        Remove-Item -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Desktop\NameSpace\DelegateFolders\$removableGUID" -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item -Path "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Explorer\Desktop\NameSpace\DelegateFolders\$removableGUID" -Recurse -Force -ErrorAction SilentlyContinue
 
-    # === Content Delivery e SyncProvider ===
-    $cdm = "HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager"
-    if (-not (Test-Path $cdm)) { New-Item -Path $cdm -Force | Out-Null }
-    Set-ItemProperty -Path $cdm -Name "RotatingLockScreenOverlayEnabled" -Type DWord -Value 0
+        # Unpin Home da Explorer
+        Remove-Item -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Desktop\NameSpace\{f874310e-b6b7-47dc-bc84-b9e6b38f5903}" -Recurse -Force -ErrorAction SilentlyContinue
 
-    $adv = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
-    if (-not (Test-Path $adv)) { New-Item -Path $adv -Force | Out-Null }
-    Set-ItemProperty -Path $adv -Name "ShowSyncProviderNotifications" -Type DWord -Value 0
-    Set-ItemProperty -Path $adv -Name "ShowCastToDevice" -Type DWord -Value 0
+        # Rimuove Network in Explorer
+        $networkGUID = "{F02C1A0D-BE21-4350-88B0-7367FC96EF3C}"
+        Remove-Item -Path "HKCR:\CLSID\$networkGUID\ShellFolder" -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item -Path "HKCR:\Wow6432Node\CLSID\$networkGUID\ShellFolder" -Recurse -Force -ErrorAction SilentlyContinue
 
-    # === Nascondi Consigliati menu Start ===
-    $policyPaths = @(
-        "HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\Start",
-        "HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\Education",
-        "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Explorer"
-    )
-    foreach ($path in $policyPaths) {
-        if (-not (Test-Path $path)) { New-Item -Path $path -Force | Out-Null }
+        # Disabilita HubMode (Quick Access)
+        Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer" -Name "HubMode" -Value 1 -Type DWord
+
+        # Rimuove Gallery dal pannello nav Explorer
+        $galleryPath = "HKCU:\Software\Classes\CLSID\{e88865ea-0e1c-4e20-9aa6-edcd0212c87c}"
+        if (-not (Test-Path $galleryPath)) { New-Item -Path $galleryPath -Force | Out-Null }
+        Set-ItemProperty -Path $galleryPath -Name "System.IsPinnedToNameSpaceTree" -Value 0 -Type DWord
+
+        # Disabilita trasparenze
+        $transparencyPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize"
+        if (-not (Test-Path $transparencyPath)) { New-Item -Path $transparencyPath -Force | Out-Null }
+        Set-ItemProperty -Path $transparencyPath -Name "EnableTransparency" -Value 0 -Type DWord
+
+        # Disabilita StickyKeys e ToggleKeys
+        Set-ItemProperty -Path "HKCU:\Control Panel\Accessibility\StickyKeys" -Name "Flags" -Value "2" -Type String
+        Set-ItemProperty -Path "HKCU:\Control Panel\Accessibility\ToggleKeys" -Name "Flags" -Value "34" -Type String
+
+        # Disabilita schermo blocco dinamico
+        $cdmPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager"
+        if (-not (Test-Path $cdmPath)) { New-Item -Path $cdmPath -Force | Out-Null }
+        Set-ItemProperty -Path $cdmPath -Name "RotatingLockScreenOverlayEnabled" -Value 0 -Type DWord
+
+        # Disabilita notifiche provider sincronizzazione e CastToDevice
+        $advPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
+        if (-not (Test-Path $advPath)) { New-Item -Path $advPath -Force | Out-Null }
+        Set-ItemProperty -Path $advPath -Name "ShowSyncProviderNotifications" -Value 0 -Type DWord
+        Set-ItemProperty -Path $advPath -Name "ShowCastToDevice" -Value 0 -Type DWord
+
+        # Nasconde consigliati nel menu Start
+        $pathsToCreate = @(
+            "HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\Start",
+            "HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\Education",
+            "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Explorer"
+        )
+        foreach ($p in $pathsToCreate) {
+            if (-not (Test-Path $p)) { New-Item -Path $p -Force | Out-Null }
+        }
+        Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\Start" -Name "HideRecommendedSection" -Value 1 -Type DWord
+        Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\Education" -Name "IsEducationEnvironment" -Value 1 -Type DWord
+        Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Explorer" -Name "HideRecommendedSection" -Value 1 -Type DWord
+
+        # Disabilita notifica poco spazio disco
+        $lowDiskPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer"
+        if (-not (Test-Path $lowDiskPath)) { New-Item -Path $lowDiskPath -Force | Out-Null }
+        Set-ItemProperty -Path $lowDiskPath -Name "NoLowDiskSpaceChecks" -Value 1 -Type DWord
+
+        # Disabilita scuotimento finestre
+        Set-ItemProperty -Path "HKCU:\Control Panel\Desktop" -Name "ShakeMinimizeWindows" -Value "0" -Type String
+
+        # Disabilita segnalazione errori
+        $werPath = "HKLM:\SOFTWARE\Microsoft\Windows\Windows Error Reporting"
+        if (-not (Test-Path $werPath)) { New-Item -Path $werPath -Force | Out-Null }
+        Set-ItemProperty -Path $werPath -Name "Disabled" -Value 1 -Type DWord
+
+        # Abilita percorsi lunghi
+        $fsPath = "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem"
+        if (-not (Test-Path $fsPath)) { New-Item -Path $fsPath -Force | Out-Null }
+        Set-ItemProperty -Path $fsPath -Name "LongPathsEnabled" -Value 1 -Type DWord
+
+        [System.Windows.Forms.MessageBox]::Show("Tweak applicati con successo!", "Successo", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
     }
-    Set-ItemProperty -Path $policyPaths[0] -Name "HideRecommendedSection" -Type DWord -Value 1
-    Set-ItemProperty -Path $policyPaths[1] -Name "IsEducationEnvironment" -Type DWord -Value 1
-    Set-ItemProperty -Path $policyPaths[2] -Name "HideRecommendedSection" -Type DWord -Value 1
-
-    # === Error Reporting ===
-    $wer = "HKLM:\SOFTWARE\Microsoft\Windows\Windows Error Reporting"
-    if (-not (Test-Path $wer)) { New-Item -Path $wer -Force | Out-Null }
-    Set-ItemProperty -Path $wer -Name "Disabled" -Type DWord -Value 1
-
-    # === Gallery (Nav Panel) ===
-    $galleryKey = "HKCU:\Software\Classes\CLSID\{e88865ea-0e1c-4e20-9aa6-edcd0212c87c}"
-    if (-not (Test-Path $galleryKey)) { New-Item -Path $galleryKey -Force | Out-Null }
-    Set-ItemProperty -Path $galleryKey -Name "System.IsPinnedToNameSpaceTree" -Type DWord -Value 0
-
-    # === UILockdown - Sicurezza di Windows ===
-    $defenderBase = "HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender Security Center"
-    $sections = @("Family options", "Device performance and health", "Account protection")
-    foreach ($section in $sections) {
-        $path = Join-Path $defenderBase $section
-        if (-not (Test-Path $path)) { New-Item -Path $path -Force | Out-Null }
-        New-ItemProperty -Path $path -Name "UILockdown" -Type DWord -Value 1 -Force | Out-Null
+    catch {
+        [System.Windows.Forms.MessageBox]::Show("Errore durante l'applicazione dei tweak:`n$($_.Exception.Message)", "Errore", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
     }
-
-    # === Rimuovi chiavi Explorer (NameSpace e DelegateFolders) ===
-    $toRemove = @(
-        "{B4BFCC3A-DB2C-424C-B029-7FE99A87C641}",
-        "{f86fa3ab-70d2-4fc7-9c99-fcbf05467f3a}",
-        "{3dfdf296-dbec-4fb4-81d1-6a3438bcf4de}"
-    )
-    foreach ($guid in $toRemove) {
-        Remove-Item -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\MyComputer\NameSpace\$guid" -Force -ErrorAction SilentlyContinue
-        Remove-Item -Path "HKLM:\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Explorer\MyComputer\NameSpace\$guid" -Force -ErrorAction SilentlyContinue
-    }
-
-    # OneDrive Namespace e pin
-    $onedriveGUID = "{018D5C66-4533-4307-9B53-224DE2ED1FE6}"
-    Remove-Item -Path "HKCR:\CLSID\$onedriveGUID" -Force -Recurse -ErrorAction SilentlyContinue
-    Remove-Item -Path "HKCR:\Wow6432Node\CLSID\$onedriveGUID" -Force -Recurse -ErrorAction SilentlyContinue
-
-    # Removable Drives
-    $rem = "{F5FB2C77-0E2F-4A16-A381-3E560C68BC83}"
-    Remove-Item -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Desktop\NameSpace\DelegateFolders\$rem" -Force -ErrorAction SilentlyContinue
-    Remove-Item -Path "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Explorer\Desktop\NameSpace\DelegateFolders\$rem" -Force -ErrorAction SilentlyContinue
-
-    # Home Explorer
-    Remove-Item -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Desktop\NameSpace\{f874310e-b6b7-47dc-bc84-b9e6b38f5903}" -Force -ErrorAction SilentlyContinue
-
-    # Network in Esplora
-    $net = "{F02C1A0D-BE21-4350-88B0-7367FC96EF3C}"
-    Remove-Item -Path "HKCR:\CLSID\$net\ShellFolder" -Force -ErrorAction SilentlyContinue
-    Remove-Item -Path "HKCR:\Wow6432Node\CLSID\$net\ShellFolder" -Force -ErrorAction SilentlyContinue
-
-    [System.Windows.Forms.MessageBox]::Show("Tutti i tweak sono stati applicati.","Successo",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Information)
 }
+
+# Per eseguire la funzione:
+Apply-RegistryTweaks
+
 
 # CREAZIONE FORM
 
