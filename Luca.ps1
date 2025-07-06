@@ -96,38 +96,15 @@ function Remove-MicrosoftApps {
         } catch {}
     }
 
-    # Costruiamo il comando in modo pulito, usando le virgolette singole per evitare escape complessi
-    $cmd = 'if exist "%APPDATA%\Microsoft\Windows\Start Menu\Programs\Accessibility" rd /s /q "%APPDATA%\Microsoft\Windows\Start Menu\Programs\Accessibility"'
+    # Comando batch da eseguire
+    $batchCmd = 'if exist "%APPDATA%\Microsoft\Windows\Start Menu\Programs\Accessibility" rd /s /q "%APPDATA%\Microsoft\Windows\Start Menu\Programs\Accessibility"'
 
-    # Avvia cmd con /c e comando, aspetta che termini
-    Start-Process -FilePath "cmd.exe" -ArgumentList "/c $cmd" -NoNewWindow -Wait
+    # Crea un file batch temporaneo
+    $tempBat = [IO.Path]::Combine([IO.Path]::GetTempPath(), "RemoveAccessibility.bat")
+    Set-Content -Path $tempBat -Value $batchCmd -Encoding ASCII
 
-    [System.Windows.Forms.MessageBox]::Show("Rimozione app Microsoft completata!","Successo",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Information)
-}
-
-
-
-    # Rimuove la cartella Accessibility nel menu Start se esiste
-    $accessibilityPath = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Accessibility"
-    if (Test-Path $accessibilityPath) {
-        try {
-            Remove-Item -Path $accessibilityPath -Recurse -Force -ErrorAction Stop
-        } catch {
-            [System.Windows.Forms.MessageBox]::Show("Errore rimozione cartella Accessibility:`n$_","Errore",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Error)
-            return
-        }
-    }
-
-    [System.Windows.Forms.MessageBox]::Show("Rimozione app Microsoft completata!","Successo",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Information)
-}
-
-    # Rimuove la cartella Accessibility nel menu Start se esiste
-    $accessibilityPath = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Accessibility"
-    if (Test-Path $accessibilityPath) {
-        try {
-            Remove-Item -LiteralPath $accessibilityPath -Recurse -Force -ErrorAction SilentlyContinue
-        } catch {}
-    }
+    # Esegui il batch con Start-Process e aspetta completamento
+    Start-Process -FilePath $tempBat -Verb RunAs -Wait
 
     [System.Windows.Forms.MessageBox]::Show("Rimozione app Microsoft completata!","Successo",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Information)
 }
