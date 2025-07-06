@@ -144,11 +144,108 @@ function Remove-Edge {
     [System.Windows.Forms.MessageBox]::Show("Microsoft Edge rimosso!","Successo",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Information)
 }
 
+function Invoke-DisattivaServizi {
+    $batContent = '@echo off
+:: Elevazione automatica se non è già admin
+>nul 2>&1 "%SYSTEMROOT%\system32\cacls.exe" "%SYSTEMROOT%\system32\config\system"
+if ''%errorlevel%'' NEQ ''0'' (
+    echo Richiesta dei privilegi amministrativi...
+    goto UACPrompt
+) else ( goto gotAdmin )
+
+:UACPrompt
+    echo Set UAC = CreateObject^("Shell.Application"^) > "%temp%\getadmin.vbs"
+    set params = %*:"=""
+    echo UAC.ShellExecute "cmd.exe", "/c %~s0 %params%", "", "runas", 1 >> "%temp%\getadmin.vbs"
+    "%temp%\getadmin.vbs"
+    del "%temp%\getadmin.vbs"
+    exit /B
+
+:gotAdmin
+cls
+color 1f
+echo Disattivazione di tutti i servizi in corso...
+
+for %%S in (
+    vmicguestinterface
+    vmicvss
+    vmicshutdown
+    vmicheartbeat
+    vmicvmsession
+    vmickvpexchange
+    vmictimesync
+    vmicrdv
+    RasAuto
+    workfolderssvc
+    RasMan
+    DusmSvc
+    UmRdpService
+    LanmanServer
+    TermService
+    SensorDataService
+    RetailDemo
+    ScDeviceEnum
+    RmSvc
+    SensrSvc
+    PhoneSvc
+    SCardSvr
+    TapiSrv
+    WSearch
+    LanmanWorkstation
+    MapsBroker
+    SensorService
+    lfsvc
+    PcaSvc
+    SCPolicySvc
+    seclogon
+    SmsRouter
+    wisvc
+    StiSvc
+    CscService
+    WdiSystemHost
+    HvHost
+    SysMain
+    XblAuthManager
+    XblGameSave
+    XboxNetApiSvc
+    XboxGipSvc
+    SessionEnv
+    WpcMonSvc
+    DiagTrack
+    SEMgrSvc
+    MicrosoftEdgeElevationService
+    edgeupdate
+    edgeupdatem
+    CryptSvc
+    BDESVC
+    WbioSrvc
+    bthserv
+    BTAGService
+    PrintNotify
+    WMPNetworkSvc
+    wercplsupport
+    wcncsvc
+) do (
+    sc config %%S start= disabled
+)
+
+echo.
+echo Tutti i servizi selezionati sono stati disattivati.
+echo Riavvia il sistema per applicare le modifiche.
+pause
+exit'
+
+    $tempBat = [System.IO.Path]::Combine($env:TEMP, "DisattivaServizi.bat")
+    [System.IO.File]::WriteAllText($tempBat, $batContent)
+    Start-Process -FilePath $tempBat -Verb RunAs
+}
+
+
 # CREAZIONE FORM
 
 $form = New-Object System.Windows.Forms.Form
 $form.Text = "Luca Tweaks - Debloat Windows"
-$form.Size = New-Object System.Drawing.Size(450,400)
+$form.Size = New-Object System.Drawing.Size(450,450)
 $form.StartPosition = "CenterScreen"
 $form.FormBorderStyle = "FixedDialog"
 $form.MaximizeBox = $false
@@ -185,6 +282,12 @@ $btnRemoveWidgets.Add_Click({ Remove-Widgets })
 $btnRemoveEdge = New-Button "Disinstalla Microsoft Edge" (New-Object System.Drawing.Point(120,300))
 $form.Controls.Add($btnRemoveEdge)
 $btnRemoveEdge.Add_Click({ Remove-Edge })
+
+$btnDisableServices = New-Button "Disattiva Servizi" (New-Object System.Drawing.Point(120,360))
+$form.Controls.Add($btnDisableServices)
+$btnDisableServices.Add_Click({ Invoke-DisattivaServizi })
+
+
 
 # Mostra finestra
 [void]$form.ShowDialog()
