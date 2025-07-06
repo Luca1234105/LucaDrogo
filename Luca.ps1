@@ -350,7 +350,6 @@ function Apply-RegistryTweaks {
 # Per eseguire la funzione:
 Apply-RegistryTweaks
 
-# Funzione per applicare UILockdown
 function Apply-UILockdown {
     $basePath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender Security Center"
     $keys = @(
@@ -362,17 +361,22 @@ function Apply-UILockdown {
     try {
         foreach ($key in $keys) {
             $fullPath = Join-Path $basePath $key
+            Write-Host "Controllo chiave: $fullPath"
             if (-not (Test-Path $fullPath)) {
+                Write-Host "Chiave non trovata, la creo..."
                 New-Item -Path $fullPath -Force | Out-Null
             }
+            Write-Host "Imposto UILockdown=1 in $fullPath"
             New-ItemProperty -Path $fullPath -Name "UILockdown" -PropertyType DWord -Value 1 -Force | Out-Null
         }
         [System.Windows.Forms.MessageBox]::Show("Opzioni Famiglia, Prestazioni e Protezione account nascoste con successo.","Successo",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Information)
     }
     catch {
+        Write-Error "Eccezione: $_"
         [System.Windows.Forms.MessageBox]::Show("Errore durante l'applicazione delle modifiche:`n$($_.Exception.Message)","Errore",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Error)
     }
 }
+
 
 # CREAZIONE FORM
 
