@@ -1,73 +1,473 @@
 Add-Type -AssemblyName System.Windows.Forms,System.Drawing
 
-# REGIONE: COLORI
-# Definizioni dei colori per l'interfaccia grafica.
-$colorFormBack = [System.Drawing.Color]::FromArgb(30,30,30)
+# REGIONE: COLORI E STILI
+# Definizioni dei colori per l'interfaccia grafica con un tocco più raffinato.
+$colorFormBack = [System.Drawing.Color]::FromArgb(35, 35, 35) # Grigio scuro leggermente più chiaro
 $colorText = [System.Drawing.Color]::White
-$colorButton = [System.Drawing.Color]::FromArgb(60,63,65)
-$colorButtonHover = [System.Drawing.Color]::FromArgb(75,110,175)
-$colorSidebar = [System.Drawing.Color]::FromArgb(40,40,40)
-# FINE REGIONE: COLORI
+$colorButton = [System.Drawing.Color]::FromArgb(50, 50, 50) # Grigio scuro per i pulsanti
+$colorButtonHover = [System.Drawing.Color]::FromArgb(75, 120, 190) # Blu più vibrante al passaggio del mouse
+$colorSidebar = [System.Drawing.Color]::FromArgb(25, 25, 25) # Grigio molto scuro per la sidebar
+$colorBorder = [System.Drawing.Color]::FromArgb(80, 80, 80) # Bordo sottile per i pulsanti
+$colorLogBackground = [System.Drawing.Color]::FromArgb(45, 45, 45) # Sfondo per il log
 
-# REGIONE: FUNZIONI CREAZIONE PULSANTI
-# Funzione per creare pulsanti grandi con effetto hover.
-function New-Button($text, $location) {
-    $btn = New-Object System.Windows.Forms.Button
-    $btn.Text = $text
-    $btn.Width = 200
-    $btn.Height = 45
-    $btn.Location = $location
-    $btn.BackColor = $colorButton
-    $btn.ForeColor = $colorText
-    $btn.FlatStyle = 'Flat'
-    $btn.FlatAppearance.BorderSize = 0
-    $btn.Cursor = 'Hand'
+$globalFont = New-Object System.Drawing.Font("Segoe UI", 10, [System.Drawing.FontStyle]::Regular)
+$buttonFont = New-Object System.Drawing.Font("Segoe UI", 10, [System.Drawing.FontStyle]::Bold) # Font leggermente più grande e grassetto per i pulsanti
+$logFont = New-Object System.Drawing.Font("Consolas", 9, [System.Drawing.FontStyle]::Regular) # Font monospace per il log
+# FINE REGIONE: COLORI E STILI
 
-    $btn.Add_MouseEnter({ param($sender,$e) $sender.BackColor = $colorButtonHover })
-    $btn.Add_MouseLeave({ param($sender,$e) $sender.BackColor = $colorButton })
+# Variabile per l'area di log, inizializzata dopo la creazione del form
+$globalLogTextBox = $null
+# Variabile per la ComboBox DNS
+$globalDnsComboBox = $null
 
-    return $btn
-}
 
-# Funzione per creare pulsanti piccoli con effetto hover (toggle).
-function New-SmallButton($text, $location) {
-    $btn = New-Object System.Windows.Forms.Button
-    $btn.Text = $text
-    $btn.Width = 120
-    $btn.Height = 40
-    $btn.Location = $location
-    $btn.BackColor = $colorButton
-    $btn.ForeColor = $colorText
-    $btn.FlatStyle = 'Flat'
-    $btn.FlatAppearance.BorderSize = 0
-    $btn.Cursor = 'Hand'
-
-    $btn.Add_MouseEnter({ param($sender,$e) $sender.BackColor = $colorButtonHover })
-    $btn.Add_MouseLeave({ param($sender,$e) $sender.BackColor = $colorButton })
-
-    return $btn
-}
-# FINE REGIONE: FUNZIONI CREAZIONE PULSANTI
-
-# REGIONE: FUNZIONI PRINCIPALI
-# Rimuove un pacchetto AppX per tutti gli utenti e disabilita il provisioning.
-function Remove-AppxPackageSafe {
-    param([string]$PackageName)
-    try {
-        Write-Host "Rimuovo $PackageName ..."
-        Get-AppxPackage -AllUsers -Name $PackageName | Remove-AppxPackage -ErrorAction SilentlyContinue
-        Get-AppxProvisionedPackage -Online | Where-Object { $_.PackageName -like "$PackageName*" } | Remove-AppxProvisionedPackage -Online
-        Write-Host "$PackageName rimosso."
-    } catch {
-        # Assegna $_.Exception.Message a una variabile temporanea per evitare errori di parsing
-        $errorMessage = $_.Exception.Message
-        Write-Host "Errore nella rimozione di $($PackageName): $errorMessage" # Added $($PackageName)
+# Funzione per scrivere nell'area di log e nella console
+function Write-Log {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$Message,
+        [string]$Level = "Info" # Info, Warning, Error
+    )
+    if ($globalLogTextBox) {
+        $timestamp = (Get-Date -Format "HH:mm:ss")
+        $formattedMessage = "[$timestamp] ${Level}: $Message" 
+        
+        $globalLogTextBox.AppendText("$formattedMessage`r`n")
+        
+        $globalLogTextBox.SelectionStart = $globalLogTextBox.Text.Length
+        $globalLogTextBox.ScrollToCaret()
+    }
+    if ($Level -eq "Warning") {
+        Write-Warning $Message
+    } elseif ($Level -eq "Error") {
+        Write-Error $Message
+    } else {
+        Write-Host $Message
     }
 }
 
-# Rimuove diverse app Microsoft predefinite.
+# REGIONE: FUNZIONI CREAZIONE PULSANTI E CHECKBOX
+function New-Button($text, [System.Drawing.Point]$location, $width=220, $height=50) {
+    $btn = New-Object System.Windows.Forms.Button
+    $btn.Text = $text
+    $btn.Width = $width
+    $btn.Height = $height
+    $btn.Location = $location
+    $btn.BackColor = $colorButton
+    $btn.ForeColor = $colorText
+    $btn.Font = $buttonFont
+    $btn.FlatStyle = 'Flat'
+    $btn.FlatAppearance.BorderSize = 1
+    $btn.FlatAppearance.BorderColor = $colorBorder
+    $btn.Cursor = 'Hand'
+    $btn.TextAlign = [System.Drawing.ContentAlignment]::MiddleCenter
+
+    $btn.Add_MouseEnter({ param($sender,$e) $sender.BackColor = $colorButtonHover })
+    $btn.Add_MouseLeave({ param($sender,$e) $sender.BackColor = $colorButton })
+
+    return $btn
+}
+
+function New-SmallButton($text, [System.Drawing.Point]$location, $width=120, $height=45) {
+    $btn = New-Object System.Windows.Forms.Button
+    $btn.Text = $text
+    $btn.Width = $width
+    $btn.Height = $height
+    $btn.Location = $location
+    $btn.BackColor = $colorButton
+    $btn.ForeColor = $colorText
+    $btn.Font = $globalFont
+    $btn.FlatStyle = 'Flat'
+    $btn.FlatAppearance.BorderSize = 1
+    $btn.FlatAppearance.BorderColor = $colorBorder
+    $btn.Cursor = 'Hand'
+    $btn.TextAlign = [System.Drawing.ContentAlignment]::MiddleCenter
+
+    $btn.Add_MouseEnter({ param($sender,$e) $sender.BackColor = $colorButtonHover })
+    $btn.Add_MouseLeave({ param($sender,$e) $sender.BackColor = $colorButton })
+
+    return $btn
+}
+
+function New-TweakCheckbox($text, [System.Drawing.Point]$location) {
+    $checkbox = New-Object System.Windows.Forms.CheckBox
+    $checkbox.Text = $text
+    $checkbox.Location = $location
+    $checkbox.Width = 250
+    $checkbox.Height = 30
+    $checkbox.ForeColor = $colorText
+    $checkbox.Font = $globalFont
+    $checkbox.UseVisualStyleBackColor = $true
+
+    return $checkbox
+}
+# FINE REGIONE: FUNZIONI CREAZIONE PULSANTI E CHECKBOX
+
+# REGIONE: FUNZIONI PRINCIPALI (AGGIORNATE PER DNS E HARDCORE TWEAKS)
+
+function Set-DnsServers {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string[]]$DnsServers
+    )
+    $adapters = Get-NetAdapter | Where-Object {$_.Status -eq "Up" -and $_.LinkSpeed -ne $null}
+    foreach ($adapter in $adapters) {
+        Write-Log "Configurazione DNS per adattatore $($adapter.Name)..."
+        try {
+            Set-DnsClientServerAddress -InterfaceAlias $adapter.Name -ServerAddresses $DnsServers -ErrorAction Stop
+            Write-Log "DNS impostato per $($adapter.Name) su $($DnsServers -join ', ')"
+        } catch {
+            Write-Log "Errore durante la configurazione DNS per $($adapter.Name): $($_.Exception.Message)" "Error"
+        }
+    }
+}
+
+function Clear-DnsServers {
+    $adapters = Get-NetAdapter | Where-Object {$_.Status -eq "Up" -and $_.LinkSpeed -ne $null}
+    foreach ($adapter in $adapters) {
+        Write-Log "Rimozione DNS personalizzati per adattatore $($adapter.Name)..."
+        try {
+            Set-DnsClientServerAddress -InterfaceAlias $adapter.Name -ResetServerAddresses -ErrorAction Stop
+            Write-Log "DNS resettati per $($adapter.Name)."
+        } catch {
+            Write-Log "Errore durante il reset DNS per $($adapter.Name): $($_.Exception.Message)" "Error"
+        }
+    }
+}
+
+function Handle-DNS {
+    if (-not $globalDnsComboBox) {
+        Write-Log "Errore: ComboBox DNS non trovata." "Error"
+        [System.Windows.Forms.MessageBox]::Show("Errore interno: ComboBox DNS non disponibile.", "Errore", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+        return
+    }
+
+    $selectedDnsOption = $globalDnsComboBox.SelectedItem
+    Write-Log "Opzione DNS selezionata: $($selectedDnsOption)"
+
+    switch ($selectedDnsOption) {
+        "Google DNS" {
+            Set-DnsServers -DnsServers @("8.8.8.8", "8.8.4.4")
+            [System.Windows.Forms.MessageBox]::Show("DNS impostato su Google DNS.", "Successo", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+        }
+        "Cloudflare DNS" {
+            Set-DnsServers -DnsServers @("1.1.1.1", "1.0.0.1")
+            [System.Windows.Forms.MessageBox]::Show("DNS impostato su Cloudflare DNS.", "Successo", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+        }
+        "OpenDNS" {
+            Set-DnsServers -DnsServers @("208.67.222.222", "208.67.220.220")
+            [System.Windows.Forms.MessageBox]::Show("DNS impostato su OpenDNS.", "Successo", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+        }
+        "Rimuovi DNS Custom" {
+            Clear-DnsServers
+            [System.Windows.Forms.MessageBox]::Show("DNS personalizzati rimossi (impostato su automatico).", "Successo", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+        }
+        default {
+            Write-Log "Nessuna opzione DNS valida selezionata." "Warning"
+            [System.Windows.Forms.MessageBox]::Show("Seleziona un'opzione DNS valida dal menu a tendina.", "Attenzione", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
+        }
+    }
+}
+
+function Invoke-HardcoreTweaks {
+    Write-Log "Avvio Tweaks Avanzati (Hardcore Tweaks)..."
+    $successCount = 0
+    $errorMessages = @()
+
+    $tweaks = @(
+        @{ Name = "Disabilito accesso alla posizione"; Cmd = { reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\location" /v "Value" /d "Deny" /f } },
+        @{ Name = "Disabilito Cloud Sync"; Cmd = {
+            reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\SettingSync" /v "DisableSettingSync" /t REG_DWORD /d 2 /f
+            reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\SettingSync" /v "DisableSettingSyncUserOverride" /t REG_DWORD /d 1 /f
+            reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\SettingSync" /v "DisableSyncOnPaidNetwork" /t REG_DWORD /d 1 /f
+            reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\SettingSync" /v "SyncPolicy" /t REG_DWORD /d 5 /f
+            reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\SettingSync" /v "DisableApplicationSettingSync" /t REG_DWORD /d 2 /f
+            reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\SettingSync" /v "DisableApplicationSettingSyncUserOverride" /t REG_DWORD /d 1 /f
+            reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\SettingSync" /v "DisableAppSyncSettingSync" /t REG_DWORD /d 2 /f
+            reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\SettingSync" /v "DisableAppSyncSettingSyncUserOverride" /t REG_DWORD /d 1 /f
+            reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\SettingSync" /v "DisableCredentialsSettingSync" /t REG_DWORD /d 2 /f
+            reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\SettingSync" /v "DisableCredentialsSettingSyncUserOverride" /t REG_DWORD /d 1 /f
+            reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\SettingSync\Groups\Credentials" /v "Enabled" /t REG_DWORD /d 0 /f
+            reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\SettingSync" /v "DisableDesktopThemeSettingSync" /t REG_DWORD /d 2 /f
+            reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\SettingSync" /v "DisableDesktopThemeSettingSyncUserOverride" /t REG_DWORD /d 1 /f
+            reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\SettingSync" /v "DisablePersonalizationSettingSync" /t REG_DWORD /d 2 /f
+            reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\SettingSync" /v "DisablePersonalizationSettingSyncUserOverride" /t REG_DWORD /d 1 /f
+            reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\SettingSync" /v "DisableStartLayoutSettingSync" /t REG_DWORD /d 2 /f
+            reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\SettingSync" /v "DisableStartLayoutSettingSyncUserOverride" /t REG_DWORD /d 1 /f
+            reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\SettingSync" /v "DisableWebBrowserSettingSync" /t REG_DWORD /d 2 /f
+            reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\SettingSync" /v "DisableWebBrowserSettingSyncUserOverride" /t REG_DWORD /d 1 /f
+            reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\SettingSync" /v "DisableWebBrowserSettingSync" /t REG_DWORD /d 2 /f
+            reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\SettingSync" /v "DisableWebBrowserSettingSyncUserOverride" /t REG_DWORD /d 1 /f
+            reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\SettingSync" /v "DisableWindowsSettingSync" /t REG_DWORD /d 2 /f
+            reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\SettingSync" /v "DisableWindowsSettingSyncUserOverride" /t REG_DWORD /d 1 /f
+            reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\SettingSync\Groups\Language" /t REG_DWORD /v "Enabled" /d 0 /f
+        }},
+        @{ Name = "Disabilito Activity Feed"; Cmd = { reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\System" /v "EnableActivityFeed" /d "0" /t REG_DWORD /f } },
+        @{ Name = "Disabilito Notifiche"; Cmd = { 
+            reg add "HKCU\Software\Policies\Microsoft\Windows\Explorer" /v "DisableNotificationCenter" /d "1" /t REG_DWORD /f
+            reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\PushNotifications" /v "ToastEnabled" /d "0" /t REG_DWORD /f
+        }},
+        @{ Name = "Disabilito Registrazione Schermo Xbox"; Cmd = {
+            reg add "HKCU\System\GameConfigStore" /v "GameDVR_Enabled" /t REG_DWORD /d 0 /f
+            reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\GameDVR" /v "AllowGameDVR" /t REG_DWORD /d 0 /f
+        }},
+        @{ Name = "Disabilito Download Mappe Automatico"; Cmd = {
+            reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\Maps" /v "AllowUntriggeredNetworkTrafficOnSettingsPage" /t REG_DWORD /d 0 /f
+            reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\Maps" /v "AutoDownloadAndUpdateMapData" /t REG_DWORD /d 0 /f
+        }},
+        @{ Name = "Elimino utente Default0 (se presente)"; Cmd = { net user defaultuser0 /delete 2>$null } },
+        @{ Name = "Disabilito Fotocamera Lock Screen"; Cmd = { reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\Personalization" /v "NoLockScreenCamera" /t REG_DWORD /d 1 /f } },
+        @{ Name = "Disabilito Biometria (ATTENZIONE: Rompe Windows Hello)"; Cmd = {
+            reg add "HKLM\SOFTWARE\Policies\Microsoft\Biometrics" /v "Enabled" /t REG_DWORD /d "0" /f
+            reg add "HKLM\SOFTWARE\Policies\Microsoft\Biometrics\Credential Provider" /v "Enabled" /t "REG_DWORD" /d "0" /f
+        }},
+        @{ Name = "Disabilito Telemetria Windows"; Cmd = {
+            schtasks /change /TN "\Microsoft\Windows\Customer Experience Improvement Program\Consolidator" /DISABLE > $null 2>&1
+            schtasks /change /TN "\Microsoft\Windows\Customer Experience Improvement Program\KernelCeipTask" /DISABLE > $null 2>&1
+            schtasks /change /TN "\Microsoft\Windows\Customer Experience Improvement Program\UsbCeip" /DISABLE > $null 2>&1
+            schtasks /change /TN "\Microsoft\Windows\Autochk\Proxy" /DISABLE > $null 2>&1
+            schtasks /change /TN "\Microsoft\Windows\DiskDiagnostic\Microsoft-Windows-DiskDiagnosticDataCollector" /DISABLE > $null 2>&1
+            schtasks /change /TN "\Microsoft\Windows\Feedback\Siuf\DmClient" /DISABLE > $null 2>&1
+            schtasks /change /TN "\Microsoft\Windows\Feedback\Siuf\DmClientOnScenarioDownload" /DISABLE > $null 2>&1
+            schtasks /change /TN "\Microsoft\Windows\Windows Error Reporting\QueueReporting" /DISABLE > $null 2>&1
+            schtasks /change /TN "\Microsoft\Windows\Maps\MapsUpdateTask" /DISABLE > $null 2>&1
+            sc config diagnosticshub.standardcollector.service start=demand
+            sc config diagsvc start=demand
+            sc config WerSvc start=demand
+            sc config wercplsupport start=demand
+            reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\DataCollection" /v "AllowDesktopAnalyticsProcessing" /t REG_DWORD /d 0 /f
+            reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\DataCollection" /v "AllowDeviceNameInTelemetry" /t REG_DWORD /d 0 /f
+            reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\DataCollection" /v "MicrosoftEdgeDataOptIn" /t REG_DWORD /d 0 /f
+            reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\DataCollection" /v "AllowWUfBCloudProcessing" /t REG_DWORD /d 0 /f
+            reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\DataCollection" /v "AllowUpdateComplianceProcessing" /t REG_DWORD /d 0 /f
+            reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\DataCollection" /v "AllowCommercialDataPipeline" /t REG_DWORD /d 0 /f
+            reg add "HKLM\Software\Policies\Microsoft\SQMClient\Windows" /v "CEIPEnable" /t REG_DWORD /d "0" /f
+            reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\DataCollection" /v "AllowTelemetry" /t REG_DWORD /d 0 /f
+            reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\DataCollection" /v "AllowTelemetry" /t REG_DWORD /d 0 /f
+            reg add "HKLM\Software\Policies\Microsoft\Windows\DataCollection" /v "DisableOneSettingsDownloads" /t "REG_DWORD" /d "1" /f
+            reg add "HKLM\Software\Policies\Microsoft\Windows NT\CurrentVersion\Software Protection Platform" /v "NoGenTicket" /t "REG_DWORD" /d "1" /f
+            reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\Windows Error Reporting" /v "Disabled" /t REG_DWORD /d "1" /f
+            reg add "HKLM\SOFTWARE\Microsoft\Windows\Windows Error Reporting" /v "Disabled" /t "REG_DWORD" /d "1" /f
+            reg add "HKLM\Software\Microsoft\Windows\Windows Error Reporting\Consent" /v "DefaultConsent" /t REG_DWORD /d "0" /f
+            reg add "HKLM\Software\Microsoft\Windows\Windows Error Reporting\Consent" /v "DefaultOverrideBehavior" /t REG_DWORD /d "1" /f
+            reg add "HKLM\Software\Microsoft\Windows\Windows Error Reporting" /v "DontSendAdditionalData" /t REG_DWORD /d "1" /f
+            reg add "HKLM\Software\Microsoft\Windows\Windows Error Reporting" /v "LoggingDisabled" /t REG_DWORD /d "1" /f
+            reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" /v "ContentDeliveryAllowed" /d "0" /t REG_DWORD /f
+            reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" /v "OemPreInstalledAppsEnabled" /d "0" /t REG_DWORD /f
+            reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" /v "PreInstalledAppsEnabled" /d "0" /t REG_DWORD /f
+            reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" /v "PreInstalledAppsEverEnabled" /d "0" /t REG_DWORD /f
+            reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" /v "SilentInstalledAppsEnabled" /d "0" /t REG_DWORD /f
+            reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" /v "SystemPaneSuggestionsEnabled" /d "0" /t REG_DWORD /f
+            reg add "HKLM\Software\Microsoft\Windows\CurrentVersion\SystemSettings\AccountNotifications" /v "EnableAccountNotifications" /t REG_DWORD /d "0" /f
+            reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\SystemSettings\AccountNotifications" /v "EnableAccountNotifications" /t REG_DWORD /d "0" /f
+            reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings" /v "NOC_GLOBAL_SETTING_TOASTS_ENABLED" /t REG_DWORD /d "0" /f
+            reg add "HKCU\Software\Policies\Microsoft\Windows\EdgeUI" /v "DisableMFUTracking" /t REG_DWORD /d "1" /f
+            reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\EdgeUI" /v "DisableMFUTracking" /t REG_DWORD /d "1" /f
+            reg add "HKCU\Control Panel\International\User Profile" /v "HttpAcceptLanguageOptOut" /t REG_DWORD /d "1" /f
+            reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\System" /v "PublishUserActivities" /t REG_DWORD /d "0" /f
+        }},
+        @{ Name = "Disabilito Telemetria Windows Update"; Cmd = {
+            reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\DriverSearching" /v "SearchOrderConfig" /t REG_DWORD /d 0 /f
+            reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\DeliveryOptimization" /v "DODownloadMode" /t "REG_DWORD" /d 0 /f
+        }},
+        @{ Name = "Disabilito Telemetria Windows Search"; Cmd = {
+            reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\Windows Search" /v "ConnectedSearchPrivacy" /t REG_DWORD /d "3" /f
+            reg add "HKLM\Software\Policies\Microsoft\Windows\Explorer" /v "DisableSearchHistory" /t REG_DWORD /d "1" /f
+            reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\Windows Search" /v "AllowSearchToUseLocation" /t "REG_DWORD" /d "0" /f
+            reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\Windows Search" /v "EnableDynamicContentInWSB" /t "REG_DWORD" /d "0" /f
+            reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\Windows Search" /v "ConnectedSearchUseWeb" /t "REG_DWORD" /d "0" /f
+            reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\Windows Search" /v "DisableWebSearch" /t "REG_DWORD" /d "1" /f
+            reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\Explorer" /v "DisableSearchBoxSuggestions" /t "REG_DWORD" /d "1" /f
+            reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\Windows Search" /v "PreventUnwantedAddIns" /t "REG_SZ" /d " " /f
+            reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\Windows Search" /v "PreventRemoteQueries" /t REG_DWORD /d "1" /f
+            reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\Windows Search" /v "AlwaysUseAutoLangDetection" /t "REG_DWORD" /d "0" /f
+            reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\Windows Search" /v "AllowIndexingEncryptedStoresOrItems" /t "REG_DWORD" /d "0" /f
+            reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Search" /v "DisableSearchBoxSuggestions" /t "REG_DWORD" /d "1" /f
+            reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Search" /v "CortanaInAmbientMode" /t "REG_DWORD" /d "0" /f
+            reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Search" /v "BingSearchEnabled" /t "REG_DWORD" /d "0" /f
+            reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v "ShowCortanaButton" /t "REG_DWORD" /d "0" /f
+            reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Search" /v "CanCortanaBeEnabled" /t "REG_DWORD" /d "0" /f
+            reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\Windows Search" /v "ConnectedSearchUseWebOverMeteredConnections" /t "REG_DWORD" /d "0" /f
+            reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\Windows Search" /v "AllowCortanaAboveLock" /t "REG_DWORD" /d "0" /f
+            reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\SearchSettings" /v "IsDynamicSearchBoxEnabled" /t "REG_DWORD" /d "1" /f
+            reg add "HKLM\SOFTWARE\Microsoft\PolicyManager\default\Experience\AllowCortana" /v "value" /t REG_DWORD /d 0 /f
+            reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Search" /v "AllowSearchToUseLocation" /t "REG_DWORD" /d "1" /f
+            reg add "HKCU\Software\Microsoft\Speech_OneCore\Preferences" /v "ModelDownloadAllowed" /t "REG_DWORD" /d "0" /f
+            reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\SearchSettings" /v "IsDeviceSearchHistoryEnabled" /t REG_DWORD /d "1" /f
+            reg add "HKCU\Software\Microsoft\Speech_OneCore\Preferences" /v "VoiceActivationOn" /t REG_DWORD /d 0 /f
+            reg add "HKCU\Software\Microsoft\Speech_OneCore\Preferences" /v "VoiceActivationEnableAboveLockscreen" /t "REG_DWORD" /d "0" /f
+            reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\OOBE" /v "DisableVoice" /t "REG_DWORD" /d "1" /f
+            reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\Windows Search" /v "AllowCortana" /t "REG_DWORD" /d "0" /f
+            reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Search" /v "DeviceHistoryEnabled" /t REG_DWORD /d 0 /f
+            reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Search" /v "HistoryViewEnabled" /t REG_DWORD /d 0 /f
+            reg add "HKLM\Software\Microsoft\Speech_OneCore\Preferences" /v "VoiceActivationDefaultOn" /t REG_DWORD /d 0 /f
+            reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Search" /v "CortanaEnabled" /t "REG_DWORD" /d "0" /f
+            reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Search" /v "CortanaEnabled" /t "REG_DWORD" /d "0" /f
+            reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\SearchSettings" /v "IsMSACloudSearchEnabled" /t REG_DWORD /d "0" /f
+            reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\SearchSettings" /v "IsAADCloudSearchEnabled" /t REG_DWORD /d "0" /f
+            reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\Windows Search" /v "AllowCloudSearch" /t "REG_DWORD" /d "0" /f
+            reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Search" /v "VoiceShortcut" /t "REG_DWORD" /d "0" /f
+            reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Search" /v "CortanaConsent" /t "REG_DWORD" /d "0" /f
+        }},
+        @{ Name = "Disabilito Telemetria Office"; Cmd = {
+            reg add "HKCU\SOFTWARE\Microsoft\Office\15.0\Outlook\Options\Mail" /v "EnableLogging" /t REG_DWORD /d 0 /f
+            reg add "HKCU\SOFTWARE\Microsoft\Office\16.0\Outlook\Options\Mail" /v "EnableLogging" /t REG_DWORD /d 0 /f
+            reg add "HKCU\SOFTWARE\Microsoft\Office\15.0\Outlook\Options\Calendar" /v "EnableCalendarLogging" /t REG_DWORD /d 0 /f
+            reg add "HKCU\SOFTWARE\Microsoft\Office\16.0\Outlook\Options\Calendar" /v "EnableCalendarLogging" /t REG_DWORD /d 0 /f
+            reg add "HKCU\SOFTWARE\Microsoft\Office\15.0\Word\Options" /v "EnableLogging" /t REG_DWORD /d 0 /f
+            reg add "HKCU\SOFTWARE\Microsoft\Office\16.0\Word\Options" /v "EnableLogging" /t REG_DWORD /d 0 /f
+            reg add "HKCU\SOFTWARE\Policies\Microsoft\Office\15.0\OSM" /v "EnableLogging" /t REG_DWORD /d 0 /f
+            reg add "HKCU\SOFTWARE\Policies\Microsoft\Office\16.0\OSM" /v "EnableLogging" /t REG_DWORD /d 0 /f
+            reg add "HKCU\SOFTWARE\Policies\Microsoft\Office\15.0\OSM" /v "EnableUpload" /t REG_DWORD /d 0 /f
+            reg add "HKCU\SOFTWARE\Policies\Microsoft\Office\16.0\OSM" /v "EnableUpload" /t REG_DWORD /d 0 /f
+            reg add "HKCU\SOFTWARE\Microsoft\Office\Common\ClientTelemetry" /v "DisableTelemetry" /t REG_DWORD /d 1 /f
+            reg add "HKCU\SOFTWARE\Microsoft\Office\16.0\Common\ClientTelemetry" /v "DisableTelemetry" /t REG_DWORD /d 1 /f
+            reg add "HKCU\SOFTWARE\Microsoft\Office\Common\ClientTelemetry" /v "VerboseLogging" /t REG_DWORD /d 0 /f
+            reg add "HKCU\SOFTWARE\Microsoft\Office\16.0\Common\ClientTelemetry" /v "VerboseLogging" /t REG_DWORD /d 0 /f
+            reg add "HKCU\SOFTWARE\Microsoft\Office\15.0\Common" /v "QMEnable" /t REG_DWORD /d 0 /f
+            reg add "HKCU\SOFTWARE\Microsoft\Office\16.0\Common" /v "QMEnable" /t REG_DWORD /d 0 /f
+            reg add "HKCU\SOFTWARE\Microsoft\Office\15.0\Common\Feedback" /v "Enabled" /t REG_DWORD /d 0 /f
+            reg add "HKCU\SOFTWARE\Microsoft\Office\16.0\Common\Feedback" /v "Enabled" /t REG_DWORD /d 0 /f
+            schtasks /change /TN "\Microsoft\Office\OfficeTelemetryAgentFallBack" /DISABLE > $null 2>&1
+            schtasks /change /TN "\Microsoft\Office\OfficeTelemetryAgentLogOn" /DISABLE > $null 2>&1
+            schtasks /change /TN "\Microsoft\Office\OfficeTelemetryAgentFallBack2016" /DISABLE > $null 2>&1
+            schtasks /change /TN "\Microsoft\Office\OfficeTelemetryAgentLogOn2016" /DISABLE > $null 2>&1
+            schtasks /change /TN "\Microsoft\Office\Office 15 Subscription Heartbeat" /DISABLE > $null 2>&1
+            schtasks /change /TN "\Microsoft\Office\Office 16 Subscription Heartbeat" /DISABLE > $null 2>&1
+        }},
+        @{ Name = "Disabilito Telemetria Application Experience"; Cmd = {
+            schtasks /change /TN "\Microsoft\Windows\Application Experience\Microsoft Compatibility Appraiser" /DISABLE > $null 2>&1
+            schtasks /change /TN "\Microsoft\Windows\Application Experience\Microsoft Compatibility Appraiser Exp" /DISABLE > $null 2>&1
+            schtasks /change /TN "\Microsoft\Windows\Application Experience\StartupAppTask" /DISABLE > $null 2>&1
+            schtasks /change /TN "\Microsoft\Windows\Application Experience\PcaPatchDbTask" /DISABLE > $null 2>&1
+            schtasks /change /TN "\Microsoft\Windows\Application Experience\MareBackup" /DISABLE > $null 2>&1
+        }},
+        @{ Name = "Disabilito Telemetria NVIDIA"; Cmd = {
+            reg add "HKLM\SOFTWARE\NVIDIA Corporation\NvControlPanel2\Client" /v "OptInOrOutPreference" /t REG_DWORD /d 0 /f
+            reg add "HKLM\SOFTWARE\NVIDIA Corporation\Global\FTS" /v "EnableRID44231" /t REG_DWORD /d 0 /f
+            reg add "HKLM\SOFTWARE\NVIDIA Corporation\Global\FTS" /v "EnableRID64640" /t REG_DWORD /d 0 /f
+            reg add "HKLM\SOFTWARE\NVIDIA Corporation\Global\FTS" /v "EnableRID66610" /t REG_DWORD /d 0 /f
+            reg add "HKLM\SYSTEM\CurrentControlSet\Services\nvlddmkm\Global\Startup" /v "SendTelemetryData" /t REG_DWORD /d 0 /f
+            schtasks /change /TN NvTmMon_{B2FE1952-0186-46C3-BAEC-A80AA35AC5B8} /DISABLE > $null 2>&1
+            schtasks /change /TN NvTmRep_{B2FE1952-0186-46C3-BAEC-A80AA35AC5B8} /DISABLE > $null 2>&1
+            schtasks /change /TN NvTmRepOnLogon_{B2FE1952-0186-46C3-BAEC-A80AA35AC5B8} /DISABLE > $null 2>&1
+        }},
+        @{ Name = "Disabilito aggiornamenti Google"; Cmd = {
+            sc config gupdate start=disabled
+            sc config gupdatem start=disabled
+        }},
+        @{ Name = "Disabilito Game Bar"; Cmd = {
+            reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\GameDVR" /v "AllowGameDVR" /t REG_DWORD /d 0 /f
+            reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\GameDVR" /v "AppCaptureEnabled" /t REG_DWORD /d 0 /f
+            reg add "HKCU\SOFTWARE\Microsoft\GameBar" /v "UseNexusForGameBarEnabled" /t REG_DWORD /d 0 /f
+            reg add "HKCU\SOFTWARE\Microsoft\GameBar" /v "ShowStartupPanel" /t REG_DWORD /d 0 /f
+        }},
+        @{ Name = "Disabilito Game Mode"; Cmd = {
+            reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\GameDVR" /v "AutoGameModeEnabled" /t REG_DWORD /d 0 /f
+            reg add "HKCU\SOFTWARE\Microsoft\GameBar" /v "AutoGameModeEnabled" /t REG_DWORD /d 0 /f
+        }},
+        @{ Name = "Imposto Piano Energetico Ultimate Performance"; Cmd = {
+            $ultimatePerformance = powercfg -list | Select-String -Pattern 'Ultimate Performance'
+            if (-not $ultimatePerformance) {
+                Write-Log "-- - Abilito Ultimate Performance (potrebbe non essere disponibile su tutte le SKU)"
+                $output = powercfg -duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61 2>&1
+                if ($output -match 'Unable to create a new power scheme' -or $output -match 'The power scheme, subgroup or setting specified does not exist') {
+                    Write-Log "Tentativo di ripristinare schemi predefiniti e riprovare per Ultimate Performance." "Warning"
+                    powercfg -RestoreDefaultSchemes | Out-Null
+                    powercfg -duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61 | Out-Null # Riprova
+                }
+            } else {
+                Write-Log "-- - Piano energetico Ultimate Performance già esistente."
+            }
+            $ultimatePlanGUID = (powercfg -list | Select-String -Pattern 'Ultimate Performance').Line.Split()[3]
+            if ($ultimatePlanGUID) {
+                Write-Log "-- - Attivo Ultimate Performance: $ultimatePlanGUID"
+                powercfg -setactive $ultimatePlanGUID | Out-Null
+            } else {
+                Write-Log "Impossibile trovare il GUID di Ultimate Performance per attivarlo." "Error"
+            }
+        }},
+        @{ Name = "Disabilito Core Isolation (Integrità Memoria)"; Cmd = { reg add "HKLM\System\CurrentControlSet\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity" /v "Enabled" /t REG_DWORD /d 0 /f } },
+        @{ Name = "Disabilito Prefetch (SysMain)"; Cmd = {
+            try { sc stop sysmain } catch {};
+            sc config sysmain start=disabled
+        }},
+        @{ Name = "Disabilito Storage Sense"; Cmd = { reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\StorageSense\Parameters\StoragePolicy" /v "01" /t REG_DWORD /d 0 /f } },
+        @{ Name = "Disabilito Windows Search Service"; Cmd = {
+            try { sc stop "wsearch" } catch {};
+            sc config "wsearch" start=disabled
+        }},
+        @{ Name = "Disabilito Ibernazione"; Cmd = { powercfg.exe /hibernate off } },
+        @{ Name = "Aggiungo 'Termina attività' al menu contestuale della Taskbar"; Cmd = { reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarDeveloperSettings" /v "TaskbarEndTask" /t REG_DWORD /d "1" /f } },
+        @{ Name = "Imposto Menu contestuale classico (Windows 10 style)"; Cmd = {
+            reg add "HKCU\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32" /f /ve
+            reg add "HKCU\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32" /ve /t "REG_SZ" /d "" /f
+        }},
+        @{ Name = "Abilito Dark Mode"; Cmd = {
+            reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize" /v "AppsUseLightTheme" /t REG_DWORD /d 0 /f
+            reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize" /v "SystemUsesLightTheme" /t REG_DWORD /d 0 /f
+        }},
+        @{ Name = "Mostro Estensioni File"; Cmd = { reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v "HideFileExt" /t REG_DWORD /d 0 /f } },
+        @{ Name = "Disabilito Sticky Keys (tasti permanenti)"; Cmd = { reg add "HKCU\Control Panel\Accessibility\StickyKeys" /v "Flags" /t REG_SZ /d "58" /f } },
+        @{ Name = "Disabilito Snap Assist Flyout"; Cmd = { reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v "EnableSnapAssistFlyout" /t REG_DWORD /d 0 /f } }
+    )
+
+    foreach ($tweak in $tweaks) {
+        Write-Log "Eseguo: $($tweak.Name)"
+        try {
+            # Blocca la scrittura sull'output per i comandi reg e schtasks, altrimenti PowerShell li visualizza.
+            # Converti ogni riga del Cmd in un comando separato se è un blocco di script.
+            if ($tweak.Cmd -is [scriptblock]) {
+                & $tweak.Cmd *>&1 | Out-Null # Esegui lo scriptblock e manda l'output a Out-Null
+            } else {
+                Invoke-Expression "$($tweak.Cmd) *>&1 | Out-Null" # Esegui la stringa come comando e manda l'output a Out-Null
+            }
+            $successCount++
+            Write-Log "   Completato: $($tweak.Name)"
+        } catch {
+            $errorMessage = $_.Exception.Message
+            $errorMessages += "Errore in '$($tweak.Name)': $errorMessage"
+            Write-Log "   Errore: $($errorMessage)" "Error"
+        }
+    }
+
+    Write-Log "Riavvio explorer.exe per applicare alcune modifiche all'interfaccia utente..."
+    try {
+        Stop-Process -Name "explorer" -Force -ErrorAction SilentlyContinue
+        Start-Process "explorer"
+        Write-Log "explorer.exe riavviato."
+    } catch {
+        $errorMessage = $_.Exception.Message
+        $errorMessages += "Errore durante il riavvio di explorer.exe: $errorMessage"
+        Write-Log "Errore durante il riavvio di explorer.exe: $errorMessage" "Error"
+    }
+
+    if ($errorMessages.Count -gt 0) {
+        $summary = "Tweaks avanzati completati con errori. Totalmente eseguiti: $($successCount)/$($tweaks.Count). Errori: $($errorMessages.Count)."
+        [System.Windows.Forms.MessageBox]::Show("$summary`n`nConsulta il log per i dettagli sugli errori.`nAlcune modifiche potrebbero richiedere un riavvio del sistema o un logout per essere pienamente effettive.", "Tweaks Avanzati - Completo con Errori", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
+    } else {
+        $summary = "Tweaks avanzati completati con successo. Tutte le operazioni eseguite."
+        [System.Windows.Forms.MessageBox]::Show("$summary`n`nAlcune modifiche potrebbero richiedere un riavvio del sistema o un logout per essere pienamente effettive.", "Tweaks Avanzati - Completato", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+    }
+    Write-Log "Esecuzione Tweaks Avanzati completata."
+}
+
+
+function Remove-AppxPackageSafe {
+    param([string]$PackageName)
+    try {
+        Write-Log "Rimuovo $($PackageName) ..."
+        Get-AppxPackage -AllUsers -Name $PackageName | Remove-AppxPackage -ErrorAction SilentlyContinue
+        Get-AppxProvisionedPackage -Online | Where-Object { $_.PackageName -like "$PackageName*" } | Remove-AppxProvisionedPackage -Online
+        Write-Log "$($PackageName) rimosso."
+    } catch {
+        $errorMessage = $_.Exception.Message
+        Write-Log "Errore nella rimozione di $($PackageName): $errorMessage" "Error"
+    }
+}
+
 function Remove-MicrosoftApps {
-    Write-Host "Inizio rimozione app Microsoft..."
+    Write-Log "Inizio rimozione app Microsoft..."
     $apps = @(
         "Clipchamp.Clipchamp",
         "Microsoft.BingNews",
@@ -99,54 +499,46 @@ function Remove-MicrosoftApps {
         "Microsoft.WindowsAlarms"
     )
     foreach ($app in $apps) {
-        Write-Host "Tentativo di rimozione: $app"
+        Write-Log "Tentativo di rimozione: $($app)"
         try {
             Get-AppxPackage -AllUsers -Name $app | Remove-AppxPackage -ErrorAction SilentlyContinue
         } catch {
-            # Assegna $_.Exception.Message a una variabile temporanea per evitare errori di parsing
             $errorMessage = $_.Exception.Message
-            Write-Warning "Impossibile rimuovere $($app): $errorMessage" # FIX APPLICATO QUI
+            Write-Log "Impossibile rimuovere $($app): $errorMessage" "Warning"
         }
     }
 
-    # Percorso cartella Accessibility
     $accessibilityPath = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Accessibility"
 
     if (Test-Path $accessibilityPath) {
-        Write-Host "Tentativo di rimozione cartella Accessibility: $accessibilityPath"
-        # Rimuove attributi sola lettura e sistema a tutti i file e cartelle
+        Write-Log "Tentativo di rimozione cartella Accessibility: $($accessibilityPath)"
         Get-ChildItem -LiteralPath $accessibilityPath -Recurse -Force | ForEach-Object {
             try { $_.Attributes = 'Normal' } catch {}
         }
-
-        # Prova a rimuovere con Remove-Item
         try {
             Remove-Item -LiteralPath $accessibilityPath -Recurse -Force -ErrorAction Stop
-            Write-Host "Cartella Accessibility rimossa con Remove-Item."
+            Write-Log "Cartella Accessibility rimossa con Remove-Item."
         } catch {
-            # Assegna $_.Exception.Message a una variabile temporanea per evitare errori di parsing
             $errorMessage = $_.Exception.Message
-            Write-Warning "Remove-Item fallito per cartella Accessibility: $errorMessage"
-            # Ultima risorsa: prova a rimuovere con cmd
+            Write-Log "Remove-Item fallito per cartella Accessibility: $errorMessage" "Warning"
             $cmd = "rd /s /q `"$accessibilityPath`""
-            Write-Host "Tentativo di rimozione cartella Accessibility con cmd: $cmd"
+            Write-Log "Tentativo di rimozione cartella Accessibility con cmd: $cmd"
             Start-Process -FilePath cmd.exe -ArgumentList "/c $cmd" -Wait -NoNewWindow
             if (-not (Test-Path $accessibilityPath)) {
-                Write-Host "Cartella Accessibility rimossa con cmd."
+                Write-Log "Cartella Accessibility rimossa con cmd."
             } else {
-                Write-Warning "Impossibile rimuovere la cartella Accessibility."
+                Write-Log "Impossibile rimuovere la cartella Accessibility." "Error"
             }
         }
     } else {
-        Write-Host "Cartella Accessibility non trovata."
+        Write-Log "Cartella Accessibility non trovata."
     }
 
     [System.Windows.Forms.MessageBox]::Show("Rimozione app Microsoft completata!","Successo",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Information)
 }
 
-# Rimuove OneDrive dal sistema.
 function Remove-OneDrive {
-    Write-Host "Rimuovo OneDrive..."
+    Write-Log "Rimuovo OneDrive..."
     try {
         taskkill /f /im OneDrive.exe > $null 2>&1
         if (Test-Path "$env:SystemRoot\System32\OneDriveSetup.exe") {
@@ -168,15 +560,13 @@ function Remove-OneDrive {
         reg delete "HKEY_CURRENT_USER\Software\Microsoft\OneDrive" /f | Out-Null
         [System.Windows.Forms.MessageBox]::Show("OneDrive rimosso con successo!","Successo",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Information)
     } catch {
-        # Assegna $_.Exception.Message a una variabile temporanea per evitare errori di parsing
         $errorMessage = $_.Exception.Message
         [System.Windows.Forms.MessageBox]::Show("Errore durante la rimozione di OneDrive: $errorMessage","Errore",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Error)
     }
 }
 
-# Disabilita Microsoft Copilot.
 function Disable-Copilot {
-    Write-Host "Disabilito Copilot..."
+    Write-Log "Disabilito Copilot..."
     try {
         Get-AppxPackage Microsoft.CoPilot | Remove-AppxPackage -ErrorAction SilentlyContinue
         reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsCopilot" /v "TurnOffWindowsCopilot" /t REG_DWORD /d 1 /f | Out-Null
@@ -192,9 +582,8 @@ function Disable-Copilot {
     }
 }
 
-# Rimuove i Widgets di Windows.
 function Remove-Widgets {
-    Write-Host "Rimuovo Widgets..."
+    Write-Log "Rimuovo Widgets..."
     try {
         reg add "HKLM\SOFTWARE\Policies\Microsoft\Dsh" /v "AllowNewsAndInterests" /t REG_DWORD /d 0 /f | Out-Null
         Get-AppxPackage *WebExperience* | Remove-AppxPackage -ErrorAction SilentlyContinue
@@ -206,11 +595,9 @@ function Remove-Widgets {
     }
 }
 
-# Rimuove Microsoft Edge Chromium.
 function Remove-Edge {
-    Write-Host "Rimuovo Microsoft Edge Chromium..."
+    Write-Log "Rimuovo Microsoft Edge Chromium..."
     try {
-        # Downloads and executes a community script to uninstall Edge
         $script = (New-Object Net.WebClient).DownloadString('https://cdn.jsdelivr.net/gh/he3als/EdgeRemover@main/get.ps1')
         $sb = [ScriptBlock]::Create($script)
         & $sb -UninstallEdge
@@ -221,9 +608,8 @@ function Remove-Edge {
     }
 }
 
-# Disattiva una lista predefinita di servizi di Windows tramite uno script batch.
 function Invoke-DisattivaServizi {
-    Write-Host "Disattivo servizi..."
+    Write-Log "Disattivo servizi..."
     $batContent = @"
 @echo off
 :: Elevazione automatica se non è già admin
@@ -326,9 +712,8 @@ exit
     }
 }
 
-# Installa app eseguibili, MSI, batch o PowerShell da una cartella specificata (E:\App).
 function Invoke-AppInstaller {
-    Write-Host "Avvio installazione app da E:\App..."
+    Write-Log "Avvio installazione app da E:\App..."
     $batContent = @"
 @echo off
 setlocal enabledelayedexpansion
@@ -430,9 +815,8 @@ exit /b
     }
 }
 
-# Attiva/Disattiva la modalità scura di Windows.
 function Invoke-WinUtilDarkMode {
-    Write-Host "Toggle Dark Mode..."
+    Write-Log "Toggle Dark Mode..."
     try {
         $Path = "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize"
         $current = Get-ItemPropertyValue -Path $Path -Name AppsUseLightTheme -ErrorAction SilentlyContinue
@@ -448,16 +832,15 @@ function Invoke-WinUtilDarkMode {
     }
 }
 
-# Attiva/Disattiva la barra di ricerca sulla Taskbar.
 function Invoke-WinUtilTaskbarSearch {
-    Write-Host "Toggle Taskbar Search..."
+    Write-Log "Toggle Taskbar Search..."
     try {
         $Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Search"
         $current = Get-ItemPropertyValue -Path $Path -Name SearchboxTaskbarMode -ErrorAction SilentlyContinue
         if ($null -eq $current) { $current = 1 } # Default to 1 if not set (search icon)
         $newValue = if ($current -eq 0) { 1 } else { 0 } # Toggle 0 (hidden) and 1 (icon)
         Set-ItemProperty -Path $Path -Name SearchboxTaskbarMode -Value $newValue
-        $msg = if ($newValue -eq 0) { "Taskbar Search disattivata." } else { "Taskbar Search attivata." }
+        $msg = if ($newValue -eq 0) { "Pulsante ricerca disattivato." } else { "Pulsante ricerca attivato." }
         [System.Windows.Forms.MessageBox]::Show($msg)
     } catch { 
         $errorMessage = $_.Exception.Message
@@ -465,9 +848,8 @@ function Invoke-WinUtilTaskbarSearch {
     }
 }
 
-# Applica effetti visivi personalizzati per le prestazioni.
 function Toggle-CustomVisualEffects {
-    Write-Host "Applico effetti visivi personalizzati..."
+    Write-Log "Applico effetti visivi personalizzati..."
     try {
         # Corresponds to "Adjust for best performance"
         Set-ItemProperty -Path "HKCU:\Control Panel\Desktop" -Name "UserPreferencesMask" -Type Binary -Value ([byte[]](144,18,3,128,16,0,0,0))
@@ -478,9 +860,8 @@ function Toggle-CustomVisualEffects {
     }
 }
 
-# Attiva/Disattiva il pulsante Vista Attività sulla Taskbar.
 function Toggle-ShowTaskViewButton {
-    Write-Host "Toggle Pulsante Vista Attività..."
+    Write-Log "Toggle Pulsante Vista Attività..."
     try {
         $key = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
         $current = Get-ItemPropertyValue -Path $key -Name ShowTaskViewButton -ErrorAction SilentlyContinue
@@ -495,9 +876,8 @@ function Toggle-ShowTaskViewButton {
     }
 }
 
-# Importa file .reg da una cartella specificata (E:\Script\Esegui).
 function Invoke-RegImporter {
-    Write-Host "Avvio importazione file .reg da E:\Script\Esegui..."
+    Write-Log "Avvio importazione file .reg da E:\Script\Esegui..."
     $batContent = @"
 @echo off
 setlocal enabledelayedexpansion
@@ -587,9 +967,8 @@ exit /b
     }
 }
 
-# Nuova funzione: Disabilita Teredo
 function Disable-Teredo {
-    Write-Host "Disabilito Teredo..."
+    Write-Log "Disabilito Teredo..."
     try {
         Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip6\Parameters" -Name "DisabledComponents" -Value 1 -Force -ErrorAction Stop
         netsh interface teredo set state disabled | Out-Null
@@ -600,49 +979,46 @@ function Disable-Teredo {
     }
 }
 
-# Nuova funzione: Kill LMS (Intel Management and Security Application Local Management Service)
 function Kill-LMS {
-    Write-Host "Kill LMS (Intel Management and Security Application Local Management Service)..."
+    Write-Log "Kill LMS (Intel Management and Security Application Local Management Service)..."
     try {
         $serviceName = "LMS"
-        Write-Host "Arresto e disabilitazione del servizio: $serviceName"
+        Write-Log "Arresto e disabilitazione del servizio: $($serviceName)"
         Stop-Service -Name $serviceName -Force -ErrorAction SilentlyContinue;
         Set-Service -Name $serviceName -StartupType Disabled -ErrorAction SilentlyContinue;
 
-        Write-Host "Rimozione del servizio: $serviceName";
+        Write-Log "Rimozione del servizio: $($serviceName)";
         sc.exe delete $serviceName | Out-Null;
 
-        Write-Host "Rimozione dei pacchetti driver LMS";
+        Write-Log "Rimozione dei pacchetti driver LMS";
         $lmsDriverPackages = Get-ChildItem -Path "C:\Windows\System32\DriverStore\FileRepository" -Recurse -Filter "lms.inf*" -ErrorAction SilentlyContinue;
         foreach ($package in $lmsDriverPackages) {
-            Write-Host "Rimozione pacchetto driver: $($package.Name)";
-            # Use pnputil with /force to ensure removal even if in use
+            Write-Log "Rimozione pacchetto driver: $($package.Name)";
             pnputil /delete-driver "$($package.Name)" /uninstall /force | Out-Null;
         }
         if ($lmsDriverPackages.Count -eq 0) {
-            Write-Host "Nessun pacchetto driver LMS trovato nel driver store."
+            Write-Log "Nessun pacchetto driver LMS trovato nel driver store."
         } else {
-            Write-Host "Tutti i pacchetti driver LMS trovati sono stati rimossi."
+            Write-Log "Tutti i pacchetti driver LMS trovati sono stati rimossi."
         }
 
-        Write-Host "Ricerca ed eliminazione dei file eseguibili LMS";
+        Write-Log "Ricerca ed eliminazione dei file eseguibili LMS";
         $programFilesDirs = @("C:\Program Files", "C:\Program Files (x86)");
         $lmsFiles = @();
         foreach ($dir in $programFilesDirs) {
             $lmsFiles += Get-ChildItem -Path $dir -Recurse -Filter "LMS.exe" -ErrorAction SilentlyContinue;
         }
         foreach ($file in $lmsFiles) {
-            Write-Host "Acquisizione proprietà del file: $($file.FullName)";
-            # Take ownership and grant full control to Administrators
+            Write-Log "Acquisizione proprietà del file: $($file.FullName)";
             & icacls "$($file.FullName)" /grant Administrators:F /T /C /Q | Out-Null;
             & takeown /F "$($file.FullName)" /A /R /D Y | Out-Null;
-            Write-Host "Eliminazione del file: $($file.FullName)";
+            Write-Log "Eliminazione del file: $($file.FullName)";
             Remove-Item "$($file.FullName)" -Force -ErrorAction SilentlyContinue;
         }
         if ($lmsFiles.Count -eq 0) {
-            Write-Host "Nessun file LMS.exe trovato nelle directory Program Files."
+            Write-Log "Nessun file LMS.exe trovato nelle directory Program Files."
         } else {
-            Write-Host "Tutti i file LMS.exe trovati sono stati eliminati."
+            Write-Log "Tutti i file LMS.exe trovati sono stati eliminati."
         }
         [System.Windows.Forms.MessageBox]::Show("Il servizio Intel LMS vPro è stato disabilitato, rimosso e bloccato.","Successo",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Information)
     } catch {
@@ -651,9 +1027,8 @@ function Kill-LMS {
     }
 }
 
-# Nuova funzione: Disabilita Wifi-Sense
 function Disable-WifiSense {
-    Write-Host "Disabilito Wifi-Sense..."
+    Write-Log "Disabilito Wifi-Sense..."
     try {
         Set-ItemProperty -Path "HKLM:\Software\Microsoft\PolicyManager\default\WiFi\AllowWiFiHotSpotReporting" -Name "Value" -Type DWord -Value 0 -Force -ErrorAction Stop
         Set-ItemProperty -Path "HKLM:\Software\Microsoft\PolicyManager\default\WiFi\AllowAutoConnectToWiFiSenseHotspots" -Name "Value" -Type DWord -Value 0 -Force -ErrorAction Stop
@@ -664,109 +1039,191 @@ function Disable-WifiSense {
     }
 }
 
-# Placeholder per la gestione DNS (richiederebbe un controllo ComboBox)
-function Handle-DNS {
-    [System.Windows.Forms.MessageBox]::Show("La gestione DNS richiede una selezione specifica (es. un menu a tendina). Questa funzione è un placeholder.","Informazione",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Information)
-}
-
 # FINE REGIONE: FUNZIONI PRINCIPALI
 
 # REGIONE: CREAZIONE FORM PRINCIPALE E LAYOUT
 $form = New-Object System.Windows.Forms.Form
-$form.Text = "Luca Tweaks"
-$form.Size = New-Object System.Drawing.Size(1100, 720)
+$form.Text = "Luca Tweaks - Utility di Ottimizzazione Windows"
+$form.Size = [System.Drawing.Size]::new(1000, 780)
+$form.MinimumSize = $form.Size # Rende la finestra non ridimensionabile
 $form.StartPosition = "CenterScreen"
 $form.BackColor = $colorFormBack
-$form.ForeColor = $colorText # Ensure form text is visible
+$form.ForeColor = $colorText
 $form.FormBorderStyle = "FixedSingle"
-$form.MaximizeBox = $false # Impedisce la massimizzazione
+$form.MaximizeBox = $false
+$form.Font = $globalFont # Applica il font globale al form e a tutti i controlli che lo ereditano
 
 # CREAZIONE SIDEBAR
 $sidebar = New-Object System.Windows.Forms.Panel
-$sidebar.Width = 140
+$sidebar.Width = 150
 $sidebar.Height = $form.ClientSize.Height
-$sidebar.BackColor = $colorSidebar
 $sidebar.Location = [System.Drawing.Point]::new(0,0)
-$sidebar.Anchor = "Top, Bottom, Left" # Ancoraggio per mantenere la posizione
+$sidebar.BackColor = $colorSidebar
+$sidebar.Anchor = "Top, Bottom, Left"
 
 $form.Controls.Add($sidebar)
 
 # Coordinate per i pulsanti piccoli nella sidebar
-$smallStartX = 10
+$smallStartX = 15
 $smallStartY = 20
-$smallSpacingY = 50
+$smallSpacingY = 55
 
 # PULSANTI PICCOLI (toggle) NELLA SIDEBAR
-$btnToggleDarkMode = New-SmallButton "Toggle Dark Mode" ([System.Drawing.Point]::new($smallStartX, $smallStartY))
+$locationBtnToggleDarkMode = [System.Drawing.Point]::new($smallStartX, $smallStartY)
+$btnToggleDarkMode = New-SmallButton "Toggle Dark Mode" $locationBtnToggleDarkMode
 $btnToggleDarkMode.Add_Click({ Invoke-WinUtilDarkMode })
 $sidebar.Controls.Add($btnToggleDarkMode)
 
-$btnToggleTaskbarSearch = New-SmallButton "Taskbar Search" ([System.Drawing.Point]::new($smallStartX, $smallStartY + $smallSpacingY))
+$locationBtnToggleTaskbarSearch = [System.Drawing.Point]::new($smallStartX, $smallStartY + $smallSpacingY)
+$btnToggleTaskbarSearch = New-SmallButton "Taskbar Search" $locationBtnToggleTaskbarSearch
 $btnToggleTaskbarSearch.Add_Click({ Invoke-WinUtilTaskbarSearch })
 $sidebar.Controls.Add($btnToggleTaskbarSearch)
 
-$btnToggleVisualFX = New-SmallButton "Toggle Visual FX" ([System.Drawing.Point]::new($smallStartX, $smallStartY + $smallSpacingY*2))
+$locationBtnToggleVisualFX = [System.Drawing.Point]::new($smallStartX, $smallStartY + $smallSpacingY*2)
+$btnToggleVisualFX = New-SmallButton "Effetti Visivi" $locationBtnToggleVisualFX
 $btnToggleVisualFX.Add_Click({ Toggle-CustomVisualEffects })
 $sidebar.Controls.Add($btnToggleVisualFX)
 
-$btnToggleShowTaskView = New-SmallButton "Disabilita Vista attività" ([System.Drawing.Point]::new($smallStartX, $smallStartY + $smallSpacingY*3))
+$locationBtnToggleShowTaskView = [System.Drawing.Point]::new($smallStartX, $smallStartY + $smallSpacingY*3)
+$btnToggleShowTaskView = New-SmallButton "Vista Attività" $locationBtnToggleShowTaskView
 $btnToggleShowTaskView.Add_Click({ Toggle-ShowTaskViewButton })
 $sidebar.Controls.Add($btnToggleShowTaskView)
 
-$btnInstallAppsSidebar = New-SmallButton "Installa App E:\App" ([System.Drawing.Point]::new($smallStartX, $smallStartY + $smallSpacingY*4))
+$locationBtnInstallAppsSidebar = [System.Drawing.Point]::new($smallStartX, $smallStartY + $smallSpacingY*4)
+$btnInstallAppsSidebar = New-SmallButton "Installa App E:\App" $locationBtnInstallAppsSidebar
 $btnInstallAppsSidebar.Add_Click({ Invoke-AppInstaller })
 $sidebar.Controls.Add($btnInstallAppsSidebar)
 
-$btnRegImporter = New-SmallButton "Importa .REG" ([System.Drawing.Point]::new($smallStartX, $smallStartY + $smallSpacingY*5))
+$locationBtnRegImporter = [System.Drawing.Point]::new($smallStartX, $smallStartY + $smallSpacingY*5)
+$btnRegImporter = New-SmallButton "Importa .REG" $locationBtnRegImporter
 $btnRegImporter.Add_Click({ Invoke-RegImporter })
 $sidebar.Controls.Add($btnRegImporter)
 
-# Coordinate per pulsanti grandi
-$bigStartX = 160
-$bigStartY = 20
-$bigSpacingY = 60
+# Nuovo pulsante per i Tweaks Avanzati nella sidebar
+$locationBtnHardcoreTweaks = [System.Drawing.Point]::new($smallStartX, $smallStartY + $smallSpacingY*6)
+$btnHardcoreTweaks = New-SmallButton "Hardcore Tweaks" $locationBtnHardcoreTweaks
+$btnHardcoreTweaks.Add_Click({ Invoke-HardcoreTweaks })
+$sidebar.Controls.Add($btnHardcoreTweaks)
 
-# PULSANTI GRANDI (Azioni)
-$btnRemoveApps = New-Button "Rimuovi App Microsoft" ([System.Drawing.Point]::new($bigStartX, $bigStartY))
-$btnRemoveApps.Add_Click({ Remove-MicrosoftApps })
-$form.Controls.Add($btnRemoveApps)
 
-$btnRemoveOneDrive = New-Button "Rimuovi OneDrive" ([System.Drawing.Point]::new($bigStartX, $bigStartY + $bigSpacingY))
-$btnRemoveOneDrive.Add_Click({ Remove-OneDrive })
-$form.Controls.Add($btnRemoveOneDrive)
+# Area Principale per Checkbox e Log
+$mainPanel = New-Object System.Windows.Forms.Panel
+$mainPanel.Location = [System.Drawing.Point]::new($sidebar.Width, 0) 
+$mainPanelWidth = $form.ClientSize.Width - $sidebar.Width
+$mainPanelHeight = $form.ClientSize.Height
+$mainPanel.Size = [System.Drawing.Size]::new($mainPanelWidth, $mainPanelHeight)
+$mainPanel.BackColor = $colorFormBack
+$form.Controls.Add($mainPanel)
 
-$btnDisableCopilot = New-Button "Disattiva Copilot" ([System.Drawing.Point]::new($bigStartX, $bigStartY + $bigSpacingY*2))
-$btnDisableCopilot.Add_Click({ Disable-Copilot })
-$form.Controls.Add($btnDisableCopilot)
+# Coordinate per le Checkbox (main area)
+$checkboxStartX = 30
+$checkboxStartY = 20
+$checkboxSpacingY = 40
 
-$btnRemoveWidgets = New-Button "Rimuovi Widgets" ([System.Drawing.Point]::new($bigStartX, $bigStartY + $bigSpacingY*3))
-$btnRemoveWidgets.Add_Click({ Remove-Widgets })
-$form.Controls.Add($btnRemoveWidgets)
+# CHECKBOX PER LE AZIONI
+$locationChkRemoveMicrosoftApps = [System.Drawing.Point]::new($checkboxStartX, $checkboxStartY)
+$chkRemoveMicrosoftApps = New-TweakCheckbox "Rimuovi App Microsoft" $locationChkRemoveMicrosoftApps
+$mainPanel.Controls.Add($chkRemoveMicrosoftApps)
 
-$btnRemoveEdge = New-Button "Rimuovi Microsoft Edge" ([System.Drawing.Point]::new($bigStartX, $bigStartY + $bigSpacingY*4))
-$btnRemoveEdge.Add_Click({ Remove-Edge })
-$form.Controls.Add($btnRemoveEdge)
+$locationChkRemoveOneDrive = [System.Drawing.Point]::new($checkboxStartX, $checkboxStartY + $checkboxSpacingY)
+$chkRemoveOneDrive = New-TweakCheckbox "Rimuovi OneDrive" $locationChkRemoveOneDrive
+$mainPanel.Controls.Add($chkRemoveOneDrive)
 
-$btnDisableServices = New-Button "Disattiva Servizi" ([System.Drawing.Point]::new($bigStartX, $bigStartY + $bigSpacingY*5))
-$btnDisableServices.Add_Click({ Invoke-DisattivaServizi })
-$form.Controls.Add($btnDisableServices)
+$locationChkDisableCopilot = [System.Drawing.Point]::new($checkboxStartX, $checkboxStartY + $checkboxSpacingY*2)
+$chkDisableCopilot = New-TweakCheckbox "Disattiva Copilot" $locationChkDisableCopilot
+$mainPanel.Controls.Add($chkDisableCopilot)
 
-# NUOVI PULSANTI GRANDI
-$btnDisableTeredo = New-Button "Disabilita Teredo" ([System.Drawing.Point]::new($bigStartX, $bigStartY + $bigSpacingY*6))
-$btnDisableTeredo.Add_Click({ Disable-Teredo })
-$form.Controls.Add($btnDisableTeredo)
+$locationChkRemoveWidgets = [System.Drawing.Point]::new($checkboxStartX, $checkboxStartY + $checkboxSpacingY*3)
+$chkRemoveWidgets = New-TweakCheckbox "Rimuovi Widgets" $locationChkRemoveWidgets
+$mainPanel.Controls.Add($chkRemoveWidgets)
 
-$btnKillLMS = New-Button "Kill Intel LMS" ([System.Drawing.Point]::new($bigStartX, $bigStartY + $bigSpacingY*7))
-$btnKillLMS.Add_Click({ Kill-LMS })
-$form.Controls.Add($btnKillLMS)
+$locationChkRemoveEdge = [System.Drawing.Point]::new($checkboxStartX, $checkboxStartY + $checkboxSpacingY*4)
+$chkRemoveEdge = New-TweakCheckbox "Rimuovi Microsoft Edge" $locationChkRemoveEdge
+$mainPanel.Controls.Add($chkRemoveEdge)
 
-$btnDisableWifiSense = New-Button "Disabilita Wifi-Sense" ([System.Drawing.Point]::new($bigStartX, $bigStartY + $bigSpacingY*8))
-$btnDisableWifiSense.Add_Click({ Disable-WifiSense })
-$form.Controls.Add($btnDisableWifiSense)
+$locationChkDisableServices = [System.Drawing.Point]::new($checkboxStartX, $checkboxStartY + $checkboxSpacingY*5)
+$chkDisableServices = New-TweakCheckbox "Disattiva Servizi Windows" $locationChkDisableServices
+$mainPanel.Controls.Add($chkDisableServices)
 
-$btnDNS = New-Button "Gestione DNS (Info)" ([System.Drawing.Point]::new($bigStartX, $bigStartY + $bigSpacingY*9))
-$btnDNS.Add_Click({ Handle-DNS })
-$form.Controls.Add($btnDNS)
+$locationChkDisableTeredo = [System.Drawing.Point]::new($checkboxStartX, $checkboxStartY + $checkboxSpacingY*6)
+$chkDisableTeredo = New-TweakCheckbox "Disabilita Teredo" $locationChkDisableTeredo
+$mainPanel.Controls.Add($chkDisableTeredo)
+
+$locationChkKillLMS = [System.Drawing.Point]::new($checkboxStartX, $checkboxStartY + $checkboxSpacingY*7)
+$chkKillLMS = New-TweakCheckbox "Disabilita Intel LMS (vPro)" $locationChkKillLMS
+$mainPanel.Controls.Add($chkKillLMS)
+
+$locationChkDisableWifiSense = [System.Drawing.Point]::new($checkboxStartX, $checkboxStartY + $checkboxSpacingY*8)
+$chkDisableWifiSense = New-TweakCheckbox "Disabilita Wifi-Sense" $locationChkDisableWifiSense
+$mainPanel.Controls.Add($chkDisableWifiSense)
+
+
+# DNS ComboBox - posizionata accanto alla checkbox per "Gestione DNS"
+$locationDnsComboBox = [System.Drawing.Point]::new($checkboxStartX, $checkboxStartY + $checkboxSpacingY * 9)
+$globalDnsComboBox = New-Object System.Windows.Forms.ComboBox
+$globalDnsComboBox.Location = $locationDnsComboBox
+$globalDnsComboBox.Width = 250
+$globalDnsComboBox.Height = 30
+$globalDnsComboBox.Font = $globalFont
+$globalDnsComboBox.ForeColor = $colorText
+$globalDnsComboBox.BackColor = $colorButton # O un colore adatto al tuo tema
+$globalDnsComboBox.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList # Rende il campo non modificabile
+$globalDnsComboBox.Items.AddRange(@("Seleziona opzione DNS", "Google DNS", "Cloudflare DNS", "OpenDNS", "Rimuovi DNS Custom"))
+$globalDnsComboBox.SelectedIndex = 0 # Seleziona l'elemento di placeholder
+
+$mainPanel.Controls.Add($globalDnsComboBox)
+
+# Il pulsante Applica Selezionati dovrà ora gestire anche l'opzione DNS selezionata dalla ComboBox.
+# Non c'è più una checkbox per Handle-DNS, si basa sulla selezione della ComboBox.
+
+# Pulsante "Applica Selezionati"
+$btnApplySelectedX = $checkboxStartX
+$btnApplySelectedY = $checkboxStartY + $checkboxSpacingY * 10 + 20 # Sposta leggermente più in basso per fare spazio alla ComboBox
+$locationBtnApplySelected = [System.Drawing.Point]::new($btnApplySelectedX, $btnApplySelectedY)
+$btnApplySelected = New-Button "Applica Selezionati" $locationBtnApplySelected 250 60
+$btnApplySelected.Add_Click({
+    if ($globalLogTextBox) { $globalLogTextBox.Clear() }
+    Write-Log "Inizio esecuzione delle operazioni selezionate..."
+    
+    if ($chkRemoveMicrosoftApps.Checked) { Remove-MicrosoftApps }
+    if ($chkRemoveOneDrive.Checked) { Remove-OneDrive }
+    if ($chkDisableCopilot.Checked) { Disable-Copilot }
+    if ($chkRemoveWidgets.Checked) { Remove-Widgets }
+    if ($chkRemoveEdge.Checked) { Remove-Edge }
+    if ($chkDisableServices.Checked) { Invoke-DisattivaServizi }
+    if ($chkDisableTeredo.Checked) { Disable-Teredo }
+    if ($chkKillLMS.Checked) { Kill-LMS }
+    if ($chkDisableWifiSense.Checked) { Disable-WifiSense }
+
+    # CHIAMATA ALLA FUNZIONE DNS BASATA SULLA COMBOBOX
+    if ($globalDnsComboBox.SelectedIndex -ne 0) { 
+        Handle-DNS 
+    } else {
+        Write-Log "Nessuna azione DNS selezionata." "Info"
+    }
+
+    Write-Log "Esecuzione completata."
+})
+$mainPanel.Controls.Add($btnApplySelected)
+
+# Area di Log
+$logX = $checkboxStartX + 280
+$logY = $checkboxStartY
+$logWidth = $mainPanel.Width - $logX - 30 
+$logHeight = $mainPanel.Height - $logY - 30 
+
+$globalLogTextBox = New-Object System.Windows.Forms.TextBox
+$globalLogTextBox.Multiline = $true
+$globalLogTextBox.ReadOnly = $true
+$globalLogTextBox.ScrollBars = "Vertical"
+$globalLogTextBox.BackColor = $colorLogBackground
+$globalLogTextBox.ForeColor = $colorText
+$globalLogTextBox.Font = $logFont
+$globalLogTextBox.Location = [System.Drawing.Point]::new($logX, $logY)
+$globalLogTextBox.Size = [System.Drawing.Size]::new($logWidth, $logHeight)
+$globalLogTextBox.Anchor = "Top, Bottom, Right, Left"
+
+$mainPanel.Controls.Add($globalLogTextBox)
 
 # FINE REGIONE: CREAZIONE FORM PRINCIPALE E LAYOUT
 
