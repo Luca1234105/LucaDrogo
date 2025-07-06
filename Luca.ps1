@@ -350,6 +350,29 @@ function Apply-RegistryTweaks {
 # Per eseguire la funzione:
 Apply-RegistryTweaks
 
+# Funzione per applicare UILockdown
+function Apply-UILockdown {
+    $basePath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender Security Center"
+    $keys = @(
+        "Family options",
+        "Device performance and health",
+        "Account protection"
+    )
+
+    try {
+        foreach ($key in $keys) {
+            $fullPath = Join-Path $basePath $key
+            if (-not (Test-Path $fullPath)) {
+                New-Item -Path $fullPath -Force | Out-Null
+            }
+            New-ItemProperty -Path $fullPath -Name "UILockdown" -PropertyType DWord -Value 1 -Force | Out-Null
+        }
+        [System.Windows.Forms.MessageBox]::Show("Opzioni Famiglia, Prestazioni e Protezione account nascoste con successo.","Successo",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Information)
+    }
+    catch {
+        [System.Windows.Forms.MessageBox]::Show("Errore durante l'applicazione delle modifiche:`n$($_.Exception.Message)","Errore",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Error)
+    }
+}
 
 # CREAZIONE FORM
 
@@ -401,6 +424,9 @@ $btnApplyRegTweaks = New-Button "Applica Modifiche Registro Sicurezza" (New-Obje
 $form.Controls.Add($btnApplyRegTweaks)
 $btnApplyRegTweaks.Add_Click({ Apply-RegistryTweaks })
 
+$btnHideFamilyOptions = New-Button "🔒 Nascondi Opzioni Famiglia" (New-Object System.Drawing.Point(120,420))
+$form.Controls.Add($btnHideFamilyOptions)
+$btnHideFamilyOptions.Add_Click({ Apply-UILockdown })
 
 # Mostra finestra
 [void]$form.ShowDialog()
