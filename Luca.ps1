@@ -282,10 +282,19 @@ function Toggle-CustomVisualEffects {
 
         # Leggi valore attuale VisualFXSetting, default 0 se non esiste
         $currentVisualFX = 0
-        if (Test-Path $regPathVisualFX) {
-            $currentVisualFX = Get-ItemPropertyValue -Path $regPathVisualFX -Name VisualFXSetting -ErrorAction SilentlyContinue
-            if ($null -eq $currentVisualFX) { $currentVisualFX = 0 }
-        }
+if (Test-Path $regPathVisualFX) {
+    try {
+        $currentVisualFX = Get-ItemPropertyValue -Path $regPathVisualFX -Name VisualFXSetting -ErrorAction Stop
+    } catch {
+        # La proprietà non esiste, crea la chiave con valore di default
+        New-ItemProperty -Path $regPathVisualFX -Name VisualFXSetting -Value 0 -PropertyType DWord -Force | Out-Null
+        $currentVisualFX = 0
+    }
+} else {
+    New-Item -Path $regPathVisualFX -Force | Out-Null
+    New-ItemProperty -Path $regPathVisualFX -Name VisualFXSetting -Value 0 -PropertyType DWord -Force | Out-Null
+}
+
 
         if ($currentVisualFX -eq 3) {
             # Se modalità personalizzata è attiva, allora disabilita (torna a default)
