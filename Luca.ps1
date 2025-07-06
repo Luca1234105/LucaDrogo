@@ -88,13 +88,22 @@ function Remove-MicrosoftApps {
         "Microsoft.ZuneMusic",
         "MicrosoftCorporationII.QuickAssist",
         "MSTeams",
-        "Microsoft.WindowsAlarms"    # <-- Aggiunto Orologio
+        "Microsoft.WindowsAlarms"
     )
     foreach ($app in $apps) {
         try {
             Get-AppxPackage -AllUsers -Name $app | Remove-AppxPackage -ErrorAction SilentlyContinue
         } catch {}
     }
+
+    # Rimuove la cartella Accessibility nel menu Start se esiste
+    $accessibilityPath = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Accessibility"
+    if (Test-Path $accessibilityPath) {
+        try {
+            Remove-Item -LiteralPath $accessibilityPath -Recurse -Force -ErrorAction SilentlyContinue
+        } catch {}
+    }
+
     [System.Windows.Forms.MessageBox]::Show("Rimozione app Microsoft completata!","Successo",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Information)
 }
 
