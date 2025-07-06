@@ -96,18 +96,38 @@ function Remove-MicrosoftApps {
         } catch {}
     }
 
-    # Comando batch da eseguire
-    $batchCmd = 'if exist "%APPDATA%\Microsoft\Windows\Start Menu\Programs\Accessibility" rd /s /q "%APPDATA%\Microsoft\Windows\Start Menu\Programs\Accessibility"'
+    # Percorso cartella Accessibility
+    $accessibilityPath = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Accessibility"
 
-    # Crea un file batch temporaneo
-    $tempBat = [IO.Path]::Combine([IO.Path]::GetTempPath(), "RemoveAccessibility.bat")
-    Set-Content -Path $tempBat -Value $batchCmd -Encoding ASCII
+    if (Test-Path $accessibilityPath) {
 
-    # Esegui il batch con Start-Process e aspetta completamento
-    Start-Process -FilePath $tempBat -Verb RunAs -Wait
+        # Rimuove attributi sola lettura e sistema a tutti i file e cartelle
+        Get-ChildItem -LiteralPath $accessibilityPath -Recurse -Force | ForEach-Object {
+            try { $_.Attributes = 'Normal' } catch {}
+        }
+
+        # Prova a rimuovere con Remove-Item
+        try {
+            Remove-Item -LiteralPath $accessibilityPath -Recurse -Force -ErrorAction Stop
+            Write-Host "Cartella Accessibility rimossa con Remove-Item."
+        } catch {
+            Write-Warning "Remove-Item fallito: $_"
+            # Ultima risorsa: prova a rimuovere con cmd
+            $cmd = "rd /s /q `"$accessibilityPath`""
+            Start-Process -FilePath cmd.exe -ArgumentList "/c $cmd" -Wait
+            if (-not (Test-Path $accessibilityPath)) {
+                Write-Host "Cartella Accessibility rimossa con cmd."
+            } else {
+                Write-Warning "Impossibile rimuovere la cartella Accessibility."
+            }
+        }
+    } else {
+        Write-Host "Cartella Accessibility non trovata."
+    }
 
     [System.Windows.Forms.MessageBox]::Show("Rimozione app Microsoft completata!","Successo",[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Information)
 }
+
 
 function Remove-OneDrive {
     Write-Host "Rimuovo OneDrive..."
