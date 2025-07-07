@@ -810,7 +810,7 @@ exit /b
 }
 
 function Invoke-PowerOptimizations {
-    Function Invoke-WPFUltimatePerformance {
+
     <#
 
     .SYNOPSIS
