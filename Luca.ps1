@@ -203,10 +203,7 @@ function Invoke-HardcoreTweaks {
             reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\SettingSync\Groups\Language" /t REG_DWORD /v "Enabled" /d 0 /f
         }},
         @{ Name = "Disabilito Activity Feed"; Cmd = { reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\System" /v "EnableActivityFeed" /d "0" /t REG_DWORD /f } },
-        @{ Name = "Disabilito Notifiche"; Cmd = { 
-            reg add "HKCU\Software\Policies\Microsoft\Windows\Explorer" /v "DisableNotificationCenter" /d "1" /t REG_DWORD /f
-            reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\PushNotifications" /v "ToastEnabled" /d "0" /t REG_DWORD /f
-        }},
+        
         @{ Name = "Disabilito Registrazione Schermo Xbox"; Cmd = {
             reg add "HKCU\System\GameConfigStore" /v "GameDVR_Enabled" /t REG_DWORD /d 0 /f
             reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\GameDVR" /v "AllowGameDVR" /t REG_DWORD /d 0 /f
@@ -399,11 +396,8 @@ function Invoke-HardcoreTweaks {
         }},
         @{ Name = "Disabilito Ibernazione"; Cmd = { powercfg.exe /hibernate off } },
         @{ Name = "Aggiungo 'Termina attività' al menu contestuale della Taskbar"; Cmd = { reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarDeveloperSettings" /v "TaskbarEndTask" /t REG_DWORD /d "1" /f } },
-        @{ Name = "Imposto Menu contestuale classico (Windows 10 style)"; Cmd = {
-            reg add "HKCU\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32" /f /ve
-            reg add "HKCU\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32" /ve /t "REG_SZ" /d "" /f
-        }},
-        @{ Name = "Abilito Dark Mode"; Cmd = {
+        
+      @{ Name = "Abilito Dark Mode"; Cmd = {
             reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize" /v "AppsUseLightTheme" /t REG_DWORD /d 0 /f
             reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize" /v "SystemUsesLightTheme" /t REG_DWORD /d 0 /f
         }},
