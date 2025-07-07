@@ -809,6 +809,52 @@ exit /b
     }
 }
 
+# REGIONE: NUOVA FUNZIONE PER OTTIMIZZAZIONI POWERCFG
+function Invoke-PowerOptimizations {
+    Write-Log "Avvio ottimizzazioni energetiche avanzate..."
+    try {
+        # Controllo privilegi amministrativi
+        $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+        if (-not $isAdmin) {
+            Write-Log "Errore: Questo script deve essere eseguito come amministratore." "Error"
+            [System.Windows.Forms.MessageBox]::Show("❌ Devi eseguire questo script come amministratore.", "Errore", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+            return
+        }
+
+        Write-Log "⚡ Attivazione del profilo 'Prestazioni elevate'..."
+
+        # Verifica se il piano "Ultimate Performance" esiste, altrimenti lo crea
+        $ultimatePerformance = powercfg -list | Select-String -Pattern 'e9a42b02-d5df-448d-aa00-03f14749eb61'
+        if (-not $ultimatePerformance) {
+            Write-Log "Creazione del piano Ultimate Performance..."
+            powercfg -duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61 | Out-Null
+        }
+
+        # Attiva il piano Ultimate Performance
+        $ultimatePlanGUID = (powercfg -list | Select-String -Pattern 'Ultimate Performance').Line.Split()[3]
+        if ($ultimatePlanGUID) {
+            powercfg -setactive $ultimatePlanGUID | Out-Null
+            Write-Log "✅ Profilo 'Ultimate Performance' attivato."
+        } else {
+            Write-Log "Impossibile trovare il GUID di Ultimate Performance." "Error"
+            throw "Errore nell'attivazione del piano Ultimate Performance."
+        }
+
+        # Imposta timeout schermo su "mai" (0) per AC e DC
+        powercfg /change monitor-timeout-ac 0 | Out-Null
+        powercfg /change monitor-timeout-dc 0 | Out-Null
+        Write-Log "✅ Timeout schermo impostato su 'mai' per AC e DC."
+
+        [System.Windows.Forms.MessageBox]::Show("✅ Ottimizzazioni energetiche completate. Riavvia il PC per applicare tutti i cambiamenti.", "Successo", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+    } catch {
+        $errorMessage = $_.Exception.Message
+        Write-Log "Errore durante le—whoops, something broke! Let's debug this mess: $errorMessage" "Error"
+        [System.Windows.Forms.MessageBox]::Show("❌ Errore durante le ottimizzazioni energetiche: $errorMessage", "Errore", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+    }
+}
+# FINE REGIONE: NUOVA FUNZIONE PER OTTIMIZZAZIONI POWERCFG
+
+
 function Invoke-WinUtilDarkMode {
     Write-Log "Toggle Dark Mode..."
     try {
@@ -1098,6 +1144,12 @@ $locationBtnHardcoreTweaks = [System.Drawing.Point]::new($smallStartX, $smallSta
 $btnHardcoreTweaks = New-SmallButton "Hardcore Tweaks" $locationBtnHardcoreTweaks
 $btnHardcoreTweaks.Add_Click({ Invoke-HardcoreTweaks })
 $sidebar.Controls.Add($btnHardcoreTweaks)
+
+# Aggiunta del nuovo pulsante nella sidebar
+$locationBtnPowerOptimizations = [System.Drawing.Point]::new($smallStartX, $smallStartY + $smallSpacingY*7)
+$btnPowerOptimizations = New-SmallButton "Power Optimizations" $locationBtnPowerOptimizations
+$btnPowerOptimizations.Add_Click({ Invoke-PowerOptimizations })
+$sidebar.Controls.Add($btnPowerOptimizations)
 
 
 # Area Principale per Checkbox e Log
