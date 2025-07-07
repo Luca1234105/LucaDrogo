@@ -810,71 +810,57 @@ exit /b
 }
 
 function Invoke-PowerOptimizations {
-    Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+    Function Invoke-WPFUltimatePerformance {
+    <#
 
-    function Write-Log {
-        param (
-            [string]$Message,
-            [ValidateSet("Info", "Warning", "Error")][string]$Level = "Info"
-        )
-        $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-        switch ($Level) {
-            "Info"    { Write-Host "$timestamp [INFO] $Message" -ForegroundColor White }
-            "Warning" { Write-Host "$timestamp [WARNING] $Message" -ForegroundColor Yellow }
-            "Error"   { Write-Host "$timestamp [ERROR] $Message" -ForegroundColor Red }
-        }
-    }
+    .SYNOPSIS
+        Creates or removes the Ultimate Performance power scheme
 
-    Write-Log "🔧 Avvio ottimizzazioni energetiche..."
+    .PARAMETER State
+        Indicates whether to enable or disable the Ultimate Performance power scheme
 
+    #>
+    param($State)
     try {
-        # Controllo privilegi amministrativi
-        $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-        if (-not $isAdmin) {
-            Write-Log "❌ Devi eseguire questo script come amministratore." "Error"
-            [System.Windows.Forms.MessageBox]::Show("❌ Devi eseguire questo script come amministratore.", "Errore", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
-            return
+        # Check if Ultimate Performance plan is installed
+        $ultimatePlan = powercfg -list | Select-String -Pattern "Ultimate Performance"
+        if($state -eq "Enable") {
+            if ($ultimatePlan) {
+                Write-Host "Ultimate Performance plan is already installed."
+            } else {
+                Write-Host "Installing Ultimate Performance plan..."
+                powercfg -duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61
+                Write-Host "> Ultimate Performance plan installed."
+            }
+
+            # Set the Ultimate Performance plan as active
+            $ultimatePlanGUID = (powercfg -list | Select-String -Pattern "Ultimate Performance").Line.Split()[3]
+            powercfg -setactive $ultimatePlanGUID
+
+            Write-Host "Ultimate Performance plan is now active."
+
+
         }
+        elseif($state -eq "Disable") {
+            if ($ultimatePlan) {
+                # Extract the GUID of the Ultimate Performance plan
+                $ultimatePlanGUID = $ultimatePlan.Line.Split()[3]
 
-        # GUID del piano Ultimate Performance
-        $ultimateGUID = "e9a42b02-d5df-448d-aa00-03f14749eb61"
+                # Set a different power plan as active before deleting the Ultimate Performance plan
+                $balancedPlanGUID = (powercfg -list | Select-String -Pattern "Balanced").Line.Split()[3]
+                powercfg -setactive $balancedPlanGUID
 
-        # Verifica se il piano esiste già
-        $exists = powercfg -list | Select-String $ultimateGUID
-        if (-not $exists) {
-            Write-Log "⚙️ Piano Ultimate Performance non trovato, lo creo..."
-            powercfg -duplicatescheme $ultimateGUID | Out-Null
-        } else {
-            Write-Log "✔️ Piano Ultimate Performance già esistente."
+                # Delete the Ultimate Performance plan
+                powercfg -delete $ultimatePlanGUID
+
+                Write-Host "Ultimate Performance plan has been uninstalled."
+                Write-Host "> Balanced plan is now active."
+            } else {
+                Write-Host "Ultimate Performance plan is not installed."
+            }
         }
-
-        # Attiva direttamente il GUID (senza cercare per nome)
-        powercfg -setactive $ultimateGUID | Out-Null
-        Write-Log "✅ Profilo 'Ultimate Performance' attivato (via GUID)."
-
-        # Altri tweak energetici
-        powercfg /change monitor-timeout-ac 0 | Out-Null
-        powercfg /change monitor-timeout-dc 0 | Out-Null
-        Write-Log "✅ Timeout monitor su 'mai' (AC/DC)."
-
-        powercfg /change disk-timeout-ac 0 | Out-Null
-        powercfg /change disk-timeout-dc 0 | Out-Null
-        Write-Log "✅ Timeout disco su 'mai' (AC/DC)."
-
-        powercfg /change standby-timeout-ac 0 | Out-Null
-        powercfg /change standby-timeout-dc 0 | Out-Null
-        Write-Log "✅ Sospensione disattivata (AC/DC)."
-
-        powercfg /hibernate off | Out-Null
-        Write-Log "✅ Ibernazione disattivata."
-
-        [System.Windows.Forms.MessageBox]::Show("✅ Ottimizzazioni energetiche completate con successo.`nRiavvia il PC per applicare tutti i cambiamenti.", "Successo", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
-        Write-Log "🎉 Ottimizzazioni completate."
-    }
-    catch {
-        $errorMessage = $_.Exception.Message
-        Write-Log "❌ Errore: $errorMessage" "Error"
-        [System.Windows.Forms.MessageBox]::Show("❌ Errore durante le ottimizzazioni:`n$errorMessage", "Errore", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+    } catch {
+        Write-Warning $psitem.Exception.Message
     }
 }
 
