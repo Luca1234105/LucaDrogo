@@ -810,62 +810,56 @@ exit /b
 }
 
 function Invoke-PowerOptimizations {
+param($State)
 
-    <#
+    Add-Type -AssemblyName System.Windows.Forms
 
-    .SYNOPSIS
-        Creates or removes the Ultimate Performance power scheme
-
-    .PARAMETER State
-        Indicates whether to enable or disable the Ultimate Performance power scheme
-
-    #>
-    param($State)
     try {
-        # Check if Ultimate Performance plan is installed
-        $ultimatePlan = powercfg -list | Select-String -Pattern "e9a42b02-d5df-448d-aa00-03f14749eb61"
-        if($state -eq "Enable") {
+        [System.Windows.Forms.MessageBox]::Show("Funzione invocata con stato: $State", "Debug")
+
+        # Verifica se il piano Ultimate Performance è presente (tramite GUID)
+        $ultimateGUID = "e9a42b02-d5df-448d-aa00-03f14749eb61"
+        $ultimatePlan = powercfg -list | Select-String -Pattern $ultimateGUID
+
+        if ($State -eq "Enable") {
             if ($ultimatePlan) {
-                Write-Host "Ultimate Performance plan is already installed."
+                [System.Windows.Forms.MessageBox]::Show("Piano Ultimate Performance già installato.", "Info")
             } else {
-                Write-Host "Installing Ultimate Performance plan..."
-                powercfg -duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61
-                Write-Host "> Ultimate Performance plan installed."
+                [System.Windows.Forms.MessageBox]::Show("Installazione piano Ultimate Performance...", "Info")
+                powercfg -duplicatescheme $ultimateGUID | Out-Null
+                [System.Windows.Forms.MessageBox]::Show("Piano Ultimate Performance installato.", "Info")
             }
 
-            # Set the 'Prestazioni eccellenti' plan as active (localized name)
-            $ultimatePlanLine = powercfg -list | Select-String -Pattern "Prestazioni eccellenti"
-            if ($ultimatePlanLine) {
-                $ultimatePlanGUID = $ultimatePlanLine.Line.Split()[3]
-                powercfg -setactive $ultimatePlanGUID
-                Write-Host "Prestazioni eccellenti (Ultimate Performance) plan is now active."
+            # Attiva piano chiamato 'Prestazioni eccellenti' (italiano)
+            $planLine = powercfg -list | Select-String -Pattern "Prestazioni eccellenti"
+            if ($planLine) {
+                $planGUID = $planLine.Line.Split()[3]
+                powercfg -setactive $planGUID
+                [System.Windows.Forms.MessageBox]::Show("Piano 'Prestazioni eccellenti' attivato.", "Successo")
             } else {
-                Write-Host "Could not find the 'Prestazioni eccellenti' power plan."
+                [System.Windows.Forms.MessageBox]::Show("Impossibile trovare il piano 'Prestazioni eccellenti'.", "Errore")
             }
-
         }
-        elseif($state -eq "Disable") {
+        elseif ($State -eq "Disable") {
             if ($ultimatePlan) {
-                # Extract the GUID of the Ultimate Performance plan
                 $ultimatePlanGUID = $ultimatePlan.Line.Split()[3]
-
-                # Set a different power plan as active before deleting the Ultimate Performance plan
-                $balancedPlanGUID = (powercfg -list | Select-String -Pattern "Balanced|Bilanciato").Line.Split()[3]
+                $balancedPlanLine = powercfg -list | Select-String -Pattern "Balanced|Bilanciato"
+                $balancedPlanGUID = $balancedPlanLine.Line.Split()[3]
                 powercfg -setactive $balancedPlanGUID
-
-                # Delete the Ultimate Performance plan
                 powercfg -delete $ultimatePlanGUID
-
-                Write-Host "Ultimate Performance plan has been uninstalled."
-                Write-Host "> Balanced plan is now active."
+                [System.Windows.Forms.MessageBox]::Show("Piano Ultimate Performance disinstallato. Piano Bilanciato attivato.", "Info")
             } else {
-                Write-Host "Ultimate Performance plan is not installed."
+                [System.Windows.Forms.MessageBox]::Show("Piano Ultimate Performance non installato.", "Info")
             }
         }
-    } catch {
-        Write-Warning $psitem.Exception.Message
+    }
+    catch {
+        $msg = $_.Exception.Message
+        [System.Windows.Forms.MessageBox]::Show("Errore: $msg", "Errore")
     }
 }
+
+    
 
     
 function Invoke-WinUtilDarkMode {
