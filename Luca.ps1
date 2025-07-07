@@ -812,7 +812,6 @@ exit /b
 function Invoke-PowerOptimizations {
     Add-Type -AssemblyName System.Windows.Forms, System.Drawing
 
-    # Funzione locale per il log
     function Write-Log {
         param (
             [string]$Message,
@@ -826,63 +825,50 @@ function Invoke-PowerOptimizations {
         }
     }
 
-    Write-Log "🔧 Avvio ottimizzazioni energetiche avanzate..."
+    Write-Log "🔧 Avvio ottimizzazioni energetiche..."
 
     try {
-        # Verifica privilegi amministrativi
+        # Controllo privilegi amministrativi
         $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
         if (-not $isAdmin) {
-            Write-Log "❌ Questo script deve essere eseguito come amministratore." "Error"
+            Write-Log "❌ Devi eseguire questo script come amministratore." "Error"
             [System.Windows.Forms.MessageBox]::Show("❌ Devi eseguire questo script come amministratore.", "Errore", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
             return
         }
 
-        # Verifica se il piano Ultimate Performance esiste
+        # GUID del piano Ultimate Performance
         $ultimateGUID = "e9a42b02-d5df-448d-aa00-03f14749eb61"
-        $existingPlan = powercfg -list | Select-String -Pattern $ultimateGUID
 
-        if (-not $existingPlan) {
-            Write-Log "⚙️ Piano Ultimate Performance non presente. Lo creo..."
+        # Verifica se il piano esiste già
+        $exists = powercfg -list | Select-String $ultimateGUID
+        if (-not $exists) {
+            Write-Log "⚙️ Piano Ultimate Performance non trovato, lo creo..."
             powercfg -duplicatescheme $ultimateGUID | Out-Null
         } else {
-            Write-Log "✔️ Piano Ultimate Performance già presente."
+            Write-Log "✔️ Piano Ultimate Performance già esistente."
         }
 
-        # Recupera il GUID dalla lista
-        $ultimateLine = powercfg -list | Select-String -Pattern "Ultimate Performance"
-        if ($ultimateLine) {
-            $guid = ($ultimateLine.Line -split '\s+')[3]
-            if ($guid) {
-                powercfg -setactive $guid | Out-Null
-                Write-Log "✅ Profilo 'Ultimate Performance' attivato."
-            } else {
-                throw "GUID non trovato nella riga: $($ultimateLine.Line)"
-            }
-        } else {
-            throw "Piano 'Ultimate Performance' non trovato nella lista."
-        }
+        # Attiva direttamente il GUID (senza cercare per nome)
+        powercfg -setactive $ultimateGUID | Out-Null
+        Write-Log "✅ Profilo 'Ultimate Performance' attivato (via GUID)."
 
-        # Timeout monitor: mai
+        # Altri tweak energetici
         powercfg /change monitor-timeout-ac 0 | Out-Null
         powercfg /change monitor-timeout-dc 0 | Out-Null
-        Write-Log "✅ Timeout schermo impostato su 'mai' (AC e DC)."
+        Write-Log "✅ Timeout monitor su 'mai' (AC/DC)."
 
-        # Timeout disco: mai
         powercfg /change disk-timeout-ac 0 | Out-Null
         powercfg /change disk-timeout-dc 0 | Out-Null
-        Write-Log "✅ Timeout disco impostato su 'mai' (AC e DC)."
+        Write-Log "✅ Timeout disco su 'mai' (AC/DC)."
 
-        # Sospensione automatica: disattivata
         powercfg /change standby-timeout-ac 0 | Out-Null
         powercfg /change standby-timeout-dc 0 | Out-Null
-        Write-Log "✅ Sospensione automatica disattivata."
+        Write-Log "✅ Sospensione disattivata (AC/DC)."
 
-        # Ibernazione disattivata
         powercfg /hibernate off | Out-Null
         Write-Log "✅ Ibernazione disattivata."
 
-        # Successo finale
-        [System.Windows.Forms.MessageBox]::Show("✅ Ottimizzazioni energetiche completate con successo.`nRiavvia il PC per applicare tutto.", "Successo", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+        [System.Windows.Forms.MessageBox]::Show("✅ Ottimizzazioni energetiche completate con successo.`nRiavvia il PC per applicare tutti i cambiamenti.", "Successo", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
         Write-Log "🎉 Ottimizzazioni completate."
     }
     catch {
@@ -891,7 +877,6 @@ function Invoke-PowerOptimizations {
         [System.Windows.Forms.MessageBox]::Show("❌ Errore durante le ottimizzazioni:`n$errorMessage", "Errore", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
     }
 }
-
 
 function Invoke-WinUtilDarkMode {
     Write-Log "Toggle Dark Mode..."
