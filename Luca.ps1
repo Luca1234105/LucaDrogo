@@ -809,21 +809,37 @@ exit /b
     }
 }
 
-# REGIONE: NUOVA FUNZIONE PER OTTIMIZZAZIONI POWERCFG
 function Invoke-PowerOptimizations {
+    Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+
+    # Funzione di log locale alla funzione principale
+    function Write-Log {
+        param (
+            [string]$Message,
+            [ValidateSet("Info", "Warning", "Error")][string]$Level = "Info"
+        )
+        $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+        switch ($Level) {
+            "Info"    { Write-Host "$timestamp [INFO] $Message" -ForegroundColor White }
+            "Warning" { Write-Host "$timestamp [WARNING] $Message" -ForegroundColor Yellow }
+            "Error"   { Write-Host "$timestamp [ERROR] $Message" -ForegroundColor Red }
+        }
+    }
+
     Write-Log "Avvio ottimizzazioni energetiche avanzate..."
+
     try {
         # Controllo privilegi amministrativi
         $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
         if (-not $isAdmin) {
-            Write-Log "Errore: Questo script deve essere eseguito come amministratore." "Error"
+            Write-Log "Questo script deve essere eseguito come amministratore." "Error"
             [System.Windows.Forms.MessageBox]::Show("❌ Devi eseguire questo script come amministratore.", "Errore", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
             return
         }
 
-        Write-Log "⚡ Attivazione del profilo 'Prestazioni elevate'..."
+        Write-Log "⚡ Attivazione del profilo 'Ultimate Performance'..."
 
-        # Verifica se il piano "Ultimate Performance" esiste, altrimenti lo crea
+        # Verifica se il piano Ultimate Performance esiste, altrimenti lo crea
         $ultimatePerformance = powercfg -list | Select-String -Pattern 'e9a42b02-d5df-448d-aa00-03f14749eb61'
         if (-not $ultimatePerformance) {
             Write-Log "Creazione del piano Ultimate Performance..."
@@ -845,14 +861,29 @@ function Invoke-PowerOptimizations {
         powercfg /change monitor-timeout-dc 0 | Out-Null
         Write-Log "✅ Timeout schermo impostato su 'mai' per AC e DC."
 
+        # Imposta il timeout del disco su 0 (mai) per AC e DC
+        powercfg /change disk-timeout-ac 0 | Out-Null
+        powercfg /change disk-timeout-dc 0 | Out-Null
+        Write-Log "✅ Timeout disco impostato su 'mai' per AC e DC."
+
+        # Disattiva sospensione automatica
+        powercfg /change standby-timeout-ac 0 | Out-Null
+        powercfg /change standby-timeout-dc 0 | Out-Null
+        Write-Log "✅ Sospensione automatica disattivata."
+
+        # Disattiva sospensione ibrida
+        powercfg /hibernate off | Out-Null
+        Write-Log "✅ Ibernazione disattivata."
+
+        # Conferma finale
         [System.Windows.Forms.MessageBox]::Show("✅ Ottimizzazioni energetiche completate. Riavvia il PC per applicare tutti i cambiamenti.", "Successo", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
-    } catch {
+    }
+    catch {
         $errorMessage = $_.Exception.Message
-        Write-Log "Errore durante le—whoops, something broke! Let's debug this mess: $errorMessage" "Error"
-        [System.Windows.Forms.MessageBox]::Show("❌ Errore durante le ottimizzazioni energetiche: $errorMessage", "Errore", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+        Write-Log "Errore durante l'ottimizzazione energetica: $errorMessage" "Error"
+        [System.Windows.Forms.MessageBox]::Show("❌ Errore durante le ottimizzazioni energetiche:`n$errorMessage", "Errore", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
     }
 }
-# FINE REGIONE: NUOVA FUNZIONE PER OTTIMIZZAZIONI POWERCFG
 
 
 function Invoke-WinUtilDarkMode {
