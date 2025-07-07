@@ -823,7 +823,7 @@ function Invoke-PowerOptimizations {
     param($State)
     try {
         # Check if Ultimate Performance plan is installed
-        $ultimatePlan = powercfg -list | Select-String -Pattern "Ultimate Performance"
+        $ultimatePlan = powercfg -list | Select-String -Pattern "e9a42b02-d5df-448d-aa00-03f14749eb61"
         if($state -eq "Enable") {
             if ($ultimatePlan) {
                 Write-Host "Ultimate Performance plan is already installed."
@@ -833,12 +833,15 @@ function Invoke-PowerOptimizations {
                 Write-Host "> Ultimate Performance plan installed."
             }
 
-            # Set the Ultimate Performance plan as active
-            $ultimatePlanGUID = (powercfg -list | Select-String -Pattern "Ultimate Performance").Line.Split()[3]
-            powercfg -setactive $ultimatePlanGUID
-
-            Write-Host "Ultimate Performance plan is now active."
-
+            # Set the 'Prestazioni eccellenti' plan as active (localized name)
+            $ultimatePlanLine = powercfg -list | Select-String -Pattern "Prestazioni eccellenti"
+            if ($ultimatePlanLine) {
+                $ultimatePlanGUID = $ultimatePlanLine.Line.Split()[3]
+                powercfg -setactive $ultimatePlanGUID
+                Write-Host "Prestazioni eccellenti (Ultimate Performance) plan is now active."
+            } else {
+                Write-Host "Could not find the 'Prestazioni eccellenti' power plan."
+            }
 
         }
         elseif($state -eq "Disable") {
@@ -847,7 +850,7 @@ function Invoke-PowerOptimizations {
                 $ultimatePlanGUID = $ultimatePlan.Line.Split()[3]
 
                 # Set a different power plan as active before deleting the Ultimate Performance plan
-                $balancedPlanGUID = (powercfg -list | Select-String -Pattern "Balanced").Line.Split()[3]
+                $balancedPlanGUID = (powercfg -list | Select-String -Pattern "Balanced|Bilanciato").Line.Split()[3]
                 powercfg -setactive $balancedPlanGUID
 
                 # Delete the Ultimate Performance plan
@@ -864,6 +867,7 @@ function Invoke-PowerOptimizations {
     }
 }
 
+    
 function Invoke-WinUtilDarkMode {
     Write-Log "Toggle Dark Mode..."
     try {
