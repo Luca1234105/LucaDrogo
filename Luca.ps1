@@ -15,7 +15,7 @@
 
 .NOTES
     Autore: Gemini
-    Versione: 2.9
+    Versione: 3.0
     Data: 12 luglio 2025
 
     IMPORTANTE:
@@ -179,8 +179,8 @@ $RegistryConfigurations = @(
         Name = "Disabilita Cronologia Appunti"
         Description = "Disattiva la cronologia multi-elemento degli appunti e la sincronizzazione degli appunti tra dispositivi."
         RegistryActions = @(
-            @{ Path = "HKLM:\Software\Policies\Microsoft\Windows\System"; Name = "AllowClipboardHistory"; Value = 0; Type = "DWord"; Action = "Set" },
-            @{ Path = "HKLM:\Software\Policies\Microsoft\Windows\System"; Name = "AllowCrossDeviceClipboard"; Value = 0; Type = "DWord"; Action = "Set" },
+            @{ Path = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System"; Name = "AllowClipboardHistory"; Value = 0; Type = "DWord"; Action = "Set" },
+            @{ Path = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System"; Name = "AllowCrossDeviceClipboard"; Value = 0; Type = "DWord"; Action = "Set" },
             @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\SmartActionPlatform\SmartClipboard"; Name = "Disabled"; Value = 1; Type = "DWord"; Action = "Set" }
         )
     },
@@ -648,218 +648,6 @@ $RegistryConfigurations = @(
         )
     },
     @{
-        Name = "Disinstalla: Clipchamp"
-        Description = "Disinstalla l'applicazione Clipchamp."
-        RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*Clipchamp*" }
-        )
-    },
-    @{
-        Name = "Disinstalla: Notizie di Bing"
-        Description = "Disinstalla l'applicazione Notizie di Bing."
-        RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*BingNews*" }
-        )
-    },
-    @{
-        Name = "Disinstalla: Ricerca Bing"
-        Description = "Disinstalla l'applicazione Ricerca Bing."
-        RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*BingSearch*" }
-        )
-    },
-    @{
-        Name = "Disinstalla: Meteo di Bing"
-        Description = "Disinstalla l'applicazione Meteo di Bing."
-        RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*BingWeather*" }
-        )
-    },
-    @{
-        Name = "Disinstalla: App Gaming (Xbox)"
-        Description = "Disinstalla l'applicazione Xbox Gaming."
-        RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*GamingApp*" }
-        )
-    },
-    @{
-        Name = "Disinstalla: Ottieni Guida"
-        Description = "Disinstalla l'applicazione Ottieni Guida."
-        RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*GetHelp*" }
-        )
-    },
-    @{
-        Name = "Disinstalla: Hub di Office"
-        Description = "Disinstalla l'applicazione Hub di Office."
-        RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*MicrosoftOfficeHub*" }
-        )
-    },
-    @{
-        Name = "Disinstalla: Microsoft Solitaire Collection"
-        Description = "Disinstalla l'applicazione Microsoft Solitaire Collection."
-        RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*MicrosoftSolitaireCollection*" }
-        )
-    },
-    @{
-        Name = "Disinstalla: Sticky Notes"
-        Description = "Disinstalla l'applicazione Sticky Notes."
-        RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*MicrosoftStickyNotes*" }
-        )
-    },
-    @{
-        Name = "Disinstalla: Outlook per Windows"
-        Description = "Disinstalla l'applicazione Outlook per Windows."
-        RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*OutlookForWindows*" }
-        )
-    },
-    @{
-        Name = "Disinstalla: Paint"
-        Description = "Disinstalla l'applicazione Paint."
-        RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*Paint*" }
-        )
-    },
-    @{
-        Name = "Disinstalla: Power Automate Desktop"
-        Description = "Disinstalla l'applicazione Power Automate Desktop."
-        RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*PowerAutomateDesktop*" }
-        )
-    },
-    @{
-        Name = "Disinstalla: Cattura e Annota"
-        Description = "Disinstalla l'applicazione Cattura e Annota (Screen Sketch)."
-        RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*ScreenSketch*" }
-        )
-    },
-    @{
-        Name = "Disinstalla: To Do"
-        Description = "Disinstalla l'applicazione Microsoft To Do."
-        RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*Todos*" }
-        )
-    },
-    @{
-        Name = "Disinstalla: Dev Home"
-        Description = "Disinstalla l'applicazione Dev Home."
-        RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*DevHome*" }
-        )
-    },
-    @{
-        Name = "Disinstalla: Fotocamera Windows"
-        Description = "Disinstalla l'applicazione Fotocamera di Windows."
-        RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*WindowsCamera*" }
-        )
-    },
-    @{
-        Name = "Disinstalla: Hub di Feedback"
-        Description = "Disinstalla l'applicazione Hub di Feedback di Windows."
-        RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*WindowsFeedbackHub*" }
-        )
-    },
-    @{
-        Name = "Disinstalla: Registratore Vocale"
-        Description = "Disinstalla l'applicazione Registratore Vocale di Windows."
-        RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*WindowsSoundRecorder*" }
-        )
-    },
-    @{
-        Name = "Disinstalla: Terminale Windows"
-        Description = "Disinstalla l'applicazione Terminale Windows."
-        RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*WindowsTerminal*" }
-        )
-    },
-    @{
-        Name = "Disinstalla: Xbox TCUI"
-        Description = "Disinstalla l'applicazione Xbox TCUI."
-        RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*Xbox.TCUI*" }
-        )
-    },
-    @{
-        Name = "Disinstalla: Xbox Gaming Overlay"
-        Description = "Disinstalla l'applicazione Xbox Gaming Overlay."
-        RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*XboxGamingOverlay*" }
-        )
-    },
-    @{
-        Name = "Disinstalla: Xbox Identity Provider"
-        Description = "Disinstalla l'applicazione Xbox Identity Provider."
-        RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*XboxIdentityProvider*" }
-        )
-    },
-    @{
-        Name = "Disinstalla: Xbox Speech To Text Overlay"
-        Description = "Disinstalla l'applicazione Xbox Speech To Text Overlay."
-        RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*XboxSpeechToTextOverlay*" }
-        )
-    },
-    @{
-        Name = "Disinstalla: Il tuo telefono"
-        Description = "Disinstalla l'applicazione Il tuo telefono (Your Phone)."
-        RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*YourPhone*" }
-        )
-    },
-    @{
-        Name = "Disinstalla: Groove Musica"
-        Description = "Disinstalla l'applicazione Groove Musica (ZuneMusic)."
-        RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*ZuneMusic*" }
-        )
-    },
-    @{
-        Name = "Disinstalla: Assistenza Rapida"
-        Description = "Disinstalla l'applicazione Assistenza Rapida (Quick Assist)."
-        RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*QuickAssist*" }
-        )
-    },
-    @{
-        Name = "Disinstalla: Microsoft Teams (Preinstallato)"
-        Description = "Disinstalla l'applicazione Microsoft Teams preinstallata."
-        RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*MSTeams*" }
-        )
-    },
-    @{
-        Name = "Disinstalla: Orologio"
-        Description = "Disinstalla l'applicazione Orologio e Sveglie di Windows."
-        RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*WindowsAlarms*" } # Usiamo il PackageFamilyName per maggiore compatibilità
-        )
-    },
-    @{
-        Name = "Disinstalla: Copilot"
-        Description = "Disinstalla l'applicazione Copilot di Windows e disabilita le relative funzionalità."
-        RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*MicrosoftWindows.Client.AI.Copilot*" },
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*Microsoft.Windows.Copilot*" }, # Pattern alternativi
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*Microsoft.CoPilot*" }, # Aggiunto da script utente
-            @{ Path = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsCopilot"; Name = "TurnOffWindowsCopilot"; Value = 1; Type = "DWord"; Action = "Set" },
-            @{ Path = "HKCU:\Software\Policies\Microsoft\Windows\WindowsCopilot"; Name = "TurnOffWindowsCopilot"; Value = 1; Type = "DWord"; Action = "Set" },
-            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings"; Name = "AutoOpenCopilotLargeScreens"; Value = 0; Type = "DWord"; Action = "Set" },
-            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"; Name = "ShowCopilotButton"; Value = 0; Type = "DWord"; Action = "Set" },
-            @{ Path = "HKCU:\Software\Microsoft\Windows\Shell\Copilot\BingChat"; Name = "IsUserEligible"; Value = 0; Type = "DWord"; Action = "Set" },
-            @{ Path = "HKLM:\SOFTWARE\Policies\Microsoft\Edge"; Name = "HubsSidebarEnabled"; Value = 0; Type = "DWord"; Action = "Set" }, # Aggiunto da script utente
-            @{ Action = "RunCommand"; Command = "taskkill /f /im explorer.exe & start explorer" } # Riavvia Explorer per applicare le modifiche
-        )
-    },
-    @{
         Name = "Disabilita Attività Pianificate Inutili"
         Description = "Disabilita varie attività pianificate di sistema relative a telemetria, esperienza utente, feedback, sicurezza familiare, aggiornamenti e OneDrive, per migliorare privacy e prestazioni."
         RegistryActions = @(
@@ -944,6 +732,50 @@ $RegistryConfigurations = @(
             @{ Action = "DisableService"; ServiceName = "WMPNetworkSvc" },
             @{ Action = "DisableService"; ServiceName = "wercplsupport" },
             @{ Action = "DisableService"; ServiceName = "wcncsvc" }
+        )
+    },
+    @{
+        Name = "Disinstalla App Predefinite (Bloatware)"
+        Description = "Disinstalla una selezione di applicazioni predefinite di Windows che sono spesso considerate bloatware."
+        RegistryActions = @(
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*Clipchamp*" },
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*BingNews*" },
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*BingSearch*" },
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*BingWeather*" },
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*GamingApp*" },
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*GetHelp*" },
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*MicrosoftOfficeHub*" },
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*MicrosoftSolitaireCollection*" },
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*MicrosoftStickyNotes*" },
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*OutlookForWindows*" },
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*Paint*" },
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*PowerAutomateDesktop*" },
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*ScreenSketch*" },
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*Todos*" },
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*DevHome*" },
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*WindowsCamera*" },
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*WindowsFeedbackHub*" },
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*WindowsSoundRecorder*" },
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*WindowsTerminal*" },
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*Xbox.TCUI*" },
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*XboxGamingOverlay*" },
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*XboxIdentityProvider*" },
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*XboxSpeechToTextOverlay*" },
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*YourPhone*" },
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*ZuneMusic*" },
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*QuickAssist*" },
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*MSTeams*" },
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*WindowsAlarms*" },
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*MicrosoftWindows.Client.AI.Copilot*" },
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*Microsoft.Windows.Copilot*" },
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*Microsoft.CoPilot*" },
+            @{ Path = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsCopilot"; Name = "TurnOffWindowsCopilot"; Value = 1; Type = "DWord"; Action = "Set" },
+            @{ Path = "HKCU:\Software\Policies\Microsoft\Windows\WindowsCopilot"; Name = "TurnOffWindowsCopilot"; Value = 1; Type = "DWord"; Action = "Set" },
+            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings"; Name = "AutoOpenCopilotLargeScreens"; Value = 0; Type = "DWord"; Action = "Set" },
+            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"; Name = "ShowCopilotButton"; Value = 0; Type = "DWord"; Action = "Set" },
+            @{ Path = "HKCU:\Software\Microsoft\Windows\Shell\Copilot\BingChat"; Name = "IsUserEligible"; Value = 0; Type = "DWord"; Action = "Set" },
+            @{ Path = "HKLM:\SOFTWARE\Policies\Microsoft\Edge"; Name = "HubsSidebarEnabled"; Value = 0; Type = "DWord"; Action = "Set" },
+            @{ Action = "RunCommand"; Command = "taskkill /f /im explorer.exe & start explorer" }
         )
     }
 )
