@@ -15,7 +15,7 @@
 
 .NOTES
     Autore: Gemini
-    Versione: 3.0
+    Versione: 3.2
     Data: 12 luglio 2025
 
     IMPORTANTE:
@@ -485,7 +485,13 @@ $RegistryConfigurations = @(
             @{ Path = "HKLM:\SOFTWARE\Policies\Microsoft\Edge"; Name = "TabServicesEnabled"; Value = 0; Type = "DWord"; Action = "Set" },
             @{ Path = "HKLM:\SOFTWARE\Policies\Microsoft\Edge"; Name = "WebWidgetAllowed"; Value = 0; Type = "DWord"; Action = "Set" },
             @{ Path = "HKLM:\SOFTWARE\Policies\Microsoft\Edge"; Name = "WebWidgetIsEnabledOnStartup"; Value = 0; Type = "DWord"; Action = "Set" },
-            @{ Path = "HKLM:\SOFTWARE\Policies\Microsoft\EdgeUpdate"; Name = "CreateDesktopShortcutDefault"; Value = 0; Type = "DWord"; Action = "Set" }
+            @{ Path = "HKLM:\SOFTWARE\Policies\Microsoft\EdgeUpdate"; Name = "CreateDesktopShortcutDefault"; Value = 0; Type = "DWord"; Action = "Set" },
+            @{ Path = "HKLM:\SOFTWARE\Policies\Microsoft\Edge"; Name = "EdgeEnhanceImagesEnabled"; Value = 0; Type = "DWord"; Action = "Set" }, # Aggiunto da input utente
+            @{ Path = "HKLM:\SOFTWARE\Policies\Microsoft\Edge"; Name = "UserFeedbackAllowed"; Value = 0; Type = "DWord"; Action = "Set" }, # Aggiunto da input utente
+            @{ Path = "HKLM:\SOFTWARE\Policies\Microsoft\Edge"; Name = "ConfigureDoNotTrack"; Value = 1; Type = "DWord"; Action = "Set" }, # Aggiornato da input utente
+            @{ Path = "HKLM:\SOFTWARE\Policies\Microsoft\Edge"; Name = "AlternateErrorPagesEnabled"; Value = 0; Type = "DWord"; Action = "Set" }, # Aggiunto da input utente
+            @{ Path = "HKLM:\SOFTWARE\Policies\Microsoft\Edge"; Name = "EdgeAssetDeliveryServiceEnabled"; Value = 0; Type = "DWord"; Action = "Set" }, # Aggiunto da input utente
+            @{ Path = "HKLM:\SOFTWARE\Policies\Microsoft\Edge"; Name = "WalletDonationEnabled"; Value = 0; Type = "DWord"; Action = "Set" } # Aggiunto da input utente
         )
     },
     @{
@@ -735,8 +741,15 @@ $RegistryConfigurations = @(
         )
     },
     @{
+        Name = "Disabilita Sensore di Archiviazione"
+        Description = "Disabilita la funzionalità di Sensore di Archiviazione di Windows, che pulisce automaticamente i file temporanei e il contenuto del cestino."
+        RegistryActions = @(
+            @{ Path = "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\StorageSense\Parameters\StoragePolicy"; Name = "01"; Value = 0; Type = "DWord"; Action = "Set" }
+        )
+    },
+    @{
         Name = "Disinstalla App Predefinite (Bloatware)"
-        Description = "Disinstalla una selezione di applicazioni predefinite di Windows che sono spesso considerate bloatware."
+        Description = "Disinstalla una selezione di applicazioni predefinite di Windows che sono spesso considerate bloatware, inclusa la disabilitazione di Copilot."
         RegistryActions = @(
             @{ Action = "UninstallAppxPackage"; AppxPackageName = "*Clipchamp*" },
             @{ Action = "UninstallAppxPackage"; AppxPackageName = "*BingNews*" },
@@ -1264,6 +1277,91 @@ Function Perform-FullDebloat {
     Start-Process -FilePath "explorer.exe" -ErrorAction SilentlyContinue
 }
 
+Function Perform-SystemRepair {
+    $Script:LogTextBox.Clear()
+    $Script:LogTextBox.AppendText("Avvio della riparazione del sistema (DISM e SFC)...`r`n`r`n")
+
+    $confirm = Show-MessageBox "Questo processo eseguirà gli strumenti DISM e SFC per riparare l'immagine di sistema e i file di sistema. Potrebbe richiedere del tempo. Continuare?" "Conferma Riparazione Sistema" "YesNo" "Information"
+
+    If ($confirm -ne [System.Windows.Forms.DialogResult]::Yes) {
+        $Script:LogTextBox.AppendText("Operazione di riparazione del sistema annullata dall'utente.`r`n")
+        Return
+    }
+
+    $Script:LogTextBox.AppendText("--- Esecuzione DISM /Online /Cleanup-Image /RestoreHealth ---`r`n")
+    Try {
+        $process = Start-Process -FilePath "dism.exe" -ArgumentList "/Online /Cleanup-Image /RestoreHealth" -Wait -PassThru -WindowStyle Hidden -ErrorAction Stop
+        If ($process.ExitCode -eq 0) {
+            $Script:LogTextBox.AppendText("SUCCESSO: DISM completato senza errori.`r`n")
+        } Else {
+            $Script:LogTextBox.AppendText("AVVISO: DISM completato con codice di uscita: $($process.ExitCode). Controllare il log per i dettagli.`r`n")
+        }
+    } Catch {
+        $Script:LogTextBox.AppendText("ERRORE: Errore durante l'esecuzione di DISM. Errore: $($_.Exception.Message)`r`n")
+    }
+    $Script:LogTextBox.AppendText("`r`n")
+
+    $Script:LogTextBox.AppendText("--- Esecuzione sfc /scannow ---`r`n")
+    Try {
+        $process = Start-Process -FilePath "sfc.exe" -ArgumentList "/scannow" -Wait -PassThru -WindowStyle Hidden -ErrorAction Stop
+        If ($process.ExitCode -eq 0) {
+            $Script:LogTextBox.AppendText("SUCCESSO: SFC completato senza errori. Nessuna violazione dell'integrità trovata o riparata.`r`n")
+        } Else {
+            $Script:LogTextBox.AppendText("AVVISO: SFC completato con codice di uscita: $($process.ExitCode). Controllare il log per i dettagli.`r`n")
+        }
+    } Catch {
+        $Script:LogTextBox.AppendText("ERRORE: Errore durante l'esecuzione di SFC. Errore: $($_.Exception.Message)`r`n")
+    }
+    $Script:LogTextBox.AppendText("`r`n")
+
+    $Script:LogTextBox.AppendText("Riparazione del sistema completata. Si prega di rivedere il log sopra.`r`n")
+    Show-MessageBox "La riparazione del sistema è stata completata. Si prega di controllare il log per i dettagli. Potrebbe essere necessario un riavvio del sistema." "Riparazione Completata"
+}
+
+Function Invoke-WPFControlPanel {
+    <#
+    .SYNOPSIS
+        Opens the requested legacy panel
+    .PARAMETER Panel
+        The panel to open
+    #>
+    param($Panel)
+
+    switch ($Panel) {
+        "WPFPanelcontrol" {
+            $Script:LogTextBox.AppendText("Apertura Pannello di Controllo...`r`n")
+            cmd /c control
+        }
+        "WPFPanelnetwork" {
+            $Script:LogTextBox.AppendText("Apertura Connessioni di Rete...`r`n")
+            cmd /c ncpa.cpl
+        }
+        "WPFPanelpower" {
+            $Script:LogTextBox.AppendText("Apertura Opzioni Alimentazione...`r`n")
+            cmd /c powercfg.cpl
+        }
+        "WPFPanelregion" {
+            $Script:LogTextBox.AppendText("Apertura Impostazioni Area Geografica...`r`n")
+            cmd /c intl.cpl
+        }
+        "WPFPanelsound" {
+            $Script:LogTextBox.AppendText("Apertura Impostazioni Audio...`r`n")
+            cmd /c mmsys.cpl
+        }
+        "WPFPanelsystem" {
+            $Script:LogTextBox.AppendText("Apertura Proprietà di Sistema...`r`n")
+            cmd /c sysdm.cpl
+        }
+        "WPFPaneluser" {
+            $Script:LogTextBox.AppendText("Apertura Account Utente...`r`n")
+            cmd /c "control userpasswords2"
+        }
+        Default {
+            $Script:LogTextBox.AppendText("AVVISO: Pannello di controllo sconosciuto: $Panel`r`n")
+        }
+    }
+}
+
 
 Function Apply-SelectedChanges {
     $Script:LogTextBox.Clear()
@@ -1309,7 +1407,7 @@ Function Deselect-AllCheckboxes {
 #region Crea Form Principale
 $Form = New-Object System.Windows.Forms.Form
 $Form.Text = "Ottimizzatore Registro di Windows"
-$Form.Size = New-Object System.Drawing.Size(800, 700)
+$Form.Size = New-Object System.Drawing.Size(800, 800) # Aumenta l'altezza per i nuovi pulsanti
 $Form.StartPosition = "CenterScreen"
 $Form.FormBorderStyle = "FixedSingle" # Impedisce il ridimensionamento
 $Form.MaximizeBox = $false
@@ -1355,16 +1453,16 @@ ForEach ($config in $RegistryConfigurations) {
 # Regola la dimensione virtuale del pannello per ospitare tutte le caselle di controllo
 $Panel.AutoScrollMinSize = New-Object System.Drawing.Size(0, $yPos)
 
-# Pulsanti
+# Pulsanti Azione Principali
+$currentButtonY = $Panel.Location.Y + $Panel.Height + 10
+
 $SelectAllButton = New-Object System.Windows.Forms.Button
 $SelectAllButton.Text = "Seleziona Tutto"
-# Calcola esplicitamente le coordinate per il costruttore Point
-$btnY = $Panel.Location.Y + $Panel.Height + 10
-$SelectAllButton.Location = New-Object System.Drawing.Point(10, $btnY)
+$SelectAllButton.Location = New-Object System.Drawing.Point(10, $currentButtonY)
 $SelectAllButton.Size = New-Object System.Drawing.Size(100, 30)
 $SelectAllButton.Add_Click({ Select-AllCheckboxes })
-$SelectAllButton.BackColor = [System.Drawing.Color]::FromArgb(60, 60, 60) # Sfondo scuro per i pulsanti
-$SelectAllButton.ForeColor = [System.Drawing.Color]::White # Testo bianco per i pulsanti
+$SelectAllButton.BackColor = [System.Drawing.Color]::FromArgb(60, 60, 60)
+$SelectAllButton.ForeColor = [System.Drawing.Color]::White
 $SelectAllButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
 $SelectAllButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(90, 90, 90)
 $SelectAllButton.FlatAppearance.BorderSize = 1
@@ -1372,9 +1470,8 @@ $Form.Controls.Add($SelectAllButton)
 
 $DeselectAllButton = New-Object System.Windows.Forms.Button
 $DeselectAllButton.Text = "Deseleziona Tutto"
-# Calcola esplicitamente le coordinate per il costruttore Point
-$deselectBtnX = $SelectAllButton.Location.X + $SelectAllButton.Width + 10
-$DeselectAllButton.Location = New-Object System.Drawing.Point($deselectBtnX, $btnY)
+# Correzione: Casting esplicito a [int] per le operazioni aritmetiche
+$DeselectAllButton.Location = New-Object System.Drawing.Point(([int]$SelectAllButton.Location.X + [int]$SelectAllButton.Width + 10), $currentButtonY)
 $DeselectAllButton.Size = New-Object System.Drawing.Size(120, 30)
 $DeselectAllButton.Add_Click({ Deselect-AllCheckboxes })
 $DeselectAllButton.BackColor = [System.Drawing.Color]::FromArgb(60, 60, 60)
@@ -1386,54 +1483,178 @@ $Form.Controls.Add($DeselectAllButton)
 
 $ApplyButton = New-Object System.Windows.Forms.Button
 $ApplyButton.Text = "Applica Modifiche Selezionate"
-# Calcola esplicitamente le coordinate per il costruttore Point
-$applyBtnX = $Form.Width - 190 # Regola per il testo più lungo del pulsante
-$ApplyButton.Location = New-Object System.Drawing.Point($applyBtnX, $btnY)
+# Correzione: Casting esplicito a [int] per le operazioni aritmetiche
+$ApplyButton.Location = New-Object System.Drawing.Point(([int]$Form.Width - 190), $currentButtonY)
 $ApplyButton.Size = New-Object System.Drawing.Size(170, 30)
 $ApplyButton.Add_Click({ Apply-SelectedChanges })
-$ApplyButton.BackColor = [System.Drawing.Color]::FromArgb(0, 122, 204) # Un blu più visibile per il pulsante principale
+$ApplyButton.BackColor = [System.Drawing.Color]::FromArgb(0, 122, 204)
 $ApplyButton.ForeColor = [System.Drawing.Color]::White
 $ApplyButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
 $ApplyButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(0, 100, 180)
 $ApplyButton.FlatAppearance.BorderSize = 1
 $Form.Controls.Add($ApplyButton)
 
-# Nuovo pulsante per il debloat completo
 $DebloatButton = New-Object System.Windows.Forms.Button
 $DebloatButton.Text = "Debloat Completo"
-$debloatBtnX = $DeselectAllButton.Location.X + $DeselectAllButton.Width + 10
-$DebloatButton.Location = New-Object System.Drawing.Point($debloatBtnX, $btnY)
+# Correzione: Casting esplicito a [int] per le operazioni aritmetiche
+$DebloatButton.Location = New-Object System.Drawing.Point(([int]$DeselectAllButton.Location.X + [int]$DeselectAllButton.Width + 10), $currentButtonY)
 $DebloatButton.Size = New-Object System.Drawing.Size(140, 30)
 $DebloatButton.Add_Click({ Perform-FullDebloat })
-$DebloatButton.BackColor = [System.Drawing.Color]::FromArgb(204, 0, 0) # Un rosso per l'azione di debloat
+$DebloatButton.BackColor = [System.Drawing.Color]::FromArgb(204, 0, 0)
 $DebloatButton.ForeColor = [System.Drawing.Color]::White
 $DebloatButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
 $DebloatButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(180, 0, 0)
 $DebloatButton.FlatAppearance.BorderSize = 1
 $Form.Controls.Add($DebloatButton)
 
-# Nuovo pulsante per O&O ShutUp10
 $OOSUButton = New-Object System.Windows.Forms.Button
 $OOSUButton.Text = "Esegui O&O ShutUp10"
-$oosuBtnX = $DebloatButton.Location.X + $DebloatButton.Width + 10
-$OOSUButton.Location = New-Object System.Drawing.Point($oosuBtnX, $btnY)
+# Correzione: Casting esplicito a [int] per le operazioni aritmetiche
+$OOSUButton.Location = New-Object System.Drawing.Point(([int]$DebloatButton.Location.X + [int]$DebloatButton.Width + 10), $currentButtonY)
 $OOSUButton.Size = New-Object System.Drawing.Size(140, 30)
 $OOSUButton.Add_Click({ Invoke-WPFOOSU })
-$OOSUButton.BackColor = [System.Drawing.Color]::FromArgb(0, 150, 136) # Un colore verde-blu per il pulsante
+$OOSUButton.BackColor = [System.Drawing.Color]::FromArgb(0, 150, 136)
 $OOSUButton.ForeColor = [System.Drawing.Color]::White
 $OOSUButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
 $OOSUButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(0, 120, 100)
 $OOSUButton.FlatAppearance.BorderSize = 1
 $Form.Controls.Add($OOSUButton)
 
+$currentButtonY += $SelectAllButton.Height + 15 # Spazio extra per la nuova sezione
+
+# Etichetta per i pulsanti del Pannello di Controllo
+$ControlPanelLabel = New-Object System.Windows.Forms.Label
+$ControlPanelLabel.Text = "Pannelli di Controllo Rapidi:"
+$ControlPanelLabel.Location = New-Object System.Drawing.Point(10, $currentButtonY)
+$ControlPanelLabel.AutoSize = $true
+$ControlPanelLabel.Font = New-Object System.Drawing.Font("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+$Form.Controls.Add($ControlPanelLabel)
+
+$currentButtonY += $ControlPanelLabel.Height + 5
+
+# Pulsanti per i pannelli di controllo
+$ControlPanelButton = New-Object System.Windows.Forms.Button
+$ControlPanelButton.Text = "Pannello di Controllo"
+$ControlPanelButton.Location = New-Object System.Drawing.Point(10, $currentButtonY)
+$ControlPanelButton.Size = New-Object System.Drawing.Size(140, 30)
+$ControlPanelButton.Add_Click({ Invoke-WPFControlPanel "WPFPanelcontrol" })
+$ControlPanelButton.BackColor = [System.Drawing.Color]::FromArgb(70, 70, 70)
+$ControlPanelButton.ForeColor = [System.Drawing.Color]::White
+$ControlPanelButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+$ControlPanelButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(100, 100, 100)
+$ControlPanelButton.FlatAppearance.BorderSize = 1
+$Form.Controls.Add($ControlPanelButton)
+
+$NetworkButton = New-Object System.Windows.Forms.Button
+$NetworkButton.Text = "Connessioni di Rete"
+# Correzione: Casting esplicito a [int] per le operazioni aritmetiche
+$NetworkButton.Location = New-Object System.Drawing.Point(([int]$ControlPanelButton.Location.X + [int]$ControlPanelButton.Width + 10), $currentButtonY)
+$NetworkButton.Size = New-Object System.Drawing.Size(140, 30)
+$NetworkButton.Add_Click({ Invoke-WPFControlPanel "WPFPanelnetwork" })
+$NetworkButton.BackColor = [System.Drawing.Color]::FromArgb(70, 70, 70)
+$NetworkButton.ForeColor = [System.Drawing.Color]::White
+$NetworkButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+$NetworkButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(100, 100, 100)
+$NetworkButton.FlatAppearance.BorderSize = 1
+$Form.Controls.Add($NetworkButton)
+
+$PowerButton = New-Object System.Windows.Forms.Button
+$PowerButton.Text = "Opzioni Alimentazione"
+# Correzione: Casting esplicito a [int] per le operazioni aritmetiche
+$PowerButton.Location = New-Object System.Drawing.Point(([int]$NetworkButton.Location.X + [int]$NetworkButton.Width + 10), $currentButtonY)
+$PowerButton.Size = New-Object System.Drawing.Size(140, 30)
+$PowerButton.Add_Click({ Invoke-WPFControlPanel "WPFPanelpower" })
+$PowerButton.BackColor = [System.Drawing.Color]::FromArgb(70, 70, 70)
+$PowerButton.ForeColor = [System.Drawing.Color]::White
+$PowerButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+$PowerButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(100, 100, 100)
+$PowerButton.FlatAppearance.BorderSize = 1
+$Form.Controls.Add($PowerButton)
+
+$RegionButton = New-Object System.Windows.Forms.Button
+$RegionButton.Text = "Area Geografica"
+# Correzione: Casting esplicito a [int] per le operazioni aritmetiche
+$RegionButton.Location = New-Object System.Drawing.Point(([int]$PowerButton.Location.X + [int]$PowerButton.Width + 10), $currentButtonY)
+$RegionButton.Size = New-Object System.Drawing.Size(140, 30)
+$RegionButton.Add_Click({ Invoke-WPFControlPanel "WPFPanelregion" })
+$RegionButton.BackColor = [System.Drawing.Color]::FromArgb(70, 70, 70)
+$RegionButton.ForeColor = [System.Drawing.Color]::White
+$RegionButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+$RegionButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(100, 100, 100)
+$RegionButton.FlatAppearance.BorderSize = 1
+$Form.Controls.Add($RegionButton)
+
+$currentButtonY += $ControlPanelButton.Height + 10 # Nuova riga per i pulsanti del pannello di controllo
+
+$SoundButton = New-Object System.Windows.Forms.Button
+$SoundButton.Text = "Audio"
+$SoundButton.Location = New-Object System.Drawing.Point(10, $currentButtonY)
+$SoundButton.Size = New-Object System.Drawing.Size(140, 30)
+$SoundButton.Add_Click({ Invoke-WPFControlPanel "WPFPanelsound" })
+$SoundButton.BackColor = [System.Drawing.Color]::FromArgb(70, 70, 70)
+$SoundButton.ForeColor = [System.Drawing.Color]::White
+$SoundButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+$SoundButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(100, 100, 100)
+$SoundButton.FlatAppearance.BorderSize = 1
+$Form.Controls.Add($SoundButton)
+
+$SystemButton = New-Object System.Windows.Forms.Button
+$SystemButton.Text = "Sistema"
+# Correzione: Casting esplicito a [int] per le operazioni aritmetiche
+$SystemButton.Location = New-Object System.Drawing.Point(([int]$SoundButton.Location.X + [int]$SoundButton.Width + 10), $currentButtonY)
+$SystemButton.Size = New-Object System.Drawing.Size(140, 30)
+$SystemButton.Add_Click({ Invoke-WPFControlPanel "WPFPanelsystem" })
+$SystemButton.BackColor = [System.Drawing.Color]::FromArgb(70, 70, 70)
+$SystemButton.ForeColor = [System.Drawing.Color]::White
+$SystemButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+$SystemButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(100, 100, 100)
+$SystemButton.FlatAppearance.BorderSize = 1
+$Form.Controls.Add($SystemButton)
+
+$UserButton = New-Object System.Windows.Forms.Button
+$UserButton.Text = "Account Utente"
+# Correzione: Casting esplicito a [int] per le operazioni aritmetiche
+$UserButton.Location = New-Object System.Drawing.Point(([int]$SystemButton.Location.X + [int]$SystemButton.Width + 10), $currentButtonY)
+$UserButton.Size = New-Object System.Drawing.Size(140, 30)
+$UserButton.Add_Click({ Invoke-WPFControlPanel "WPFPaneluser" })
+$UserButton.BackColor = [System.Drawing.Color]::FromArgb(70, 70, 70)
+$UserButton.ForeColor = [System.Drawing.Color]::White
+$UserButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+$UserButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(100, 100, 100)
+$UserButton.FlatAppearance.BorderSize = 1
+$Form.Controls.Add($UserButton)
+
+$currentButtonY += $SoundButton.Height + 15 # Spazio extra per la nuova sezione
+
+# Etichetta per gli strumenti di riparazione
+$RepairToolsLabel = New-Object System.Windows.Forms.Label
+$RepairToolsLabel.Text = "Strumenti di Riparazione Sistema:"
+$RepairToolsLabel.Location = New-Object System.Drawing.Point(10, $currentButtonY)
+$RepairToolsLabel.AutoSize = $true
+$RepairToolsLabel.Font = New-Object System.Drawing.Font("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+$Form.Controls.Add($RepairToolsLabel)
+
+$currentButtonY += $RepairToolsLabel.Height + 5
+
+# Pulsante per DISM e SFC
+$SystemRepairButton = New-Object System.Windows.Forms.Button
+$SystemRepairButton.Text = "Esegui Riparazione Sistema (DISM & SFC)"
+$SystemRepairButton.Location = New-Object System.Drawing.Point(10, $currentButtonY)
+$SystemRepairButton.Size = New-Object System.Drawing.Size(280, 30)
+$SystemRepairButton.Add_Click({ Perform-SystemRepair })
+$SystemRepairButton.BackColor = [System.Drawing.Color]::FromArgb(100, 100, 0) # Un colore giallo-verde per l'azione di riparazione
+$SystemRepairButton.ForeColor = [System.Drawing.Color]::White
+$SystemRepairButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+$SystemRepairButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(80, 80, 0)
+$SystemRepairButton.FlatAppearance.BorderSize = 1
+$Form.Controls.Add($SystemRepairButton)
+
+$currentButtonY += $SystemRepairButton.Height + 10
 
 # Casella di testo per il log
 $Script:LogTextBox = New-Object System.Windows.Forms.TextBox
-# Calcola esplicitamente le coordinate per il costruttore Point
-$logTextBoxY = $ApplyButton.Location.Y + $ApplyButton.Height + 10
-$logTextBoxHeight = $Form.Height - $logTextBoxY - 60
-$Script:LogTextBox.Location = New-Object System.Drawing.Point(10, $logTextBoxY)
-# Calcola esplicitamente l'altezza
+$logTextBoxHeight = $Form.Height - $currentButtonY - 60 # Ricalcola l'altezza del log
+$Script:LogTextBox.Location = New-Object System.Drawing.Point(10, $currentButtonY)
 $Script:LogTextBox.Size = New-Object System.Drawing.Size(760, $logTextBoxHeight)
 $Script:LogTextBox.MultiLine = $true
 $Script:LogTextBox.ReadOnly = $true
