@@ -15,7 +15,7 @@
 
 .NOTES
     Autore: Gemini
-    Versione: 2.2
+    Versione: 2.4
     Data: 12 luglio 2025
 
     IMPORTANTE:
@@ -641,199 +641,206 @@ $RegistryConfigurations = @(
         )
     },
     @{
+        Name = "Disabilita Icona/Casella di Ricerca nella Barra delle Applicazioni"
+        Description = "Nasconde l'icona o la casella di ricerca dalla barra delle applicazioni di Windows."
+        RegistryActions = @(
+            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Search"; Name = "SearchboxTaskbarMode"; Value = 0; Type = "DWord"; Action = "Set" }
+        )
+    },
+    @{
         Name = "Disinstalla: Clipchamp"
         Description = "Disinstalla l'applicazione Clipchamp."
         RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "Clipchamp.Clipchamp_3.0.10220.0_neutral_~_yxz26nhyzhsrt" }
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*Clipchamp*" }
         )
     },
     @{
         Name = "Disinstalla: Notizie di Bing"
         Description = "Disinstalla l'applicazione Notizie di Bing."
         RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "Microsoft.BingNews_4.1.24002.0_neutral_~_8wekyb3d8bbwe" }
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*BingNews*" }
         )
     },
     @{
         Name = "Disinstalla: Ricerca Bing"
         Description = "Disinstalla l'applicazione Ricerca Bing."
         RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "Microsoft.BingSearch_2022.0.79.0_neutral_~_8wekyb3d8bbwe" }
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*BingSearch*" }
         )
     },
     @{
         Name = "Disinstalla: Meteo di Bing"
         Description = "Disinstalla l'applicazione Meteo di Bing."
         RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "Microsoft.BingWeather_4.53.52892.0_neutral_~_8wekyb3d8bbwe" }
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*BingWeather*" }
         )
     },
     @{
         Name = "Disinstalla: App Gaming (Xbox)"
         Description = "Disinstalla l'applicazione Xbox Gaming."
         RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "Microsoft.GamingApp_2024.311.2341.0_neutral_~_8wekyb3d8bbwe" }
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*GamingApp*" }
         )
     },
     @{
         Name = "Disinstalla: Ottieni Guida"
         Description = "Disinstalla l'applicazione Ottieni Guida."
         RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "Microsoft.GetHelp_10.2302.10601.0_neutral_~_8wekyb3d8bbwe" }
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*GetHelp*" }
         )
     },
     @{
         Name = "Disinstalla: Hub di Office"
         Description = "Disinstalla l'applicazione Hub di Office."
         RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "Microsoft.MicrosoftOfficeHub_18.2308.1034.0_neutral_~_8wekyb3d8bbwe" }
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*MicrosoftOfficeHub*" }
         )
     },
     @{
         Name = "Disinstalla: Microsoft Solitaire Collection"
         Description = "Disinstalla l'applicazione Microsoft Solitaire Collection."
         RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "Microsoft.MicrosoftSolitaireCollection_4.19.3190.0_neutral_~_8wekyb3d8bbwe" }
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*MicrosoftSolitaireCollection*" }
         )
     },
     @{
         Name = "Disinstalla: Sticky Notes"
         Description = "Disinstalla l'applicazione Sticky Notes."
         RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "Microsoft.MicrosoftStickyNotes_4.6.2.0_neutral_~_8wekyb3d8bbwe" }
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*MicrosoftStickyNotes*" }
         )
     },
     @{
         Name = "Disinstalla: Outlook per Windows"
         Description = "Disinstalla l'applicazione Outlook per Windows."
         RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "Microsoft.OutlookForWindows_1.0.0.0_neutral__8wekyb3d8bbwe" }
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*OutlookForWindows*" }
         )
     },
     @{
         Name = "Disinstalla: Paint"
         Description = "Disinstalla l'applicazione Paint."
         RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "Microsoft.Paint_11.2302.20.0_neutral_~_8wekyb3d8bbwe" }
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*Paint*" }
         )
     },
     @{
         Name = "Disinstalla: Power Automate Desktop"
         Description = "Disinstalla l'applicazione Power Automate Desktop."
         RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "Microsoft.PowerAutomateDesktop_11.2401.28.0_neutral_~_8wekyb3d8bbwe" }
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*PowerAutomateDesktop*" }
         )
     },
     @{
         Name = "Disinstalla: Cattura e Annota"
         Description = "Disinstalla l'applicazione Cattura e Annota (Screen Sketch)."
         RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "Microsoft.ScreenSketch_2022.2307.52.0_neutral_~_8wekyb3d8bbwe" }
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*ScreenSketch*" }
         )
     },
     @{
         Name = "Disinstalla: To Do"
         Description = "Disinstalla l'applicazione Microsoft To Do."
         RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "Microsoft.Todos_2.104.62421.0_neutral_~_8wekyb3d8bbwe" }
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*Todos*" }
         )
     },
     @{
         Name = "Disinstalla: Dev Home"
         Description = "Disinstalla l'applicazione Dev Home."
         RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "Microsoft.Windows.DevHome_0.100.128.0_neutral_~_8wekyb3d8bbwe" }
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*DevHome*" }
         )
     },
     @{
         Name = "Disinstalla: Fotocamera Windows"
         Description = "Disinstalla l'applicazione Fotocamera di Windows."
         RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "Microsoft.WindowsCamera_2022.2312.3.0_neutral_~_8wekyb3d8bbwe" }
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*WindowsCamera*" }
         )
     },
     @{
         Name = "Disinstalla: Hub di Feedback"
         Description = "Disinstalla l'applicazione Hub di Feedback di Windows."
         RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "Microsoft.WindowsFeedbackHub_2024.125.1522.0_neutral_~_8wekyb3d8bbwe" }
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*WindowsFeedbackHub*" }
         )
     },
     @{
         Name = "Disinstalla: Registratore Vocale"
         Description = "Disinstalla l'applicazione Registratore Vocale di Windows."
         RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "Microsoft.WindowsSoundRecorder_2021.2312.5.0_neutral_~_8wekyb3d8bbwe" }
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*WindowsSoundRecorder*" }
         )
     },
     @{
         Name = "Disinstalla: Terminale Windows"
         Description = "Disinstalla l'applicazione Terminale Windows."
         RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "Microsoft.WindowsTerminal_3001.18.10301.0_neutral_~_8wekyb3d8bbwe" }
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*WindowsTerminal*" }
         )
     },
     @{
         Name = "Disinstalla: Xbox TCUI"
         Description = "Disinstalla l'applicazione Xbox TCUI."
         RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "Microsoft.Xbox.TCUI_1.23.28005.0_neutral_~_8wekyb3d8bbwe" }
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*Xbox.TCUI*" }
         )
     },
     @{
         Name = "Disinstalla: Xbox Gaming Overlay"
         Description = "Disinstalla l'applicazione Xbox Gaming Overlay."
         RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "Microsoft.XboxGamingOverlay_2.624.1111.0_neutral_~_8wekyb3d8bbwe" }
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*XboxGamingOverlay*" }
         )
     },
     @{
         Name = "Disinstalla: Xbox Identity Provider"
         Description = "Disinstalla l'applicazione Xbox Identity Provider."
         RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "Microsoft.XboxIdentityProvider_12.110.15002.0_neutral_~_8wekyb3d8bbwe" }
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*XboxIdentityProvider*" }
         )
     },
     @{
         Name = "Disinstalla: Xbox Speech To Text Overlay"
         Description = "Disinstalla l'applicazione Xbox Speech To Text Overlay."
         RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "Microsoft.XboxSpeechToTextOverlay_1.97.17002.0_neutral_~_8wekyb3d8bbwe" }
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*XboxSpeechToTextOverlay*" }
         )
     },
     @{
         Name = "Disinstalla: Il tuo telefono"
         Description = "Disinstalla l'applicazione Il tuo telefono (Your Phone)."
         RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "Microsoft.YourPhone_1.24012.105.0_neutral_~_8wekyb3d8bbwe" }
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*YourPhone*" }
         )
     },
     @{
         Name = "Disinstalla: Groove Musica"
         Description = "Disinstalla l'applicazione Groove Musica (ZuneMusic)."
         RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "Microsoft.ZuneMusic_11.2312.8.0_neutral_~_8wekyb3d8bbwe" }
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*ZuneMusic*" }
         )
     },
     @{
         Name = "Disinstalla: Assistenza Rapida"
         Description = "Disinstalla l'applicazione Assistenza Rapida (Quick Assist)."
         RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "MicrosoftCorporationII.QuickAssist_2024.309.159.0_neutral_~_8wekyb3d8bbwe" }
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*QuickAssist*" }
         )
     },
     @{
         Name = "Disinstalla: Microsoft Teams (Preinstallato)"
         Description = "Disinstalla l'applicazione Microsoft Teams preinstallata."
         RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "MSTeams_1.0.0.0_x64__8wekyb3d8bbwe" }
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*MSTeams*" }
         )
     },
     @{
         Name = "Disinstalla: Orologio"
         Description = "Disinstalla l'applicazione Orologio e Sveglie di Windows."
         RegistryActions = @(
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "Microsoft.WindowsAlarms_8wekyb3d8bbwe" } # Usiamo il PackageFamilyName per maggiore compatibilità
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*WindowsAlarms*" } # Usiamo il PackageFamilyName per maggiore compatibilità
         )
     },
     @{
@@ -934,7 +941,7 @@ Function Show-MessageBox {
         [System.Windows.Forms.MessageBoxButtons]$Buttons = "OK",
         [System.Windows.Forms.MessageBoxIcon]$Icon = "Information"
     )
-    [System.Windows.Forms.MessageBox]::Show($Message, $Title, $Buttons, $Icon) | Out-Null
+    [System.Windows.Forms.MessageBox]::Show($Message, $Title, $Buttons, $Icon)
 }
 
 Function Set-RegistryValue {
@@ -1002,16 +1009,19 @@ Function Uninstall-AppxPackage {
         [string]$AppxPackageNamePattern # Changed name to reflect it can be a pattern
     )
     Try {
-        # Usiamo Start-Process per eseguire il comando PowerShell in un processo separato
-        # con l'opzione -Wait per attendere il completamento e -NoNewWindow per non mostrare la finestra
-        $command = "Get-AppxPackage -AllUsers -Name `"$AppxPackageNamePattern`" | Remove-AppxPackage -AllUsers -ErrorAction Stop"
-        $process = Start-Process -FilePath "powershell.exe" -ArgumentList "-Command `"$command`"" -Verb RunAs -PassThru -WindowStyle Hidden -ErrorAction SilentlyContinue
-        $process.WaitForExit()
+        # Trova i pacchetti che corrispondono al pattern per PackageFullName o Name
+        $packagesToUninstall = Get-AppxPackage -AllUsers | Where-Object {
+            $_.PackageFullName -like $AppxPackageNamePattern -or $_.Name -like $AppxPackageNamePattern
+        }
 
-        If ($process.ExitCode -eq 0) {
-            $Script:LogTextBox.AppendText("SUCCESSO: Disinstallato '$AppxPackageNamePattern' per tutti gli utenti.`r`n")
-        } Else {
-            $Script:LogTextBox.AppendText("ERRORE: Fallita la disinstallazione di '$AppxPackageNamePattern'. Codice di uscita: $($process.ExitCode)`r`n")
+        if ($packagesToUninstall) {
+            foreach ($package in $packagesToUninstall) {
+                $Script:LogTextBox.AppendText("Tentativo di disinstallare: $($package.PackageFullName)`r`n")
+                Remove-AppxPackage -Package $package.PackageFullName -AllUsers -ErrorAction Stop
+                $Script:LogTextBox.AppendText("SUCCESSO: Disinstallato '$($package.PackageFullName)' per tutti gli utenti.`r`n")
+            }
+        } else {
+            $Script:LogTextBox.AppendText("INFO: Nessun pacchetto corrispondente a '$AppxPackageNamePattern' trovato per la disinstallazione.`r`n")
         }
     }
     Catch {
@@ -1286,7 +1296,7 @@ Function Perform-FullDebloat {
 
     $confirm = Show-MessageBox "Questo processo eseguirà una serie di modifiche profonde al sistema, inclusa la disinstallazione di OneDrive e la modifica delle impostazioni della barra delle applicazioni. Alcune modifiche potrebbero richiedere un riavvio del sistema. Continuare?" "Conferma Debloat Completo" "YesNo" "Warning"
 
-    If ($confirm -ne "Yes") {
+    If ($confirm -ne [System.Windows.Forms.DialogResult]::Yes) { # Correzione qui
         $Script:LogTextBox.AppendText("Operazione di Debloat annullata dall'utente.`r`n")
         Return
     }
