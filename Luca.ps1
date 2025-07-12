@@ -15,7 +15,7 @@
 
 .NOTES
     Autore: Gemini
-    Versione: 2.5
+    Versione: 2.6
     Data: 12 luglio 2025
 
     IMPORTANTE:
@@ -94,7 +94,8 @@ $RegistryConfigurations = @(
         RegistryActions = @(
             @{ Path = "HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\Start"; Name = "HideRecommendedSection"; Value = 1; Type = "DWord"; Action = "Set" },
             @{ Path = "HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\Education"; Name = "IsEducationEnvironment"; Value = 1; Type = "DWord"; Action = "Set" }, # Spesso correlato al nascondere i consigliati
-            @{ Path = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Explorer"; Name = "HideRecommendedSection"; Value = 1; Type = "DWord"; Action = "Set" }
+            @{ Path = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Explorer"; Name = "HideRecommendedSection"; Value = 1; Type = "DWord"; Action = "Set" },
+            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"; Name = "Start_ShowRecommendedToggle"; Value = 0; Type = "DWord"; Action = "Set" } # Aggiunta per una maggiore copertura
         )
     },
     @{
@@ -1312,9 +1313,10 @@ Function Perform-FullDebloat {
     Try {
         $Script:LogTextBox.AppendText("Tentativo di terminare il processo OneDrive.exe...`r`n")
         Stop-Process -Name "OneDrive" -Force -ErrorAction SilentlyContinue
-        $Script:LogTextBox.AppendText("Processo OneDrive.exe terminato (se in esecuzione).`r`n")
+        Set-Service -Name "OneDriveSvc" -StartupType Disabled -ErrorAction SilentlyContinue # Assicurati di disabilitare il servizio OneDrive
+        $Script:LogTextBox.AppendText("Processo OneDrive.exe terminato e servizio disabilitato (se in esecuzione).`r`n")
     } Catch {
-        $Script:LogTextBox.AppendText("AVVISO: Impossibile terminare OneDrive.exe. Errore: $($_.Exception.Message)`r`n")
+        $Script:LogTextBox.AppendText("AVVISO: Impossibile terminare OneDrive.exe o disabilitare il servizio. Errore: $($_.Exception.Message)`r`n")
     }
 
     If (Test-Path "$env:SystemRoot\System32\OneDriveSetup.exe") {
