@@ -15,7 +15,7 @@
 
 .NOTES
     Autore: Gemini
-    Versione: 3.2
+    Versione: 3.3
     Data: 12 luglio 2025
 
     IMPORTANTE:
@@ -535,6 +535,13 @@ $RegistryConfigurations = @(
         )
     },
     @{
+        Name = "Abilita/Disabilita Modalità Gioco"
+        Description = "Controlla l'attivazione della Modalità Gioco di Windows per ottimizzare le prestazioni durante il gaming. (Abilita: 1, Disabilita: 0)"
+        RegistryActions = @(
+            @{ Path = "HKCU:\System\GameConfigStore"; Name = "GameMode_Enabled"; Value = 1; Type = "DWord"; Action = "Set" } # Impostato su 1 per abilitare, può essere cambiato a 0 per disabilitare
+        )
+    },
+    @{
         Name = "Disabilita Download Automatico Mappe"
         Description = "Disabilita il download e l'aggiornamento automatico dei dati delle mappe di Windows."
         RegistryActions = @(
@@ -788,6 +795,49 @@ $RegistryConfigurations = @(
             @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"; Name = "ShowCopilotButton"; Value = 0; Type = "DWord"; Action = "Set" },
             @{ Path = "HKCU:\Software\Microsoft\Windows\Shell\Copilot\BingChat"; Name = "IsUserEligible"; Value = 0; Type = "DWord"; Action = "Set" },
             @{ Path = "HKLM:\SOFTWARE\Policies\Microsoft\Edge"; Name = "HubsSidebarEnabled"; Value = 0; Type = "DWord"; Action = "Set" },
+            @{ Action = "RunCommand"; Command = "taskkill /f /im explorer.exe & start explorer" }
+        )
+    },
+    @{
+        Name = "Rimuovi OneDrive (Completo)"
+        Description = "Disinstalla completamente OneDrive dal sistema, inclusi i file, le voci di registro e le attività pianificate, e ripristina le posizioni predefinite delle cartelle utente."
+        RegistryActions = @(
+            @{ Action = "RunCommand"; Command = "taskkill /f /im OneDrive.exe" },
+            @{ Action = "RunCommand"; Command = "`"$env:SystemRoot\System32\OneDriveSetup.exe`" /uninstall" },
+            @{ Action = "RunCommand"; Command = "`"$env:SystemRoot\SysWOW64\OneDriveSetup.exe`" /uninstall" },
+            @{ Action = "RunCommand"; Command = "robocopy `"$env:USERPROFILE\OneDrive`" `"$env:USERPROFILE`" /mov /e /xj /ndl /nfl /njh /njs /nc /ns /np" },
+            @{ Action = "RemoveKey"; Path = "HKCR:\WOW6432Node\CLSID\{018D5C66-4533-4307-9B53-224DE2ED1FE6}" },
+            @{ Action = "RemoveKey"; Path = "HKCR:\CLSID\{018D5C66-4533-4307-9B53-224DE2ED1FE6}" },
+            @{ Action = "RunCommand"; Command = "del `"$env:APPDATA\Microsoft\Windows\Start Menu\Programs\OneDrive.lnk`"" },
+            @{ Action = "RunCommand"; Command = "powershell -Command `"Get-ScheduledTask -TaskPath '\' -TaskName 'OneDrive*' -ErrorAction SilentlyContinue | Unregister-ScheduledTask -Confirm:`$false`"" },
+            @{ Action = "RunCommand"; Command = "rd `"$env:USERPROFILE\OneDrive`" /Q /S" },
+            @{ Action = "RunCommand"; Command = "rd `"$env:LOCALAPPDATA\OneDrive`" /Q /S" },
+            @{ Action = "RunCommand"; Command = "rd `"$env:LOCALAPPDATA\Microsoft\OneDrive`" /Q /S" },
+            @{ Action = "RunCommand"; Command = "rd `"$env:ProgramData\Microsoft OneDrive`" /Q /S" },
+            @{ Action = "RunCommand"; Command = "rd `"C:\OneDriveTemp`" /Q /S" },
+            @{ Action = "RemoveKey"; Path = "HKCU:\Software\Microsoft\OneDrive" },
+            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"; Name = "AppData"; Value = "%USERPROFILE%\\AppData\\Roaming"; Type = "ExpandString"; Action = "Set" },
+            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"; Name = "Cache"; Value = "%USERPROFILE%\\AppData\\Local\\Microsoft\\Windows\\INetCache"; Type = "ExpandString"; Action = "Set" },
+            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"; Name = "Cookies"; Value = "%USERPROFILE%\\AppData\\Local\\Microsoft\\Windows\\INetCookies"; Type = "ExpandString"; Action = "Set" },
+            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"; Name = "Favorites"; Value = "%USERPROFILE%\\Favorites"; Type = "ExpandString"; Action = "Set" },
+            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"; Name = "History"; Value = "%USERPROFILE%\\AppData\\Local\\Microsoft\\Windows\\History"; Type = "ExpandString"; Action = "Set" },
+            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"; Name = "Local AppData"; Value = "%USERPROFILE%\\AppData\\Local"; Type = "ExpandString"; Action = "Set" },
+            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"; Name = "My Music"; Value = "%USERPROFILE%\\Music"; Type = "ExpandString"; Action = "Set" },
+            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"; Name = "My Video"; Value = "%USERPROFILE%\\Videos"; Type = "ExpandString"; Action = "Set" },
+            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"; Name = "NetHood"; Value = "%USERPROFILE%\\AppData\\Roaming\\Microsoft\\Windows\\Network Shortcuts"; Type = "ExpandString"; Action = "Set" },
+            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"; Name = "PrintHood"; Value = "%USERPROFILE%\\AppData\\Roaming\\Microsoft\\Windows\\Printer Shortcuts"; Type = "ExpandString"; Action = "Set" },
+            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"; Name = "Programs"; Value = "%USERPROFILE%\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs"; Type = "ExpandString"; Action = "Set" },
+            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"; Name = "Recent"; Value = "%USERPROFILE%\\AppData\\Roaming\\Microsoft\\Windows\\Recent"; Type = "ExpandString"; Action = "Set" },
+            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"; Name = "SendTo"; Value = "%USERPROFILE%\\AppData\\Roaming\\Microsoft\\Windows\\SendTo"; Type = "ExpandString"; Action = "Set" },
+            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"; Name = "Start Menu"; Value = "%USERPROFILE%\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu"; Type = "ExpandString"; Action = "Set" },
+            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"; Name = "Startup"; Value = "%USERPROFILE%\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup"; Type = "ExpandString"; Action = "Set" },
+            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"; Name = "Templates"; Value = "%USERPROFILE%\\AppData\\Roaming\\Microsoft\\Windows\\Templates"; Type = "ExpandString"; Action = "Set" },
+            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"; Name = "{374DE290-123F-4565-9164-39C4925E467B}"; Value = "%USERPROFILE%\\Downloads"; Type = "ExpandString"; Action = "Set" },
+            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"; Name = "Desktop"; Value = "%USERPROFILE%\\Desktop"; Type = "ExpandString"; Action = "Set" },
+            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"; Name = "My Pictures"; Value = "%USERPROFILE%\\Pictures"; Type = "ExpandString"; Action = "Set" },
+            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"; Name = "Personal"; Value = "%USERPROFILE%\\Documents"; Type = "ExpandString"; Action = "Set" },
+            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"; Name = "{F42EE2D3-909F-4907-8871-4C22FC0BF756}"; Value = "%USERPROFILE%\\Documents"; Type = "ExpandString"; Action = "Set" },
+            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"; Name = "{0DDD015D-B06C-45D5-8C4C-F59713854639}"; Value = "%USERPROFILE%\\Pictures"; Type = "ExpandString"; Action = "Set" },
             @{ Action = "RunCommand"; Command = "taskkill /f /im explorer.exe & start explorer" }
         )
     }
@@ -1158,125 +1208,6 @@ Function Invoke-WPFOOSU {
     }
 }
 
-Function Perform-FullDebloat {
-    $Script:LogTextBox.Clear()
-    $Script:LogTextBox.AppendText("Avvio del processo di Debloat completo...`r`n`r`n")
-
-    $confirm = Show-MessageBox "Questo processo eseguirà una serie di modifiche profonde al sistema, inclusa la disinstallazione di OneDrive e la modifica delle impostazioni della barra delle applicazioni. Alcune modifiche potrebbero richiedere un riavvio del sistema. Continuare?" "Conferma Debloat Completo" "YesNo" "Warning"
-
-    If ($confirm -ne [System.Windows.Forms.DialogResult]::Yes) { # Correzione qui
-        $Script:LogTextBox.AppendText("Operazione di Debloat annullata dall'utente.`r`n")
-        Return
-    }
-
-    $Script:LogTextBox.AppendText("--- Disinstallazione e Pulizia OneDrive ---`r`n")
-    Try {
-        $Script:LogTextBox.AppendText("Tentativo di terminare il processo OneDrive.exe...`r`n")
-        Stop-Process -Name "OneDrive" -Force -ErrorAction SilentlyContinue
-        Set-Service -Name "OneDriveSvc" -StartupType Disabled -ErrorAction SilentlyContinue # Assicurati di disabilitare il servizio OneDrive
-        $Script:LogTextBox.AppendText("Processo OneDrive.exe terminato e servizio disabilitato (se in esecuzione).`r`n")
-    } Catch {
-        $Script:LogTextBox.AppendText("AVVISO: Impossibile terminare OneDrive.exe o disabilitare il servizio. Errore: $($_.Exception.Message)`r`n")
-    }
-
-    If (Test-Path "$env:SystemRoot\System32\OneDriveSetup.exe") {
-        $Script:LogTextBox.AppendText("Tentativo di disinstallare OneDrive tramite System32...`r`n")
-        Start-Process -FilePath "$env:System32\OneDriveSetup.exe" -ArgumentList "/uninstall" -Wait -WindowStyle Hidden -ErrorAction SilentlyContinue
-        $Script:LogTextBox.AppendText("Disinstallazione OneDrive (System32) completata.`r`n")
-    }
-    If (Test-Path "$env:SystemRoot\SysWOW64\OneDriveSetup.exe") {
-        $Script:LogTextBox.AppendText("Tentativo di disinstallare OneDrive tramite SysWOW64...`r`n")
-        Start-Process -FilePath "$env:SysWOW64\OneDriveSetup.exe" -ArgumentList "/uninstall" -Wait -WindowStyle Hidden -ErrorAction SilentlyContinue
-        $Script:LogTextBox.AppendText("Disinstallazione OneDrive (SysWOW64) completata.`r`n")
-    }
-
-    $Script:LogTextBox.AppendText("Copia dei file di OneDrive nelle cartelle locali...`r`n")
-    Try {
-        # Using Start-Process for robocopy as it's an external executable and provides better control over output/wait
-        $robocopyArgs = "`"$env:USERPROFILE\OneDrive`" `"$env:USERPROFILE`" /mov /e /xj /ndl /nfl /njh /njs /nc /ns /np"
-        $process = Start-Process -FilePath "robocopy.exe" -ArgumentList $robocopyArgs -PassThru -WindowStyle Hidden -ErrorAction SilentlyContinue
-        $process.WaitForExit()
-        If ($process.ExitCode -eq 0 -or $process.ExitCode -eq 1) { # Robocopy returns 1 on success with files copied
-            $Script:LogTextBox.AppendText("Copia file OneDrive completata.`r`n")
-        } else {
-            $Script:LogTextBox.AppendText("AVVISO: Robocopy ha restituito codice di uscita $($process.ExitCode). Potrebbe non aver copiato tutti i file.`r`n")
-        }
-    } Catch {
-        $Script:LogTextBox.AppendText("ERRORE: Fallita la copia dei file di OneDrive. Errore: $($_.Exception.Message)`r`n")
-    }
-
-    $Script:LogTextBox.AppendText("Rimozione di OneDrive dalla barra laterale di Esplora file...`r`n")
-    Remove-Item -Path "HKCR:\WOW6432Node\CLSID\{018D5C66-4533-4307-9B53-224DE2ED1FE6}" -Recurse -Force -ErrorAction SilentlyContinue
-    Remove-Item -Path "HKCR:\CLSID\{018D5C66-4533-4307-9B53-224DE2ED1FE6}" -Recurse -Force -ErrorAction SilentlyContinue
-    $Script:LogTextBox.AppendText("Voci di OneDrive rimosse dalla barra laterale.`r`n")
-
-    $Script:LogTextBox.AppendText("Rimozione collegamento OneDrive...`r`n")
-    Remove-Item -Path "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\OneDrive.lnk" -ErrorAction SilentlyContinue
-    $Script:LogTextBox.AppendText("Collegamento OneDrive rimosso.`r`n")
-
-    $Script:LogTextBox.AppendText("Rimozione attività pianificate di OneDrive...`r`n")
-    Try {
-        Get-ScheduledTask -TaskPath '\' -TaskName 'OneDrive*' -ErrorAction SilentlyContinue | Unregister-ScheduledTask -Confirm:$false
-        $Script:LogTextBox.AppendText("Attività pianificate di OneDrive rimosse.`r`n")
-    } Catch {
-        $Script:LogTextBox.AppendText("AVVISO: Impossibile rimuovere attività pianificate di OneDrive. Errore: $($_.Exception.Message)`r`n")
-    }
-
-    $Script:LogTextBox.AppendText("Rimozione residui di OneDrive...`r`n")
-    Remove-Item -Path "$env:USERPROFILE\OneDrive" -Recurse -Force -ErrorAction SilentlyContinue
-    Remove-Item -Path "$env:LOCALAPPDATA\OneDrive" -Recurse -Force -ErrorAction SilentlyContinue
-    Remove-Item -Path "$env:LOCALAPPDATA\Microsoft\OneDrive" -Recurse -Force -ErrorAction SilentlyContinue
-    Remove-Item -Path "$env:ProgramData\Microsoft OneDrive" -Recurse -Force -ErrorAction SilentlyContinue
-    Remove-Item -Path "C:\OneDriveTemp" -Recurse -Force -ErrorAction SilentlyContinue
-    Remove-Item -Path "HKCU:\Software\Microsoft\OneDrive" -Recurse -Force -ErrorAction SilentlyContinue
-    $Script:LogTextBox.AppendText("Residui di OneDrive rimossi.`r`n")
-
-    $Script:LogTextBox.AppendText("--- Ripristino posizioni cartelle predefinite ---`r`n")
-    Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" -Name "AppData" -Value "$env:USERPROFILE\AppData\Roaming" -Force -ErrorAction SilentlyContinue
-    Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" -Name "Cache" -Value "$env:USERPROFILE\AppData\Local\Microsoft\Windows\INetCache" -Force -ErrorAction SilentlyContinue
-    Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" -Name "Cookies" -Value "$env:USERPROFILE\AppData\Local\Microsoft\Windows\INetCookies" -Force -ErrorAction SilentlyContinue
-    Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" -Name "Favorites" -Value "$env:USERPROFILE\Favorites" -Force -ErrorAction SilentlyContinue
-    Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" -Name "History" -Value "$env:USERPROFILE\AppData\Local\Microsoft\Windows\History" -Force -ErrorAction SilentlyContinue
-    Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" -Name "Local AppData" -Value "$env:USERPROFILE\AppData\Local" -Force -ErrorAction SilentlyContinue
-    Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" -Name "My Music" -Value "$env:USERPROFILE\Music" -Force -ErrorAction SilentlyContinue
-    Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" -Name "My Video" -Value "$env:USERPROFILE\Videos" -Force -ErrorAction SilentlyContinue
-    Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" -Name "NetHood" -Value "$env:USERPROFILE\AppData\Roaming\Microsoft\Windows\Network Shortcuts" -Force -ErrorAction SilentlyContinue
-    Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" -Name "PrintHood" -Value "$env:USERPROFILE\AppData\Roaming\Microsoft\Windows\Printer Shortcuts" -Force -ErrorAction SilentlyContinue
-    Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" -Name "Programs" -Value "$env:USERPROFILE\AppData\Roaming\Microsoft\Windows\Start Menu\Programs" -Force -ErrorAction SilentlyContinue
-    Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" -Name "Recent" -Value "$env:USERPROFILE\AppData\Roaming\Microsoft\Windows\Recent" -Force -ErrorAction SilentlyContinue
-    Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" -Name "SendTo" -Value "$env:USERPROFILE\AppData\Roaming\Microsoft\Windows\SendTo" -Force -ErrorAction SilentlyContinue
-    Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" -Name "Start Menu" -Value "$env:USERPROFILE\AppData\Roaming\Microsoft\Windows\Start Menu" -Force -ErrorAction SilentlyContinue
-    Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" -Name "Startup" -Value "$env:USERPROFILE\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup" -Force -ErrorAction SilentlyContinue
-    Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" -Name "Templates" -Value "$env:USERPROFILE\AppData\Roaming\Microsoft\Windows\Templates" -Force -ErrorAction SilentlyContinue
-    Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" -Name "{374DE290-123F-4565-9164-39C4925E467B}" -Value "$env:USERPROFILE\Downloads" -Force -ErrorAction SilentlyContinue
-    Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" -Name "Desktop" -Value "$env:USERPROFILE\Desktop" -Force -ErrorAction SilentlyContinue
-    Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" -Name "My Pictures" -Value "$env:USERPROFILE\Pictures" -Force -ErrorAction SilentlyContinue
-    Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" -Name "Personal" -Value "$env:USERPROFILE\Documents" -Force -ErrorAction SilentlyContinue
-    Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" -Name "{F42EE2D3-909F-4907-8871-4C22FC0BF756}" -Value "$env:USERPROFILE\Documents" -Force -ErrorAction SilentlyContinue
-    Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" -Name "{0DDD015D-B06C-45D5-8C4C-F59713854639}" -Value "$env:USERPROFILE\Pictures" -Force -ErrorAction SilentlyContinue
-    $Script:LogTextBox.AppendText("Posizioni cartelle utente ripristinate.`r`n")
-
-    $Script:LogTextBox.AppendText("--- Disabilitazione Widget Barra delle Applicazioni ---`r`n")
-    Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "TaskbarDa" -Value 0 -Force -ErrorAction SilentlyContinue
-    Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "ShowTaskViewButton" -Value 0 -Force -ErrorAction SilentlyContinue
-    Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\PolicyManager\default\NewsAndInterests\AllowNewsAndInterests" -Name "value" -Value 0 -Type "DWord" -Force -ErrorAction SilentlyContinue
-    Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Feeds" -Name "EnableFeeds" -Value 0 -Type "DWord" -Force -ErrorAction SilentlyContinue
-    $Script:LogTextBox.AppendText("Widget della barra delle applicazioni disabilitati.`r`n")
-
-    $Script:LogTextBox.AppendText("--- Disinstallazione Widgets (WebExperience) ---`r`n")
-    Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Dsh" -Name "AllowNewsAndInterests" -Value 0 -Type "DWord" -Force -ErrorAction SilentlyContinue
-    Uninstall-AppxPackage -AppxPackageName "*WebExperience*"
-    # This registry entry marks the WebExperience as deprovisioned for new users
-    Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\MicrosoftWindows.Client.WebExperience_cw5n1h2txyewy" -Name "(Default)" -Value "" -Force -ErrorAction SilentlyContinue
-
-    $Script:LogTextBox.AppendText("Processo di Debloat completo. Riavvio di Esplora risorse...`r`n")
-    Show-MessageBox "Il processo di Debloat è stato completato. Esplora risorse verrà riavviato per applicare alcune modifiche." "Debloat Completato" "OK" "Information"
-
-    # Restart Explorer
-    Stop-Process -Name "explorer" -Force -ErrorAction SilentlyContinue
-    Start-Process -FilePath "explorer.exe" -ErrorAction SilentlyContinue
-}
-
 Function Perform-SystemRepair {
     $Script:LogTextBox.Clear()
     $Script:LogTextBox.AppendText("Avvio della riparazione del sistema (DISM e SFC)...`r`n`r`n")
@@ -1406,7 +1337,7 @@ Function Deselect-AllCheckboxes {
 
 #region Crea Form Principale
 $Form = New-Object System.Windows.Forms.Form
-$Form.Text = "Ottimizzatore Registro di Windows"
+$Form.Text = "Luca - Ottimizzatore Registro di Windows" # Nome del form cambiato in "Luca"
 $Form.Size = New-Object System.Drawing.Size(800, 800) # Aumenta l'altezza per i nuovi pulsanti
 $Form.StartPosition = "CenterScreen"
 $Form.FormBorderStyle = "FixedSingle" # Impedisce il ridimensionamento
@@ -1470,7 +1401,6 @@ $Form.Controls.Add($SelectAllButton)
 
 $DeselectAllButton = New-Object System.Windows.Forms.Button
 $DeselectAllButton.Text = "Deseleziona Tutto"
-# Correzione: Casting esplicito a [int] per le operazioni aritmetiche
 $DeselectAllButton.Location = New-Object System.Drawing.Point(([int]$SelectAllButton.Location.X + [int]$SelectAllButton.Width + 10), $currentButtonY)
 $DeselectAllButton.Size = New-Object System.Drawing.Size(120, 30)
 $DeselectAllButton.Add_Click({ Deselect-AllCheckboxes })
@@ -1483,7 +1413,6 @@ $Form.Controls.Add($DeselectAllButton)
 
 $ApplyButton = New-Object System.Windows.Forms.Button
 $ApplyButton.Text = "Applica Modifiche Selezionate"
-# Correzione: Casting esplicito a [int] per le operazioni aritmetiche
 $ApplyButton.Location = New-Object System.Drawing.Point(([int]$Form.Width - 190), $currentButtonY)
 $ApplyButton.Size = New-Object System.Drawing.Size(170, 30)
 $ApplyButton.Add_Click({ Apply-SelectedChanges })
@@ -1494,23 +1423,11 @@ $ApplyButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(0, 10
 $ApplyButton.FlatAppearance.BorderSize = 1
 $Form.Controls.Add($ApplyButton)
 
-$DebloatButton = New-Object System.Windows.Forms.Button
-$DebloatButton.Text = "Debloat Completo"
-# Correzione: Casting esplicito a [int] per le operazioni aritmetiche
-$DebloatButton.Location = New-Object System.Drawing.Point(([int]$DeselectAllButton.Location.X + [int]$DeselectAllButton.Width + 10), $currentButtonY)
-$DebloatButton.Size = New-Object System.Drawing.Size(140, 30)
-$DebloatButton.Add_Click({ Perform-FullDebloat })
-$DebloatButton.BackColor = [System.Drawing.Color]::FromArgb(204, 0, 0)
-$DebloatButton.ForeColor = [System.Drawing.Color]::White
-$DebloatButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
-$DebloatButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(180, 0, 0)
-$DebloatButton.FlatAppearance.BorderSize = 1
-$Form.Controls.Add($DebloatButton)
-
+# Il pulsante Debloat Completo è stato rimosso.
+# Sposto il pulsante OOSU per riempire lo spazio.
 $OOSUButton = New-Object System.Windows.Forms.Button
 $OOSUButton.Text = "Esegui O&O ShutUp10"
-# Correzione: Casting esplicito a [int] per le operazioni aritmetiche
-$OOSUButton.Location = New-Object System.Drawing.Point(([int]$DebloatButton.Location.X + [int]$DebloatButton.Width + 10), $currentButtonY)
+$OOSUButton.Location = New-Object System.Drawing.Point(([int]$DeselectAllButton.Location.X + [int]$DeselectAllButton.Width + 10), $currentButtonY) # Posizionato dopo Deseleziona Tutto
 $OOSUButton.Size = New-Object System.Drawing.Size(140, 30)
 $OOSUButton.Add_Click({ Invoke-WPFOOSU })
 $OOSUButton.BackColor = [System.Drawing.Color]::FromArgb(0, 150, 136)
@@ -1519,6 +1436,7 @@ $OOSUButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
 $OOSUButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(0, 120, 100)
 $OOSUButton.FlatAppearance.BorderSize = 1
 $Form.Controls.Add($OOSUButton)
+
 
 $currentButtonY += $SelectAllButton.Height + 15 # Spazio extra per la nuova sezione
 
@@ -1547,7 +1465,6 @@ $Form.Controls.Add($ControlPanelButton)
 
 $NetworkButton = New-Object System.Windows.Forms.Button
 $NetworkButton.Text = "Connessioni di Rete"
-# Correzione: Casting esplicito a [int] per le operazioni aritmetiche
 $NetworkButton.Location = New-Object System.Drawing.Point(([int]$ControlPanelButton.Location.X + [int]$ControlPanelButton.Width + 10), $currentButtonY)
 $NetworkButton.Size = New-Object System.Drawing.Size(140, 30)
 $NetworkButton.Add_Click({ Invoke-WPFControlPanel "WPFPanelnetwork" })
@@ -1560,7 +1477,6 @@ $Form.Controls.Add($NetworkButton)
 
 $PowerButton = New-Object System.Windows.Forms.Button
 $PowerButton.Text = "Opzioni Alimentazione"
-# Correzione: Casting esplicito a [int] per le operazioni aritmetiche
 $PowerButton.Location = New-Object System.Drawing.Point(([int]$NetworkButton.Location.X + [int]$NetworkButton.Width + 10), $currentButtonY)
 $PowerButton.Size = New-Object System.Drawing.Size(140, 30)
 $PowerButton.Add_Click({ Invoke-WPFControlPanel "WPFPanelpower" })
@@ -1573,7 +1489,6 @@ $Form.Controls.Add($PowerButton)
 
 $RegionButton = New-Object System.Windows.Forms.Button
 $RegionButton.Text = "Area Geografica"
-# Correzione: Casting esplicito a [int] per le operazioni aritmetiche
 $RegionButton.Location = New-Object System.Drawing.Point(([int]$PowerButton.Location.X + [int]$PowerButton.Width + 10), $currentButtonY)
 $RegionButton.Size = New-Object System.Drawing.Size(140, 30)
 $RegionButton.Add_Click({ Invoke-WPFControlPanel "WPFPanelregion" })
@@ -1600,7 +1515,6 @@ $Form.Controls.Add($SoundButton)
 
 $SystemButton = New-Object System.Windows.Forms.Button
 $SystemButton.Text = "Sistema"
-# Correzione: Casting esplicito a [int] per le operazioni aritmetiche
 $SystemButton.Location = New-Object System.Drawing.Point(([int]$SoundButton.Location.X + [int]$SoundButton.Width + 10), $currentButtonY)
 $SystemButton.Size = New-Object System.Drawing.Size(140, 30)
 $SystemButton.Add_Click({ Invoke-WPFControlPanel "WPFPanelsystem" })
@@ -1613,7 +1527,6 @@ $Form.Controls.Add($SystemButton)
 
 $UserButton = New-Object System.Windows.Forms.Button
 $UserButton.Text = "Account Utente"
-# Correzione: Casting esplicito a [int] per le operazioni aritmetiche
 $UserButton.Location = New-Object System.Drawing.Point(([int]$SystemButton.Location.X + [int]$SystemButton.Width + 10), $currentButtonY)
 $UserButton.Size = New-Object System.Drawing.Size(140, 30)
 $UserButton.Add_Click({ Invoke-WPFControlPanel "WPFPaneluser" })
