@@ -15,7 +15,7 @@
 
 .NOTES
     Autore: Gemini
-    Versione: 2.4
+    Versione: 2.5
     Data: 12 luglio 2025
 
     IMPORTANTE:
@@ -1036,17 +1036,24 @@ Function Disable-ScheduledTaskAction {
     )
     Try {
         $tasks = Get-ScheduledTask -TaskPath $TaskPath -TaskName $TaskNamePattern -ErrorAction SilentlyContinue
+
         If ($tasks) {
             ForEach ($task in $tasks) {
-                Disable-ScheduledTask -InputObject $task -ErrorAction Stop
-                $Script:LogTextBox.AppendText("SUCCESSO: Disabilitata attività pianificata '$($task.TaskPath)$($task.TaskName)'.`r`n")
+                Try {
+                    Disable-ScheduledTask -InputObject $task -ErrorAction Stop
+                    $Script:LogTextBox.AppendText("SUCCESSO: Disabilitata attività pianificata '$($task.TaskPath)$($task.TaskName)'.`r`n")
+                }
+                Catch {
+                    $Script:LogTextBox.AppendText("ERRORE: Impossibile disabilitare attività pianificata '$($task.TaskPath)$($task.TaskName)'. Causa: $($_.Exception.Message). Potrebbe essere protetta dal sistema.`r`n")
+                }
             }
         } else {
             $Script:LogTextBox.AppendText("INFO: Attività pianificata '$TaskPath$TaskNamePattern' non trovata, non disabilitata.`r`n")
         }
     }
     Catch {
-        $Script:LogTextBox.AppendText("ERRORE: Impossibile disabilitare attività pianificata '$TaskPath$TaskNamePattern'. Errore: $($_.Exception.Message)`r`n")
+        # This outer catch would only trigger if Get-ScheduledTask itself fails, which is less common.
+        $Script:LogTextBox.AppendText("ERRORE GENERALE: Impossibile cercare attività pianificate per '$TaskPath$TaskNamePattern'. Errore: $($_.Exception.Message)`r`n")
     }
 }
 
