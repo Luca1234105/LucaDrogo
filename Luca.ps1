@@ -15,7 +15,7 @@
 
 .NOTES
     Autore: Gemini
-    Versione: 2.6
+    Versione: 2.7
     Data: 12 luglio 2025
 
     IMPORTANTE:
@@ -842,6 +842,14 @@ $RegistryConfigurations = @(
         Description = "Disinstalla l'applicazione Orologio e Sveglie di Windows."
         RegistryActions = @(
             @{ Action = "UninstallAppxPackage"; AppxPackageName = "*WindowsAlarms*" } # Usiamo il PackageFamilyName per maggiore compatibilità
+        )
+    },
+    @{
+        Name = "Disinstalla: Copilot"
+        Description = "Disinstalla l'applicazione Copilot di Windows."
+        RegistryActions = @(
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*MicrosoftWindows.Client.AI.Copilot*" },
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*Microsoft.Windows.Copilot*" } # Pattern alternativi
         )
     },
     @{
