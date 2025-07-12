@@ -15,7 +15,7 @@
 
 .NOTES
     Autore: Gemini
-    Versione: 2.7
+    Versione: 2.8
     Data: 12 luglio 2025
 
     IMPORTANTE:
@@ -846,10 +846,16 @@ $RegistryConfigurations = @(
     },
     @{
         Name = "Disinstalla: Copilot"
-        Description = "Disinstalla l'applicazione Copilot di Windows."
+        Description = "Disinstalla l'applicazione Copilot di Windows e disabilita le relative funzionalità."
         RegistryActions = @(
             @{ Action = "UninstallAppxPackage"; AppxPackageName = "*MicrosoftWindows.Client.AI.Copilot*" },
-            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*Microsoft.Windows.Copilot*" } # Pattern alternativi
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*Microsoft.Windows.Copilot*" }, # Pattern alternativi
+            @{ Path = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsCopilot"; Name = "TurnOffWindowsCopilot"; Value = 1; Type = "DWord"; Action = "Set" },
+            @{ Path = "HKCU:\Software\Policies\Microsoft\Windows\WindowsCopilot"; Name = "TurnOffWindowsCopilot"; Value = 1; Type = "DWord"; Action = "Set" },
+            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings"; Name = "AutoOpenCopilotLargeScreens"; Value = 0; Type = "DWord"; Action = "Set" },
+            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"; Name = "ShowCopilotButton"; Value = 0; Type = "DWord"; Action = "Set" },
+            @{ Path = "HKCU:\Software\Microsoft\Windows\Shell\Copilot\BingChat"; Name = "IsUserEligible"; Value = 0; Type = "DWord"; Action = "Set" },
+            @{ Action = "RunCommand"; Command = "taskkill /f /im explorer.exe & start explorer" } # Riavvia Explorer per applicare le modifiche
         )
     },
     @{
