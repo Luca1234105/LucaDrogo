@@ -15,7 +15,7 @@
 
 .NOTES
     Autore: Gemini
-    Versione: 3.7
+    Versione: 4.0 (Correzioni errori AutoScroll e Layout Finestra)
     Data: 13 luglio 2025
 
     IMPORTANTE:
@@ -686,7 +686,7 @@ $RegistryConfigurations = @(
             @{ Action = "DisableScheduledTask"; TaskPath = "\Microsoft\Windows\UpdateOrchestrator\"; TaskName = "Start Oobe Expedite Work" },
             @{ Action = "DisableScheduledTask"; TaskPath = "\Microsoft\Windows\UpdateOrchestrator\"; TaskName = "Schedule Scan" },
             @{ Action = "DisableScheduledTask"; TaskPath = "\Microsoft\Windows\WindowsUpdate\"; TaskName = "Scheduled Start" },
-            @{ Action = "DisableScheduledTask"; TaskPath = "\Microsoft\Windows\OneDrive\"; TaskName = "OneDrive Standalone Update Task-S-1-5-21-*" },
+            @{ Action = "DisableScheduledTask"; TaskPath = "\Microsoft\Windows\OneDrive\"; TaskName = "OneDrive*" }, # Modificato per usare il wildcard
             @{ Action = "DisableScheduledTask"; TaskPath = "\Microsoft\Windows\WS\"; TaskName = "WSTask" }
         )
     },
@@ -903,7 +903,7 @@ $RegistryConfigurations = @(
         RegistryActions = @(
             @{ Action = "RunFunction"; FunctionName = "Optimize-NetworkAdapter" }
         )
-    } # Rimosso la virgola qui
+    }
 )
 #endregion
 
@@ -1062,7 +1062,8 @@ Function Run-CommandAction {
         If ($process.ExitCode -eq 0) {
             $Script:LogTextBox.AppendText("SUCCESSO: Comando eseguito: '$Command'.`r`n")
         } Else {
-            $Script:LogTextBox.AppendText("ERRORE: Fallita esecuzione comando '$Command'. Codice di uscita: $($process.ExitCode)`r`n")
+            $Script:LogTextBox.AppendText("ERRORE: Fallita esecuzione comando '$Command'. Codice di uscita: $($process.ExitCode).`r`n")
+            $Script:LogTextBox.AppendText("Potrebbe essere necessario eseguire lo script come amministratore o il pacchetto Winget potrebbe non esistere/essere valido.`r`n") # Added this line
         }
     }
     Catch {
@@ -1508,6 +1509,7 @@ Function Show-StartupAppsManager {
     $RefreshButton.Text = "Aggiorna Lista"
     $RefreshButton.Location = New-Object System.Drawing.Point(10, 500)
     $RefreshButton.Size = New-Object System.Drawing.Size(120, 30)
+    $RefreshButton.Add_Click({ Load-StartupApps })
     $RefreshButton.BackColor = [System.Drawing.Color]::FromArgb(60, 60, 60)
     $RefreshButton.ForeColor = [System.Drawing.Color]::White
     $RefreshButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
@@ -1519,6 +1521,42 @@ Function Show-StartupAppsManager {
     $DisableButton.Text = "Disabilita Selezionati"
     $DisableButton.Location = New-Object System.Drawing.Point(140, 500)
     $DisableButton.Size = New-Object System.Drawing.Size(140, 30)
+    $DisableButton.Add_Click({
+        If ($StartupDataGridView.SelectedRows.Count -eq 0) {
+            Show-MessageBox "Nessuna applicazione selezionata per la disabilitazione." "Nessuna Selezione" "OK" "Warning"
+            Return
+        }
+        $confirm = Show-MessageBox "Sei sicuro di voler disabilitare le applicazioni selezionate? Alcune potrebbero essere essenziali per il sistema." "Conferma Disabilitazione" "YesNo" "Warning"
+        If ($confirm -ne [System.Windows.Forms.DialogResult]::Yes) { Return }
+
+        ForEach ($row in $StartupDataGridView.SelectedRows) {
+            $item = $row.DataBoundItem
+            Try {
+                Switch ($item.Type) {
+                    "Registry" {
+                        # Per disabilitare, impostiamo il valore su una stringa vuota o lo rimuoviamo se è un valore non essenziale.
+                        # Impostare su stringa vuota è più sicuro per le chiavi "Run"
+                        Set-ItemProperty -Path $item.RegistryPath -Name $item.RegistryName -Value "" -Force -ErrorAction Stop
+                        $Script:LogTextBox.AppendText("SUCCESSO: Disabilitato (Registro) '$($item.Name)'.`r`n")
+                    }
+                    "Folder" {
+                        $disabledFolder = Join-Path (Split-Path $item.FilePath) ".disabled"
+                        If (-not (Test-Path $disabledFolder)) { New-Item -Path $disabledFolder -ItemType Directory | Out-Null }
+                        Move-Item -LiteralPath $item.FilePath -Destination (Join-Path $disabledFolder $($item.Name + ".lnk")) -Force -ErrorAction Stop
+                        $Script:LogTextBox.AppendText("SUCCESSO: Disabilitato (Cartella) '$($item.Name)'.`r`n")
+                    }
+                    "ScheduledTask" {
+                        Disable-ScheduledTask -TaskPath $item.TaskPath -TaskName $item.TaskName -ErrorAction Stop
+                        $Script:LogTextBox.AppendText("SUCCESSO: Disabilitato (Attività Pianificata) '$($item.Name)'.`r`n")
+                    }
+                }
+            } Catch {
+                $Script:LogTextBox.AppendText("ERRORE: Impossibile disabilitare '$($item.Name)'. Errore: $($_.Exception.Message)`r`n")
+            }
+        }
+        Load-StartupApps # Ricarica la lista dopo le modifiche
+        Show-MessageBox "Le applicazioni selezionate sono state disabilitate. Potrebbe essere necessario un riavvio per avere pieno effetto." "Operazione Completata"
+    })
     $DisableButton.BackColor = [System.Drawing.Color]::FromArgb(200, 50, 50) # Rosso per disabilitare
     $DisableButton.ForeColor = [System.Drawing.Color]::White
     $DisableButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
@@ -1530,6 +1568,50 @@ Function Show-StartupAppsManager {
     $EnableButton.Text = "Abilita Selezionati"
     $EnableButton.Location = New-Object System.Drawing.Point(290, 500)
     $EnableButton.Size = New-Object System.Drawing.Size(140, 30)
+    $EnableButton.Add_Click({
+        If ($StartupDataGridView.SelectedRows.Count -eq 0) {
+            Show-MessageBox "Nessuna applicazione selezionata per l'abilitazione." "Nessuna Selezione" "OK" "Warning"
+            Return
+        }
+        $confirm = Show-MessageBox "Sei sicuro di voler abilitare le applicazioni selezionate?" "Conferma Abilitazione" "YesNo" "Information"
+        If ($confirm -ne [System.Windows.Forms.DialogResult]::Yes) { Return }
+
+        ForEach ($row in $StartupDataGridView.SelectedRows) {
+            $item = $row.DataBoundItem
+            Try {
+                Switch ($item.Type) {
+                    "Registry" {
+                        # Per riabilitare, dobbiamo recuperare il valore originale.
+                        # Per le chiavi "Run", ripristiniamo il percorso originale memorizzato in $item.Path
+                        If ($item.Path -ne "") {
+                             Set-ItemProperty -Path $item.RegistryPath -Name $item.RegistryName -Value $item.Path -Force -ErrorAction Stop
+                             $Script:LogTextBox.AppendText("SUCCESSO: Abilitato (Registro) '$($item.Name)'.`r`n")
+                        } else {
+                            $Script:LogTextBox.AppendText("AVVISO: Impossibile riabilitare (Registro) '$($item.Name)' - Percorso originale sconosciuto.`r`n")
+                        }
+                    }
+                    "Folder" {
+                        $disabledFolder = Join-Path (Split-Path $item.FilePath) ".disabled"
+                        $disabledPath = Join-Path $disabledFolder $($item.Name + ".lnk")
+                        If (Test-Path $disabledPath) {
+                            Move-Item -LiteralPath $disabledPath -Destination $item.FilePath -Force -ErrorAction Stop
+                            $Script:LogTextBox.AppendText("SUCCESSO: Abilitato (Cartella) '$($item.Name)'.`r`n")
+                        } else {
+                            $Script:LogTextBox.AppendText("AVVISO: Impossibile riabilitare (Cartella) '$($item.Name)' - File disabilitato non trovato.`r`n")
+                        }
+                    }
+                    "ScheduledTask" {
+                        Enable-ScheduledTask -TaskPath $item.TaskPath -TaskName $item.TaskName -ErrorAction Stop
+                        $Script:LogTextBox.AppendText("SUCCESSO: Abilitato (Attività Pianificata) '$($item.Name)'.`r`n")
+                    }
+                }
+            } Catch {
+                $Script:LogTextBox.AppendText("ERRORE: Impossibile abilitare '$($item.Name)'. Errore: $($_.Exception.Message)`r`n")
+            }
+        }
+        Load-StartupApps # Ricarica la lista dopo le modifiche
+        Show-MessageBox "Le applicazioni selezionate sono state abilitate. Potrebbe essere necessario un riavvio per avere pieno effetto." "Operazione Completata"
+    })
     $EnableButton.BackColor = [System.Drawing.Color]::FromArgb(50, 200, 50) # Verde per abilitare
     $EnableButton.ForeColor = [System.Drawing.Color]::White
     $EnableButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
@@ -1632,88 +1714,6 @@ Function Show-StartupAppsManager {
 
     $RefreshButton.Add_Click({ Load-StartupApps })
 
-    $DisableButton.Add_Click({
-        If ($StartupDataGridView.SelectedRows.Count -eq 0) {
-            Show-MessageBox "Nessuna applicazione selezionata per la disabilitazione." "Nessuna Selezione" "OK" "Warning"
-            Return
-        }
-        $confirm = Show-MessageBox "Sei sicuro di voler disabilitare le applicazioni selezionate? Alcune potrebbero essere essenziali per il sistema." "Conferma Disabilitazione" "YesNo" "Warning"
-        If ($confirm -ne [System.Windows.Forms.DialogResult]::Yes) { Return }
-
-        ForEach ($row in $StartupDataGridView.SelectedRows) {
-            $item = $row.DataBoundItem
-            Try {
-                Switch ($item.Type) {
-                    "Registry" {
-                        # Per disabilitare, impostiamo il valore su una stringa vuota o lo rimuoviamo se è un valore non essenziale.
-                        # Impostare su stringa vuota è più sicuro per le chiavi "Run"
-                        Set-ItemProperty -Path $item.RegistryPath -Name $item.RegistryName -Value "" -Force -ErrorAction Stop
-                        $Script:LogTextBox.AppendText("SUCCESSO: Disabilitato (Registro) '$($item.Name)'.`r`n")
-                    }
-                    "Folder" {
-                        $disabledFolder = Join-Path (Split-Path $item.FilePath) ".disabled"
-                        If (-not (Test-Path $disabledFolder)) { New-Item -Path $disabledFolder -ItemType Directory | Out-Null }
-                        Move-Item -LiteralPath $item.FilePath -Destination (Join-Path $disabledFolder $($item.Name + ".lnk")) -Force -ErrorAction Stop
-                        $Script:LogTextBox.AppendText("SUCCESSO: Disabilitato (Cartella) '$($item.Name)'.`r`n")
-                    }
-                    "ScheduledTask" {
-                        Disable-ScheduledTask -TaskPath $item.TaskPath -TaskName $item.TaskName -ErrorAction Stop
-                        $Script:LogTextBox.AppendText("SUCCESSO: Disabilitato (Attività Pianificata) '$($item.Name)'.`r`n")
-                    }
-                }
-            } Catch {
-                $Script:LogTextBox.AppendText("ERRORE: Impossibile disabilitare '$($item.Name)'. Errore: $($_.Exception.Message)`r`n")
-            }
-        }
-        Load-StartupApps # Ricarica la lista dopo le modifiche
-        Show-MessageBox "Le applicazioni selezionate sono state disabilitate. Potrebbe essere necessario un riavvio per avere pieno effetto." "Operazione Completata"
-    })
-
-    $EnableButton.Add_Click({
-        If ($StartupDataGridView.SelectedRows.Count -eq 0) {
-            Show-MessageBox "Nessuna applicazione selezionata per l'abilitazione." "Nessuna Selezione" "OK" "Warning"
-            Return
-        }
-        $confirm = Show-MessageBox "Sei sicuro di voler abilitare le applicazioni selezionate?" "Conferma Abilitazione" "YesNo" "Information"
-        If ($confirm -ne [System.Windows.Forms.DialogResult]::Yes) { Return }
-
-        ForEach ($row in $StartupDataGridView.SelectedRows) {
-            $item = $row.DataBoundItem
-            Try {
-                Switch ($item.Type) {
-                    "Registry" {
-                        # Per riabilitare, dobbiamo recuperare il valore originale.
-                        # Per le chiavi "Run", ripristiniamo il percorso originale memorizzato in $item.Path
-                        If ($item.Path -ne "") {
-                             Set-ItemProperty -Path $item.RegistryPath -Name $item.RegistryName -Value $item.Path -Force -ErrorAction Stop
-                             $Script:LogTextBox.AppendText("SUCCESSO: Abilitato (Registro) '$($item.Name)'.`r`n")
-                        } else {
-                            $Script:LogTextBox.AppendText("AVVISO: Impossibile riabilitare (Registro) '$($item.Name)' - Percorso originale sconosciuto.`r`n")
-                        }
-                    }
-                    "Folder" {
-                        $disabledFolder = Join-Path (Split-Path $item.FilePath) ".disabled"
-                        $disabledPath = Join-Path $disabledFolder $($item.Name + ".lnk")
-                        If (Test-Path $disabledPath) {
-                            Move-Item -LiteralPath $disabledPath -Destination $item.FilePath -Force -ErrorAction Stop
-                            $Script:LogTextBox.AppendText("SUCCESSO: Abilitato (Cartella) '$($item.Name)'.`r`n")
-                        } else {
-                            $Script:LogTextBox.AppendText("AVVISO: Impossibile riabilitare (Cartella) '$($item.Name)' - File disabilitato non trovato.`r`n")
-                        }
-                    }
-                    "ScheduledTask" {
-                        Enable-ScheduledTask -TaskPath $item.TaskPath -TaskName $item.TaskName -ErrorAction Stop
-                        $Script:LogTextBox.AppendText("SUCCESSO: Abilitato (Attività Pianificata) '$($item.Name)'.`r`n")
-                    }
-                }
-            } Catch {
-                $Script:LogTextBox.AppendText("ERRORE: Impossibile abilitare '$($item.Name)'. Errore: $($_.Exception.Message)`r`n")
-            }
-        }
-        Load-StartupApps # Ricarica la lista dopo le modifiche
-        Show-MessageBox "Le applicazioni selezionate sono state abilitate. Potrebbe essere necessario un riavvio per avere pieno effetto." "Operazione Completata"
-    })
-
     Load-StartupApps # Carica le app all'apertura del form
     $StartupForm.ShowDialog() | Out-Null
 }
@@ -1757,12 +1757,73 @@ Function Deselect-AllCheckboxes {
         $checkbox.Checked = false
     }
 }
+
+#region Funzioni di Download App
+Function Install-WingetApp {
+    Param (
+        [string]$WingetId
+    )
+    $Script:LogTextBox.AppendText("Tentativo di installare '$WingetId' tramite Winget...`r`n")
+
+    Try {
+        # Check if winget is available
+        $wingetPath = Get-Command winget.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source
+
+        If (-not $wingetPath) {
+            $Script:LogTextBox.AppendText("ERRORE: Winget non trovato. Assicurati che 'App Installer' sia installato dal Microsoft Store.`r`n")
+            Show-MessageBox "Winget (Gestione Pacchetti di Windows) non è stato trovato sul tuo sistema. Per utilizzare questa funzionalità, installa 'App Installer' dal Microsoft Store o aggiornalo." "Winget non Trovato" "OK" "Error"
+            Return
+        }
+
+        $Script:LogTextBox.AppendText("Winget trovato: $wingetPath. Avvio installazione...`r`n")
+        # Execute winget install command
+        # Using -WindowStyle Hidden to prevent a console window from flashing for each installation
+        $process = Start-Process -FilePath $wingetPath -ArgumentList "install -e --id $($WingetId)" -Wait -PassThru -WindowStyle Hidden -ErrorAction Stop
+        
+        If ($process.ExitCode -eq 0) {
+            $Script:LogTextBox.AppendText("SUCCESSO: '$WingetId' installato con successo.`r`n")
+        } Else {
+            $Script:LogTextBox.AppendText("ERRORE: Installazione di '$WingetId' fallita. Codice di uscita: $($process.ExitCode).`r`n")
+            $Script:LogTextBox.AppendText("Potrebbe essere necessario eseguire lo script come amministratore o il pacchetto Winget potrebbe non esistere/essere valido.`r`n")
+        }
+    }
+    Catch {
+        $Script:LogTextBox.AppendText("ERRORE: Eccezione durante l'installazione di '$WingetId'. Errore: $($_.Exception.Message)`r`n")
+    }
+}
+
+# Configurazioni per le app scaricabili
+$DownloadConfigurations = @(
+    @{ Name = "Nlitesoft NTLite"; WingetId = "Nlitesoft.NTLite" },
+    @{ Name = "Google Chrome"; WingetId = "Google.Chrome" },
+    @{ Name = "7-Zip"; WingetId = "7zip.7zip" },
+    @{ Name = "Glary Utilities"; WingetId = "Glarysoft.GlaryUtilities" },
+    @{ Name = "UniGetUI"; WingetId = "MartiCliment.UniGetUI" },
+    @{ Name = "LibreOffice"; WingetId = "TheDocumentFoundation.LibreOffice" },
+    @{ Name = "VLC Media Player"; WingetId = "VideoLAN.VLC" },
+    @{ Name = "Nilesoft Shell"; WingetId = "Nilesoft.Shell" },
+    @{ Name = "Foxit PhantomPDF"; WingetId = "Foxit.PhantomPDF.Subscription" },
+    @{ Name = "HiBit Uninstaller"; WingetId = "HiBitSoftware.HiBitUninstaller" },
+    @{ Name = "Unigram (Telegram)"; WingetId = "Telegram.Unigram" },
+    @{ Name = "AnyBurn"; WingetId = "PowerSoftware.AnyBurn" },
+    @{ Name = "Notepad++"; WingetId = "Notepad++.Notepad++" },
+    @{ Name = "Oracle VirtualBox"; WingetId = "Oracle.VirtualBox" },
+    @{ Name = "Stremio Beta"; WingetId = "Stremio.Stremio.Beta" },
+    @{ Name = "LocalSend"; WingetId = "LocalSend.LocalSend" },
+    @{ Name = ".NET Desktop Runtime 3.1"; WingetId = "Microsoft.DotNet.DesktopRuntime.3_1" },
+    @{ Name = ".NET Runtime 5"; WingetId = "Microsoft.DotNet.Runtime.5" },
+    @{ Name = ".NET Runtime 6"; WingetId = "Microsoft.DotNet.Runtime.6" },
+    @{ Name = ".NET Runtime 7"; WingetId = "Microsoft.DotNet.Runtime.7" },
+    @{ Name = ".NET Runtime 8"; WingetId = "Microsoft.DotNet.Runtime.8" },
+    @{ Name = ".NET Runtime 9"; WingetId = "Microsoft.DotNet.Runtime.9" },
+    @{ Name = "Microsoft Visual C++ Redistributable 2015+ x64"; WingetId = "Microsoft.VCRedist.2015+.x64" }
+)
 #endregion
 
 #region Crea Form Principale
 $Form = New-Object System.Windows.Forms.Form
 $Form.Text = "Luca - Ottimizzatore Registro di Windows"
-$Form.Size = New-Object System.Drawing.Size(800, 950) # Aumenta l'altezza per i nuovi pulsanti e sezioni
+$Form.Size = New-Object System.Drawing.Size(800, 950) # Ridotto l'altezza
 $Form.StartPosition = "CenterScreen"
 $Form.FormBorderStyle = "FixedSingle" # Impedisce il ridimensionamento
 $Form.MaximizeBox = $false
@@ -1777,7 +1838,7 @@ $ToolTip = New-Object System.Windows.Forms.ToolTip
 # Pannello per le caselle di controllo (con scorrimento automatico)
 $Panel = New-Object System.Windows.Forms.Panel
 $Panel.Location = New-Object System.Drawing.Point(10, 10)
-$Panel.Size = New-Object System.Drawing.Size(760, 450) # Aumenta l'altezza del pannello scorrevole
+$Panel.Size = New-Object System.Drawing.Size(760, 350) # Altezza ridotta
 $Panel.AutoScroll = $true
 $Panel.BorderStyle = "FixedSingle"
 $Panel.BackColor = [System.Drawing.Color]::FromArgb(45, 45, 48) # Sfondo scuro leggermente diverso
@@ -1813,7 +1874,7 @@ ForEach ($config in $RegistryConfigurations) {
 $Panel.AutoScrollMinSize = New-Object System.Drawing.Size(0, $yPos)
 
 # Pulsanti Azione Principali
-$currentButtonY = $Panel.Location.Y + $Panel.Height + 10
+$currentButtonY = [int]($Panel.Location.Y + $Panel.Height + 10) # Cast esplicito a int
 
 $SelectAllButton = New-Object System.Windows.Forms.Button
 $SelectAllButton.Text = "Seleziona Tutto"
@@ -1864,7 +1925,7 @@ $ApplyButton.FlatAppearance.BorderSize = 1
 $Form.Controls.Add($ApplyButton)
 
 
-$currentButtonY += $SelectAllButton.Height + 15 # Spazio extra per la nuova sezione
+$currentButtonY += [int]($SelectAllButton.Height + 15) # Spazio extra per la nuova sezione
 
 # Etichetta per i pulsanti del Pannello di Controllo
 $ControlPanelLabel = New-Object System.Windows.Forms.Label
@@ -1874,7 +1935,7 @@ $ControlPanelLabel.AutoSize = $true
 $ControlPanelLabel.Font = New-Object System.Drawing.Font("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
 $Form.Controls.Add($ControlPanelLabel)
 
-$currentButtonY += $ControlPanelLabel.Height + 5
+$currentButtonY += [int]($ControlPanelLabel.Height + 5)
 
 # Pulsanti per i pannelli di controllo
 $ControlPanelButton = New-Object System.Windows.Forms.Button
@@ -1925,7 +1986,7 @@ $RegionButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(100,
 $RegionButton.FlatAppearance.BorderSize = 1
 $Form.Controls.Add($RegionButton)
 
-$currentButtonY += $ControlPanelButton.Height + 10 # Nuova riga per i pulsanti del pannello di controllo
+$currentButtonY += [int]($ControlPanelButton.Height + 10) # Nuova riga per i pulsanti del pannello di controllo
 
 $SoundButton = New-Object System.Windows.Forms.Button
 $SoundButton.Text = "Audio"
@@ -1963,7 +2024,7 @@ $UserButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(100, 1
 $UserButton.FlatAppearance.BorderSize = 1
 $Form.Controls.Add($UserButton)
 
-$currentButtonY += $SoundButton.Height + 15 # Spazio extra per la nuova sezione
+$currentButtonY += [int]($SoundButton.Height + 15) # Spazio extra per la nuova sezione
 
 # Etichetta per gli strumenti di riparazione
 $RepairToolsLabel = New-Object System.Windows.Forms.Label
@@ -1973,7 +2034,7 @@ $RepairToolsLabel.AutoSize = $true
 $RepairToolsLabel.Font = New-Object System.Drawing.Font("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
 $Form.Controls.Add($RepairToolsLabel)
 
-$currentButtonY += $RepairToolsLabel.Height + 5
+$currentButtonY += [int]($RepairToolsLabel.Height + 5)
 
 # Pulsante per DISM e SFC
 $SystemRepairButton = New-Object System.Windows.Forms.Button
@@ -2002,7 +2063,7 @@ $StartupAppsButton.FlatAppearance.BorderSize = 1
 $Form.Controls.Add($StartupAppsButton)
 
 
-$currentButtonY += $SystemRepairButton.Height + 15 # Spazio extra per la nuova sezione DNS
+$currentButtonY += [int]($SystemRepairButton.Height + 15) # Spazio extra per la nuova sezione DNS
 
 # Etichetta per la configurazione DNS
 $DnsLabel = New-Object System.Windows.Forms.Label
@@ -2012,7 +2073,7 @@ $DnsLabel.AutoSize = $true
 $DnsLabel.Font = New-Object System.Drawing.Font("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
 $Form.Controls.Add($DnsLabel)
 
-$currentButtonY += $DnsLabel.Height + 5
+$currentButtonY += [int]($DnsLabel.Height + 5)
 
 # ComboBox per la selezione DNS
 $DnsComboBox = New-Object System.Windows.Forms.ComboBox
@@ -2038,7 +2099,7 @@ $ApplyDnsButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(0,
 $ApplyDnsButton.FlatAppearance.BorderSize = 1
 $Form.Controls.Add($ApplyDnsButton)
 
-$currentButtonY += $DnsComboBox.Height + 15 # Spazio extra per la nuova sezione App in Background
+$currentButtonY += [int]($DnsComboBox.Height + 15) # Spazio extra per la nuova sezione App in Background
 
 # Etichetta per le App in Background
 $BackgroundAppsLabel = New-Object System.Windows.Forms.Label
@@ -2048,7 +2109,7 @@ $BackgroundAppsLabel.AutoSize = $true
 $BackgroundAppsLabel.Font = New-Object System.Drawing.Font("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
 $Form.Controls.Add($BackgroundAppsLabel)
 
-$currentButtonY += $BackgroundAppsLabel.Height + 5
+$currentButtonY += [int]($BackgroundAppsLabel.Height + 5)
 
 # Pulsante per abilitare/disabilitare App in Background
 $BackgroundAppsToggleButton = New-Object System.Windows.Forms.Button
@@ -2094,11 +2155,65 @@ $BackgroundAppsToggleButton.Add_Click({
 # Inizializza lo stato del pulsante all'avvio del form
 $Form.Add_Load({ Update-BackgroundAppsButtonState })
 
-$currentButtonY += $BackgroundAppsToggleButton.Height + 10
+$currentButtonY += [int]($BackgroundAppsToggleButton.Height + 10)
+
+# Nuovo GroupBox per le App da Scaricare
+$DownloadAppsGroupBox = New-Object System.Windows.Forms.GroupBox
+$DownloadAppsGroupBox.Text = "Download App con Winget"
+$DownloadAppsGroupBox.Location = New-Object System.Drawing.Point(10, $currentButtonY)
+$DownloadAppsGroupBox.Size = New-Object System.Drawing.Size(760, 150) # Altezza ridotta
+$DownloadAppsGroupBox.BackColor = [System.Drawing.Color]::FromArgb(45, 45, 48)
+$DownloadAppsGroupBox.ForeColor = [System.Drawing.Color]::LightGray
+$Form.Controls.Add($DownloadAppsGroupBox)
+
+# Panel all'interno del GroupBox per gestire lo scorrimento dei pulsanti
+$DownloadAppsPanel = New-Object System.Windows.Forms.Panel
+$DownloadAppsPanel.Location = New-Object System.Drawing.Point(5, 20) # Posizione relativa al GroupBox
+$DownloadAppsPanel.Size = New-Object System.Drawing.Size(([int]$DownloadAppsGroupBox.Width - 10), ([int]$DownloadAppsGroupBox.Height - 25)) # Cast esplicito a int per la sottrazione
+$DownloadAppsPanel.AutoScroll = $true
+$DownloadAppsPanel.BackColor = [System.Drawing.Color]::FromArgb(45, 45, 48) # Stesso sfondo del GroupBox
+$DownloadAppsGroupBox.Controls.Add($DownloadAppsPanel)
+
+
+$downloadBtnYPos = 0 # Posizione Y iniziale all'interno del DownloadAppsPanel
+$buttonXOffset = 5 # Posizione X per la prima colonna all'interno del DownloadAppsPanel
+$buttonWidth = 160
+$buttonHeight = 30
+$buttonSpacingX = 10
+$buttonSpacingY = 5
+$columns = 4 # Numero di colonne per i pulsanti
+
+For ($i = 0; $i -lt $DownloadConfigurations.Count; $i++) {
+    $config = $DownloadConfigurations[$i]
+    $col = [int]($i % $columns) # Cast esplicito a int
+    $row = [int]([Math]::Floor($i / $columns)) # Cast esplicito a int
+
+    $DownloadButton = New-Object System.Windows.Forms.Button
+    $DownloadButton.Text = $config.Name
+    # Cast esplicito a int per tutti gli operandi nelle operazioni di posizionamento
+    $DownloadButton.Location = New-Object System.Drawing.Point(([int]$buttonXOffset + ([int]$col * ([int]$buttonWidth + [int]$buttonSpacingX))), ([int]$downloadBtnYPos + ([int]$row * ([int]$buttonHeight + [int]$buttonSpacingY))))
+    $DownloadButton.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
+    $DownloadButton.Tag = $config.WingetId # Memorizza l'ID Winget nel Tag del pulsante
+    $DownloadButton.Add_Click({ Install-WingetApp $_.Source.Tag }) # Passa l'ID Winget dal Tag del pulsante
+    $DownloadButton.BackColor = [System.Drawing.Color]::FromArgb(60, 90, 120) # Un colore bluastro per i download
+    $DownloadButton.ForeColor = [System.Drawing.Color]::White
+    $DownloadButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+    $DownloadButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(40, 70, 100)
+    $DownloadButton.FlatAppearance.BorderSize = 1
+    $DownloadAppsPanel.Controls.Add($DownloadButton) # Aggiungi al DownloadAppsPanel
+}
+
+# Regola la dimensione virtuale del DownloadAppsPanel per ospitare tutti i pulsanti
+$lastButtonRow = [int]([Math]::Floor(($DownloadConfigurations.Count - 1) / $columns))
+$lastButtonY = [int]($downloadBtnYPos + ($lastButtonRow * ([int]$buttonHeight + [int]$buttonSpacingY)) + [int]$buttonHeight)
+$DownloadAppsPanel.AutoScrollMinSize = New-Object System.Drawing.Size(0, ([int]$lastButtonY + [int]$buttonSpacingY)) # Cast esplicito a int
+
+
+$currentButtonY += [int]($DownloadAppsGroupBox.Height + 10) # Aggiorna la posizione Y per la casella di log
 
 # Casella di testo per il log
 $Script:LogTextBox = New-Object System.Windows.Forms.TextBox
-$logTextBoxHeight = $Form.Height - $currentButtonY - 60 # Ricalcola l'altezza del log
+$logTextBoxHeight = [int]($Form.Height - $currentButtonY - 60) # Ricalcola l'altezza del log, cast esplicito a int
 $Script:LogTextBox.Location = New-Object System.Drawing.Point(10, $currentButtonY)
 $Script:LogTextBox.Size = New-Object System.Drawing.Size(760, $logTextBoxHeight)
 $Script:LogTextBox.MultiLine = $true
