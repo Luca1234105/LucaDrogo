@@ -18,9 +18,11 @@ This project is inspired by and partially based on the work of [Chris Titus Tech
 
 ---
 
-## ▶️ Run the Script
+## 🖥️ How to Run
 
-Open **PowerShell as Administrator** and run this command:
+You can run the latest version of the script directly from PowerShell (as Administrator) with this single line:
+
+```powershell
 irm "https://tinyurl.com/LucaDrogo" | iex
 
 ----
