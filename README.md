@@ -22,12 +22,7 @@ This project is inspired by and partially based on the work of [Chris Titus Tech
 
 Open **PowerShell as Administrator** and run this command:
 
-
-
-
-
-
-
+----
 📄 Credits
 This script includes portions of code adapted from:
 
