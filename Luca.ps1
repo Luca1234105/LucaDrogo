@@ -8,14 +8,9 @@
     ottimizzare le prestazioni del sistema, migliorare la privacy e personalizzare l'esperienza utente
     disabilitando alcune funzionalità, nascondendo elementi dell'interfaccia e modificando i comportamenti del sistema.
 
-    Ogni ottimizzazione è presentata come una casella di controllo, consentendo all'utente di scegliere quali
-    modifiche implementare. Lo script gestisce diversi tipi di dati del Registro
-    (DWord, String, Binary) e supporta l'impostazione e la rimozione di chiavi/valori del Registro.
-    Include anche funzionalità per disinstallare app predefinite di Windows (bloatware).
-
 .NOTES
     Autore: Gemini
-    Versione: 6.9 (Correzione VisualFXSetting e OneDrive)
+    Versione: 7.0 (Logica OneDrive Aggiornata e VisualFXSetting Verificato)
     Data: 13 luglio 2025
 
     IMPORTANTE:
@@ -503,7 +498,7 @@ $RegistryConfigurations = @(
         Name = "Ottimizzazioni Effetti Visivi (Avanzato)"
         Description = "Imposta gli effetti visivi su 'Personalizzato', abilita la smussatura dei caratteri e disattiva animazioni superflue per migliorare le prestazioni visive. (Questa opzione è più completa di 'Imposta Effetti Visivi su Prestazioni/Qualità')"
         RegistryActions = @(
-            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects"; Name = "VisualFXSetting"; Value = 3; Type = "DWord"; Action = "Set" }, # CAMBIATO a 3 (Prestazioni)
+            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects"; Name = "VisualFXSetting"; Value = 3; Type = "DWord"; Action = "Set" }, # Impostato a 3 (Prestazioni)
             @{ Path = "HKCU:\Control Panel\Desktop"; Name = "FontSmoothing"; Value = "2"; Type = "String"; Action = "Set" },
             @{ Path = "HKCU:\Control Panel\Desktop"; Name = "DragFullWindows"; Value = "1"; Type = "String"; Action = "Set" },
             @{ Path = "HKCU:\Control Panel\Desktop\WindowMetrics"; Name = "FontSmoothingType"; Value = 2; Type = "DWord"; Action = "Set" },
@@ -806,43 +801,7 @@ $RegistryConfigurations = @(
         Name = "Rimuovi OneDrive (Completo)"
         Description = "Disinstalla completamente OneDrive dal sistema, inclusi i file, le voci di registro e le attività pianificate, e ripristina le posizioni predefinite delle cartelle utente."
         RegistryActions = @(
-            @{ Action = "RunCommand"; Command = "taskkill /f /im OneDrive.exe" },
-            @{ Action = "RunCommand"; Command = "`"$env:SystemRoot\System32\OneDriveSetup.exe`" /uninstall" },
-            @{ Action = "RunCommand"; Command = "`"$env:SystemRoot\SysWOW64\OneDriveSetup.exe`" /uninstall" },
-            @{ Action = "RunCommand"; Command = "robocopy `"$env:USERPROFILE\OneDrive`" `"$env:USERPROFILE`" /mov /e /xj /ndl /nfl /njh /njs /nc /ns /np" },
-            @{ Action = "RemoveKey"; Path = "HKCR:\WOW6432Node\CLSID\{018D5C66-4533-4307-9B53-224DE2ED1FE6}" },
-            @{ Action = "RemoveKey"; Path = "HKCR:\CLSID\{018D5C66-4533-4307-9B53-224DE2ED1FE6}" },
-            @{ Action = "RunCommand"; Command = "del `"$env:APPDATA\Microsoft\Windows\Start Menu\Programs\OneDrive.lnk`"" },
-            @{ Action = "RunCommand"; Command = "powershell -Command `"Get-ScheduledTask -TaskPath '\' -TaskName 'OneDrive*' -ErrorAction SilentlyContinue | Unregister-ScheduledTask -Confirm:`$false`"" },
-            @{ Action = "RunCommand"; Command = "rd `"$env:USERPROFILE\OneDrive`" /Q /S" },
-            @{ Action = "RunCommand"; Command = "rd `"$env:LOCALAPPDATA\OneDrive`" /Q /S" },
-            @{ Action = "RunCommand"; Command = "rd `"$env:LOCALAPPDATA\Microsoft\OneDrive`" /Q /S" },
-            @{ Action = "RunCommand"; Command = "rd `"$env:ProgramData\Microsoft OneDrive`" /Q /S" },
-            @{ Action = "RunCommand"; Command = "rd `"C:\OneDriveTemp`" /Q /S" },
-            @{ Action = "RemoveKey"; Path = "HKCU:\Software\Microsoft\OneDrive" },
-            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"; Name = "AppData"; Value = "%USERPROFILE%\\AppData\\Roaming"; Type = "ExpandString"; Action = "Set" },
-            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"; Name = "Cache"; Value = "%USERPROFILE%\\AppData\\Local\\Microsoft\\Windows\\INetCache"; Type = "ExpandString"; Action = "Set" },
-            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"; Name = "Cookies"; Value = "%USERPROFILE%\\AppData\\Local\\Microsoft\\Windows\\INetCookies"; Type = "ExpandString"; Action = "Set" },
-            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"; Name = "Favorites"; Value = "%USERPROFILE%\\Favorites"; Type = "ExpandString"; Action = "Set" },
-            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"; Name = "History"; Value = "%USERPROFILE%\\AppData\\Local\\Microsoft\\Windows\\History"; Type = "ExpandString"; Action = "Set" },
-            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"; Name = "Local AppData"; Value = "%USERPROFILE%\\AppData\\Local"; Type = "ExpandString"; Action = "Set" },
-            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"; Name = "My Music"; Value = "%USERPROFILE%\\Music"; Type = "ExpandString"; Action = "Set" },
-            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"; Name = "My Video"; Value = "%USERPROFILE%\\Videos"; Type = "ExpandString"; Action = "Set" },
-            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"; Name = "NetHood"; Value = "%USERPROFILE%\\AppData\\Roaming\\Microsoft\\Windows\\Network Shortcuts"; Type = "ExpandString"; Action = "Set" },
-            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"; Name = "PrintHood"; Value = "%USERPROFILE%\\AppData\\Roaming\\Microsoft\\Windows\\Printer Shortcuts"; Type = "ExpandString"; Action = "Set" },
-            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"; Name = "Programs"; Value = "%USERPROFILE%\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs"; Type = "ExpandString"; Action = "Set" },
-            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"; Name = "Recent"; Value = "%USERPROFILE%\\AppData\\Roaming\\Microsoft\\Windows\\Recent"; Type = "ExpandString"; Action = "Set" },
-            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"; Name = "SendTo"; Value = "%USERPROFILE%\\AppData\\Roaming\\Microsoft\\Windows\\SendTo"; Type = "ExpandString"; Action = "Set" },
-            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"; Name = "Start Menu"; Value = "%USERPROFILE%\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu"; Type = "ExpandString"; Action = "Set" },
-            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"; Name = "Startup"; Value = "%USERPROFILE%\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup"; Type = "ExpandString"; Action = "Set" },
-            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"; Name = "Templates"; Value = "%USERPROFILE%\\AppData\\Roaming\\Microsoft\\Windows\\Templates"; Type = "ExpandString"; Action = "Set" },
-            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"; Name = "{374DE290-123F-4565-9164-39C4925E467B}"; Value = "%USERPROFILE%\\Downloads"; Type = "ExpandString"; Action = "Set" },
-            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"; Name = "Desktop"; Value = "%USERPROFILE%\\Desktop"; Type = "ExpandString"; Action = "Set" },
-            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"; Name = "My Pictures"; Value = "%USERPROFILE%\\Pictures"; Type = "ExpandString"; Action = "Set" },
-            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"; Name = "Personal"; Value = "%USERPROFILE%\\Documents"; Type = "ExpandString"; Action = "Set" },
-            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"; Name = "{F42EE2D3-909F-4907-8871-4C22FC0BF756}"; Value = "%USERPROFILE%\\Documents"; Type = "ExpandString"; Action = "Set" },
-            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"; Name = "{0DDD015D-B06C-45D5-8C4C-F59713854639}"; Value = "%USERPROFILE%\\Pictures"; Type = "ExpandString"; Action = "Set" },
-            @{ Action = "RunCommand"; Command = "taskkill /f /im explorer.exe & start explorer" }
+            @{ Action = "RunFunction"; FunctionName = "Perform-UninstallOneDrive" }
         )
     },
     @{
@@ -2024,6 +1983,182 @@ $DownloadConfigurations = @(
     @{ Name = ".NET Runtime 9"; WingetId = "Microsoft.DotNet.Runtime.9" },
     @{ Name = "Microsoft Visual C++ Redistributable 2015+ x64"; WingetId = "Microsoft.VCRedist.2015+.x64" }
 )
+#endregion
+
+#region Funzione di Disinstallazione OneDrive (Logica Utente)
+Function Perform-UninstallOneDrive {
+    $Script:LogTextBox.AppendText("--- Avvio disinstallazione completa di OneDrive ---`r`n")
+    $OneDrivePath = "$($env:OneDrive)"
+
+    Try {
+        $Script:LogTextBox.AppendText("Terminazione del processo OneDrive.exe...`r`n")
+        taskkill /f /im OneDrive.exe /ErrorAction SilentlyContinue | Out-Null
+    } Catch {
+        $Script:LogTextBox.AppendText("AVVISO: Impossibile terminare OneDrive.exe. Errore: $($_.Exception.Message)`r`n")
+    }
+
+    $regPathUninstall = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\OneDriveSetup.exe"
+    If (Test-Path $regPathUninstall) {
+        Try {
+            $Script:LogTextBox.AppendText("Tentativo di disinstallare OneDrive tramite la stringa di disinstallazione del Registro...`r`n")
+            $OneDriveUninstallString = Get-ItemPropertyValue "$regPathUninstall" -Name "UninstallString" -ErrorAction Stop
+            $OneDriveExe = $OneDriveUninstallString.Split(" ")[0]
+            $OneDriveArgs = $OneDriveUninstallString.Substring($OneDriveExe.Length).Trim() + " /silent"
+            
+            $Script:LogTextBox.AppendText("Esecuzione: '$OneDriveExe $OneDriveArgs'`r`n")
+            $process = Start-Process -FilePath $OneDriveExe -ArgumentList $OneDriveArgs -NoNewWindow -Wait -PassThru -ErrorAction Stop
+            If ($process.ExitCode -eq 0) {
+                $Script:LogTextBox.AppendText("SUCCESSO: OneDrive disinstallato tramite il programma di installazione.`r`n")
+            } Else {
+                $Script:LogTextBox.AppendText("AVVISO: La disinstallazione di OneDrive tramite il programma di installazione è terminata con codice di uscita: $($process.ExitCode).`r`n")
+            }
+        } Catch {
+            $Script:LogTextBox.AppendText("ERRORE: Impossibile disinstallare OneDrive tramite la stringa di disinstallazione. Errore: $($_.Exception.Message)`r`n")
+        }
+    } Else {
+        $Script:LogTextBox.AppendText("INFO: OneDrive non sembra essere installato tramite la voce del Registro. Proseguo con la pulizia dei file.`r`n")
+    }
+
+    # Verifica se OneDrive è stato disinstallato (controllando la voce del Registro)
+    If (-not (Test-Path $regPathUninstall)) {
+        $Script:LogTextBox.AppendText("Copia dei file scaricati dalla cartella OneDrive alla cartella utente principale...`r`n")
+        Try {
+            # Utilizza robocopy per spostare i file. Aggiungi il flag /MT per multithreading se supportato (Win 7+).
+            # I flag /ndl /nfl /njh /njs /nc /ns /np sono per il logging, non per la funzionalità di copia.
+            # Il flag /mov è cruciale per spostare e non copiare.
+            $robocopyArgs = "`"$OneDrivePath`" `"$($env:USERPROFILE.TrimEnd())\`" /mov /e /xj /ndl /nfl /njh /njs /nc /ns /np"
+            $Script:LogTextBox.AppendText("Esecuzione robocopy: robocopy $robocopyArgs`r`n")
+            $process = Start-Process -FilePath "robocopy.exe" -ArgumentList $robocopyArgs -NoNewWindow -Wait -PassThru -ErrorAction SilentlyContinue
+            If ($process.ExitCode -le 8) { # Robocopy exit codes: 0-7 are success with info, 8+ are errors
+                $Script:LogTextBox.AppendText("SUCCESSO: File OneDrive copiati nella cartella utente principale.`r`n")
+            } Else {
+                $Script:LogTextBox.AppendText("AVVISO: Robocopy terminato con codice di uscita: $($process.ExitCode). Potrebbero esserci stati errori durante la copia dei file.`r`n")
+            }
+        } Catch {
+            $Script:LogTextBox.AppendText("ERRORE: Errore durante la copia dei file OneDrive. Errore: $($_.Exception.Message)`r`n")
+        }
+
+        $Script:LogTextBox.AppendText("Rimozione dei file residui di OneDrive...`r`n")
+        Try {
+            Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "$env:localappdata\Microsoft\OneDrive"
+            Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "$env:localappdata\OneDrive"
+            Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "$env:programdata\Microsoft OneDrive"
+            Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "$env:systemdrive\OneDriveTemp" # Aggiunto come da tua richiesta
+            $Script:LogTextBox.AppendText("SUCCESSO: File residui di OneDrive rimossi.`r`n")
+        } Catch {
+            $Script:LogTextBox.AppendText("AVVISO: Errore durante la rimozione dei file residui di OneDrive. Errore: $($_.Exception.Message)`r`n")
+        }
+
+        $Script:LogTextBox.AppendText("Rimozione della voce di registro di OneDrive...`r`n")
+        Try {
+            Remove-Item -Path "HKEY_CURRENT_USER\Software\Microsoft\OneDrive" -Recurse -Force -ErrorAction SilentlyContinue
+            $Script:LogTextBox.AppendText("SUCCESSO: Voce di registro di OneDrive rimossa.`r`n")
+        } Catch {
+            $Script:LogTextBox.AppendText("AVVISO: Errore durante la rimozione della voce di registro di OneDrive. Errore: $($_.Exception.Message)`r`n")
+        }
+
+        # Verifica se la directory OneDrive è vuota prima di rimuoverla
+        If (Test-Path "$OneDrivePath") {
+            Try {
+                $itemsInOneDrivePath = Get-ChildItem "$OneDrivePath" -Recurse -ErrorAction SilentlyContinue
+                If ($itemsInOneDrivePath.Count -eq 0) {
+                    $Script:LogTextBox.AppendText("La cartella OneDrive è vuota, la rimuovo...`r`n")
+                    Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "$OneDrivePath"
+                    $Script:LogTextBox.AppendText("SUCCESSO: Cartella OneDrive rimossa.`r`n")
+                } Else {
+                    $Script:LogTextBox.AppendText("AVVISO: La cartella OneDrive '$OneDrivePath' contiene ancora elementi. Non verrà rimossa automaticamente.`r`n")
+                    $Script:LogTextBox.AppendText("Si prega di notare - La cartella OneDrive in '$OneDrivePath' potrebbe contenere ancora elementi. È necessario eliminarla manualmente, ma tutti i file dovrebbero essere già stati copiati nella cartella utente di base.`r`n")
+                }
+            } Catch {
+                $Script:LogTextBox.AppendText("AVVISO: Errore durante la verifica/rimozione della cartella OneDrive. Errore: $($_.Exception.Message)`r`n")
+            }
+        }
+
+        $Script:LogTextBox.AppendText("Rimozione di OneDrive dalla barra laterale di Esplora file...`r`n")
+        Try {
+            Set-ItemProperty -Path "HKCR:\CLSID\{018D5C66-4533-4307-9B53-224DE2ED1FE6}" -Name "System.IsPinnedToNameSpaceTree" -Value 0 -ErrorAction SilentlyContinue
+            Set-ItemProperty -Path "HKCR:\Wow6432Node\CLSID\{018D5C66-4533-4307-9B53-224DE2ED1FE6}" -Name "System.IsPinnedToNameSpaceTree" -Value 0 -ErrorAction SilentlyContinue
+            $Script:LogTextBox.AppendText("SUCCESSO: OneDrive rimosso dalla barra laterale di Esplora file.`r`n")
+        } Catch {
+            $Script:LogTextBox.AppendText("AVVISO: Errore durante la rimozione di OneDrive dalla barra laterale di Esplora file. Errore: $($_.Exception.Message)`r`n")
+        }
+
+        $Script:LogTextBox.AppendText("Rimozione dell'hook di esecuzione per i nuovi utenti...`r`n")
+        Try {
+            # Carica l'hive del Registro di sistema dell'utente predefinito
+            # Controlla se l'hive è già caricato per evitare errori
+            if (-not (Test-Path "HKU:\Default")) {
+                reg load "hku\Default" "C:\Users\Default\NTUSER.DAT" | Out-Null
+                Start-Sleep -Milliseconds 500 # Breve pausa per assicurarsi che sia caricato
+            }
+            
+            # Rimuovi la voce "OneDriveSetup" dalla chiave Run
+            reg delete "HKEY_USERS\Default\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" /v "OneDriveSetup" /f | Out-Null
+            
+            # Scarica l'hive del Registro di sistema dell'utente predefinito
+            reg unload "hku\Default" | Out-Null
+            $Script:LogTextBox.AppendText("SUCCESSO: Hook di esecuzione per i nuovi utenti rimosso.`r`n")
+        } Catch {
+            $Script:LogTextBox.AppendText("AVVISO: Errore durante la rimozione dell'hook di esecuzione per i nuovi utenti. Errore: $($_.Exception.Message)`r`n")
+        }
+
+
+        $Script:LogTextBox.AppendText("Rimozione della voce del menu Start...`r`n")
+        Try {
+            Remove-Item -Force -ErrorAction SilentlyContinue "$env:userprofile\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\OneDrive.lnk"
+            $Script:LogTextBox.AppendText("SUCCESSO: Voce del menu Start rimossa.`r`n")
+        } Catch {
+            $Script:LogTextBox.AppendText("AVVISO: Errore durante la rimozione della voce del menu Start. Errore: $($_.Exception.Message)`r`n")
+        }
+
+        $Script:LogTextBox.AppendText("Rimozione dell'attività pianificata di OneDrive...`r`n")
+        Try {
+            Get-ScheduledTask -TaskPath '\' -TaskName 'OneDrive*' -ErrorAction SilentlyContinue | Unregister-ScheduledTask -Confirm:$false
+            $Script:LogTextBox.AppendText("SUCCESSO: Attività pianificata di OneDrive rimossa.`r`n")
+        } Catch {
+            $Script:LogTextBox.AppendText("AVVISO: Errore durante la rimozione dell'attività pianificata di OneDrive. Errore: $($_.Exception.Message)`r`n")
+        }
+
+        $Script:LogTextBox.AppendText("Ripristino delle posizioni predefinite delle cartelle shell...`r`n")
+        Try {
+            Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" -Name "AppData" -Value "$env:userprofile\AppData\Roaming" -Type ExpandString -ErrorAction SilentlyContinue
+            Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" -Name "Cache" -Value "$env:userprofile\AppData\Local\Microsoft\Windows\INetCache" -Type ExpandString -ErrorAction SilentlyContinue
+            Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" -Name "Cookies" -Value "$env:userprofile\AppData\Local\Microsoft\Windows\INetCookies" -Type ExpandString -ErrorAction SilentlyContinue
+            Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" -Name "Favorites" -Value "$env:userprofile\Favorites" -Type ExpandString -ErrorAction SilentlyContinue
+            Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" -Name "History" -Value "$env:userprofile\AppData\Local\Microsoft\Windows\History" -Type ExpandString -ErrorAction SilentlyContinue
+            Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" -Name "Local AppData" -Value "$env:userprofile\AppData\Local" -Type ExpandString -ErrorAction SilentlyContinue
+            Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" -Name "My Music" -Value "$env:userprofile\Music" -Type ExpandString -ErrorAction SilentlyContinue
+            Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" -Name "My Video" -Value "$env:userprofile\Videos" -Type ExpandString -ErrorAction SilentlyContinue
+            Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" -Name "NetHood" -Value "$env:userprofile\AppData\Roaming\Microsoft\Windows\Network Shortcuts" -Type ExpandString -ErrorAction SilentlyContinue
+            Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" -Name "PrintHood" -Value "$env:userprofile\AppData\Roaming\Microsoft\Windows\Printer Shortcuts" -Type ExpandString -ErrorAction SilentlyContinue
+            Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" -Name "Programs" -Value "$env:userprofile\AppData\Roaming\Microsoft\Windows\Start Menu\Programs" -Type ExpandString -ErrorAction SilentlyContinue
+            Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" -Name "Recent" -Value "$env:userprofile\AppData\Roaming\Microsoft\Windows\Recent" -Type ExpandString -ErrorAction SilentlyContinue
+            Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" -Name "SendTo" -Value "$env:userprofile\AppData\Roaming\Microsoft\Windows\SendTo" -Type ExpandString -ErrorAction SilentlyContinue
+            Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" -Name "Start Menu" -Value "$env:userprofile\AppData\Roaming\Microsoft\Windows\Start Menu" -Type ExpandString -ErrorAction SilentlyContinue
+            Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" -Name "Startup" -Value "$env:userprofile\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup" -Type ExpandString -ErrorAction SilentlyContinue
+            Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" -Name "Templates" -Value "$env:userprofile\AppData\Roaming\Microsoft\Windows\Templates" -Type ExpandString -ErrorAction SilentlyContinue
+            Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" -Name "{374DE290-123F-4565-9164-39C4925E467B}" -Value "$env:userprofile\Downloads" -Type ExpandString -ErrorAction SilentlyContinue
+            Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" -Name "Desktop" -Value "$env:userprofile\Desktop" -Type ExpandString -ErrorAction SilentlyContinue
+            Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" -Name "My Pictures" -Value "$env:userprofile\Pictures" -Type ExpandString -ErrorAction SilentlyContinue
+            Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" -Name "Personal" -Value "$env:userprofile\Documents" -Type ExpandString -ErrorAction SilentlyContinue
+            Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" -Name "{F42EE2D3-909F-4907-8871-4C22FC0BF756}" -Value "$env:userprofile\Documents" -Type ExpandString -ErrorAction SilentlyContinue
+            Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" -Name "{0DDD015D-B06C-45D5-8C4C-F59713854639}" -Value "$env:userprofile\Pictures" -Type ExpandString -ErrorAction SilentlyContinue
+            $Script:LogTextBox.AppendText("SUCCESSO: Posizioni delle cartelle shell ripristinate.`r`n")
+        } Catch {
+            $Script:LogTextBox.AppendText("AVVISO: Errore durante il ripristino delle posizioni delle cartelle shell. Errore: $($_.Exception.Message)`r`n")
+        }
+
+        $Script:LogTextBox.AppendText("Riavvio di Explorer.exe...`r`n")
+        taskkill.exe /F /IM "explorer.exe" /ErrorAction SilentlyContinue | Out-Null
+        Start-Process "explorer.exe" -ErrorAction SilentlyContinue | Out-Null
+        $Script:LogTextBox.AppendText("SUCCESSO: Explorer.exe riavviato.`r`n")
+        $Script:LogTextBox.AppendText("Si prega di notare - La cartella OneDrive in '$OneDrivePath' potrebbe contenere ancora elementi. È necessario eliminarla manualmente, ma tutti i file dovrebbero essere già stati copiati nella cartella utente di base.`r`n")
+        $Script:LogTextBox.AppendText("Se in seguito mancano dei file, accedi a Onedrive.com e scaricali manualmente.`r`n")
+    } Else {
+        $Script:LogTextBox.AppendText("ERRORE: Qualcosa è andato storto durante la disinstallazione di OneDrive. La voce del Registro di sistema è ancora presente.`r`n")
+    }
+    $Script:LogTextBox.AppendText("--- Fine disinstallazione completa di OneDrive ---`r`n`r`n")
+}
 #endregion
 
 #region Crea Form Principale
