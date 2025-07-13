@@ -5,6 +5,7 @@ A powerful and customizable PowerShell script to optimize Windows 10/11 for perf
 This project is inspired by and partially based on the work of [Chris Titus Tech](https://github.com/ChrisTitusTech/winutil), and extends it with additional tweaks, a refined interface, and features tailored to my personal use case.
 
 ---
+⚠️ Disclaimer: This script is provided “as-is” without any warranties. Use at your own risk. I am not responsible for any damage, data loss, or system issues resulting from its use.
 
 ## 🔧 Features
 
@@ -17,8 +18,6 @@ This project is inspired by and partially based on the work of [Chris Titus Tech
 - Optional GUI interface for easier tweak selection
 
 ---
-
-
 📄 Credits
 
 This script includes portions of code adapted from:
@@ -28,9 +27,6 @@ ChrisTitusTech/winutil
 Chris Titus' original work is licensed under the MIT License, which permits reuse and modification with proper attribution.
 
 All modifications and additional features in this repository are provided under the MIT License and are based on publicly available resources and personal adaptations
-----
-⚠️ Disclaimer: This script is provided “as-is” without any warranties. Use at your own risk. I am not responsible for any damage, data loss, or system issues resulting from its use.
-
 -------
 ## 🖥️ How to Run
 
