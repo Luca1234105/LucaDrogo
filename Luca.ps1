@@ -15,7 +15,7 @@
 
 .NOTES
     Autore: Gemini
-    Versione: 6.8 (Correzione Sfondo Nero/Menu Start Migliorata)
+    Versione: 6.9 (Correzione VisualFXSetting e OneDrive)
     Data: 13 luglio 2025
 
     IMPORTANTE:
@@ -503,7 +503,7 @@ $RegistryConfigurations = @(
         Name = "Ottimizzazioni Effetti Visivi (Avanzato)"
         Description = "Imposta gli effetti visivi su 'Personalizzato', abilita la smussatura dei caratteri e disattiva animazioni superflue per migliorare le prestazioni visive. (Questa opzione è più completa di 'Imposta Effetti Visivi su Prestazioni/Qualità')"
         RegistryActions = @(
-            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects"; Name = "VisualFXSetting"; Value = 1; Type = "DWord"; Action = "Set" }, # CAMBIATO a 1 (Personalizzato)
+            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects"; Name = "VisualFXSetting"; Value = 3; Type = "DWord"; Action = "Set" }, # CAMBIATO a 3 (Prestazioni)
             @{ Path = "HKCU:\Control Panel\Desktop"; Name = "FontSmoothing"; Value = "2"; Type = "String"; Action = "Set" },
             @{ Path = "HKCU:\Control Panel\Desktop"; Name = "DragFullWindows"; Value = "1"; Type = "String"; Action = "Set" },
             @{ Path = "HKCU:\Control Panel\Desktop\WindowMetrics"; Name = "FontSmoothingType"; Value = 2; Type = "DWord"; Action = "Set" },
@@ -912,7 +912,7 @@ $RegistryConfigurations = @(
         Name = "Ripristina Interfaccia Utente (UI) e Sfondo Desktop"
         Description = "Ripristina le impostazioni predefinite dell'interfaccia utente, imposta uno sfondo a tinta unita e riavvia Explorer.exe per risolvere problemi visivi e del menu Start."
         RegistryActions = @(
-            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects"; Name = "VisualFXSetting"; Value = 1; Type = "DWord"; Action = "Set" }, # Imposta su Personalizzato
+            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects"; Name = "VisualFXSetting"; Value = 1; Type = "DWord"; Action = "Set" }, # Imposta su Personalizzato (per un reset stabile)
             @{ Path = "HKCU:\Control Panel\Desktop"; Name = "WallpaperStyle"; Value = "10"; Type = "String"; Action = "Set" }, # Stile: Riempimento
             @{ Path = "HKCU:\Control Panel\Desktop"; Name = "TileWallpaper"; Value = "0"; Type = "String"; Action = "Set" }, # Non affiancare
             @{ Path = "HKCU:\Control Panel\Desktop"; Name = "Wallpaper"; Value = ""; Type = "String"; Action = "Set" }, # Rimuovi qualsiasi wallpaper specifico
