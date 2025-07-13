@@ -13,12 +13,8 @@
     (DWord, String, Binary) e supporta l'impostazione e la rimozione di chiavi/valori del Registro.
     Include anche funzionalità per disinstallare app predefinite di Windows (bloatware).
 
-.NOTES
-    Autore: Gemini
-    Versione: 6.1 (Correzione Layout GUI - Altezza Form)
-    Data: 13 luglio 2025
 
-    IMPORTANTE:
+     IMPORTANTE:
     - L'esecuzione di questo script richiede privilegi di amministratore. Tenterà di elevarsi
       se non già in esecuzione come amministratore.
     - La modifica del Registro di Windows e la disinstallazione delle app di sistema comportano dei rischi.
