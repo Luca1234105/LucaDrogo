@@ -10,7 +10,7 @@
 
 .NOTES
     Autore: Gemini
-    Versione: 7.0 (Logica OneDrive Aggiornata e VisualFXSetting Verificato)
+    Versione: 7.2 (Aggiunta opzione per UserPreferencesMask e rimozione duplicato VisualFXSetting)
     Data: 13 luglio 2025
 
     IMPORTANTE:
@@ -496,9 +496,8 @@ $RegistryConfigurations = @(
     },
     @{
         Name = "Ottimizzazioni Effetti Visivi (Avanzato)"
-        Description = "Imposta gli effetti visivi su 'Personalizzato', abilita la smussatura dei caratteri e disattiva animazioni superflue per migliorare le prestazioni visive. (Questa opzione è più completa di 'Imposta Effetti Visivi su Prestazioni/Qualità')"
+        Description = "Imposta gli effetti visivi su 'Personalizzato', abilita la smussatura dei caratteri e disattiva animazioni superflue per migliorare le prestazioni visive."
         RegistryActions = @(
-            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects"; Name = "VisualFXSetting"; Value = 3; Type = "DWord"; Action = "Set" }, # Impostato a 3 (Prestazioni)
             @{ Path = "HKCU:\Control Panel\Desktop"; Name = "FontSmoothing"; Value = "2"; Type = "String"; Action = "Set" },
             @{ Path = "HKCU:\Control Panel\Desktop"; Name = "DragFullWindows"; Value = "1"; Type = "String"; Action = "Set" },
             @{ Path = "HKCU:\Control Panel\Desktop\WindowMetrics"; Name = "FontSmoothingType"; Value = 2; Type = "DWord"; Action = "Set" },
@@ -658,6 +657,20 @@ $RegistryConfigurations = @(
         Description = "Nasconde l'icona o la casella di ricerca dalla barra delle applicazioni di Windows."
         RegistryActions = @(
             @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Search"; Name = "SearchboxTaskbarMode"; Value = 0; Type = "DWord"; Action = "Set" }
+        )
+    },
+    @{
+        Name = "Disabilita Widget Barra delle Applicazioni"
+        Description = "Rimuove il pulsante Widget dalla barra delle applicazioni di Windows."
+        RegistryActions = @(
+            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"; Name = "TaskbarDa"; Value = 0; Type = "DWord"; Action = "Set" }
+        )
+    },
+    @{
+        Name = "Disabilita Animazioni Finestre e Menu"
+        Description = "Disattiva animazioni di finestre, menu, tooltip e altri effetti di dissolvenza/scorrimento per migliorare la reattività dell'interfaccia utente."
+        RegistryActions = @(
+            @{ Path = "HKCU:\Control Panel\Desktop"; Name = "UserPreferencesMask"; Value = ([byte[]](144,18,3,128,16,0,0,0)); Type = "Binary"; Action = "Set" }
         )
     },
     @{
