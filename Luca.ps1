@@ -15,8 +15,8 @@
 
 .NOTES
     Autore: Gemini
-    Versione: 3.3
-    Data: 12 luglio 2025
+    Versione: 3.7
+    Data: 13 luglio 2025
 
     IMPORTANTE:
     - L'esecuzione di questo script richiede privilegi di amministratore. Tenterà di elevarsi
@@ -28,7 +28,12 @@
 #>
 
 #region Verifica privilegi di amministratore
-If (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
+# Ottieni l'identità dell'utente corrente
+$currentIdentity = [Security.Principal.WindowsIdentity]::GetCurrent()
+$currentPrincipal = New-Object Security.Principal.WindowsPrincipal($currentIdentity)
+
+# Controlla se l'utente corrente è un amministratore
+If (-not $currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
     Write-Host "Questo script deve essere eseguito con privilegi di amministratore. Tentativo di riavvio..." -ForegroundColor Yellow
     Start-Process PowerShell -Verb RunAs -ArgumentList "-File `"$($MyInvocation.MyCommand.Path)`""
     Exit
@@ -38,6 +43,8 @@ If (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
 #region Carica gli assembly per la GUI
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
+# System.Security.Principal è implicitamente disponibile o non strettamente necessario con il nuovo controllo
+# Add-Type -AssemblyName System.Security.Principal # Rimosso, il nuovo controllo non ne ha bisogno direttamente
 #endregion
 
 #region Configurazioni del Registro
@@ -495,8 +502,8 @@ $RegistryConfigurations = @(
         )
     },
     @{
-        Name = "Ottimizzazioni Effetti Visivi"
-        Description = "Imposta gli effetti visivi su 'Personalizzato', abilita la smussatura dei caratteri e disattiva animazioni superflue per migliorare le prestazioni visive."
+        Name = "Ottimizzazioni Effetti Visivi (Avanzato)"
+        Description = "Imposta gli effetti visivi su 'Personalizzato', abilita la smussatura dei caratteri e disattiva animazioni superflue per migliorare le prestazioni visive. (Questa opzione è più completa di 'Imposta Effetti Visivi su Prestazioni/Qualità')"
         RegistryActions = @(
             @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects"; Name = "VisualFXSetting"; Value = 3; Type = "DWord"; Action = "Set" },
             @{ Path = "HKCU:\Control Panel\Desktop"; Name = "FontSmoothing"; Value = "2"; Type = "String"; Action = "Set" },
@@ -840,7 +847,63 @@ $RegistryConfigurations = @(
             @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"; Name = "{0DDD015D-B06C-45D5-8C4C-F59713854639}"; Value = "%USERPROFILE%\\Pictures"; Type = "ExpandString"; Action = "Set" },
             @{ Action = "RunCommand"; Command = "taskkill /f /im explorer.exe & start explorer" }
         )
-    }
+    },
+    @{
+        Name = "Abilita/Disabilita Protezione in tempo reale di Windows Defender"
+        Description = "Controlla lo stato della protezione in tempo reale di Windows Defender. (Abilita: 0, Disabilita: 1)"
+        RegistryActions = @(
+            @{ Path = "HKLM:\SOFTWARE\Microsoft\Windows Defender\Real-Time Protection"; Name = "DisableRealtimeMonitoring"; Value = 0; Type = "DWord"; Action = "Set" } # 0 per abilitare, 1 per disabilitare
+        )
+    },
+    @{
+        Name = "Abilita/Disabilita Aggiornamenti Automatici di Windows"
+        Description = "Controlla il comportamento degli aggiornamenti automatici di Windows. (Abilita: 0, Disabilita: 1)"
+        RegistryActions = @(
+            @{ Path = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU"; Name = "NoAutoUpdate"; Value = 0; Type = "DWord"; Action = "Set" } # 0 per abilitare, 1 per disabilitare
+        )
+    },
+    @{
+        Name = "Mostra/Nascondi Estensioni File"
+        Description = "Mostra o nasconde le estensioni dei file in Esplora risorse. (Mostra: 0, Nascondi: 1)"
+        RegistryActions = @(
+            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"; Name = "HideFileExt"; Value = 0; Type = "DWord"; Action = "Set" } # 0 per mostrare, 1 per nascondere
+        )
+    },
+    @{
+        Name = "Abilita/Disabilita Ripristino Configurazione di Sistema"
+        Description = "Abilita o disabilita la creazione di punti di ripristino del sistema. (Abilita: 0, Disabilita: 1)"
+        RegistryActions = @(
+            @{ Path = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SystemRestore"; Name = "DisableSR"; Value = 0; Type = "DWord"; Action = "Set" } # 0 per abilitare, 1 per disabilitare
+        )
+    },
+    @{
+        Name = "Abilita/Disabilita Accelerazione Hardware GPU"
+        Description = "Controlla l'accelerazione hardware GPU (Hardware-accelerated GPU scheduling). (Abilita: 2, Disabilita: 0)"
+        RegistryActions = @(
+            @{ Path = "HKLM:\SYSTEM\CurrentControlSet\Control\GraphicsDrivers"; Name = "HwSchMode"; Value = 2; Type = "DWord"; Action = "Set" } # 2 per abilitare, 0 per disabilitare
+        )
+    },
+    @{
+        Name = "Imposta Effetti Visivi su Prestazioni/Qualità"
+        Description = "Imposta gli effetti visivi di Windows per privilegiare le prestazioni (3) o la qualità visiva (0). (Prestazioni: 3, Qualità: 0)"
+        RegistryActions = @(
+            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects"; Name = "VisualFXSetting"; Value = 3; Type = "DWord"; Action = "Set" } # 3 per prestazioni, 0 per qualità
+        )
+    },
+    @{
+        Name = "Abilita/Disabilita Ottimizzazione Recapito"
+        Description = "Controlla l'Ottimizzazione Recapito di Windows, che consente il download di aggiornamenti da altri PC sulla rete locale o su Internet. (Abilita: 0, Disabilita: 99)"
+        RegistryActions = @(
+            @{ Path = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\DeliveryOptimization"; Name = "DODownloadMode"; Value = 0; Type = "DWord"; Action = "Set" } # 0 per abilitare (modalità HTTP), 99 per disabilitare
+        )
+    },
+    @{
+        Name = "Ottimizzazione Processore Scheda di Retetegrata"
+        Description = "Applica ottimizzazioni per la scheda di rete, inclusa la disabilitazione del risparmio energetico e l'abilitazione di Receive Side Scaling (RSS)."
+        RegistryActions = @(
+            @{ Action = "RunFunction"; FunctionName = "Optimize-NetworkAdapter" }
+        )
+    } # Rimosso la virgola qui
 )
 #endregion
 
@@ -1293,6 +1356,367 @@ Function Invoke-WPFControlPanel {
     }
 }
 
+Function Set-DNSConfiguration {
+    Param (
+        [string]$DnsProfile
+    )
+    $Script:LogTextBox.AppendText("Tentativo di impostare la configurazione DNS su: $DnsProfile`r`n")
+
+    $DnsServers = @{
+        "Default DHCP" = @() # Empty array means DHCP
+        "Google" = @("8.8.8.8", "8.8.4.4")
+        "Cloudflare" = @("1.1.1.1", "1.0.0.1")
+        "Cloudflare_Malware" = @("1.1.1.2", "1.0.0.2")
+        "Cloudflare_Malware_Adult" = @("1.1.1.3", "1.0.0.3")
+        "Open_DNS" = @("208.67.222.222", "208.67.220.220")
+        "Quad9" = @("9.9.9.9", "149.112.112.112")
+        "AdGuard_Ads_Trackers" = @("94.140.14.14", "94.140.15.15")
+        "AdGuard_Ads_Trackers_Malware_Adult" = @("94.140.14.15", "94.140.15.16")
+    }
+
+    $serversToSet = $DnsServers[$DnsProfile]
+    if (-not $serversToSet -and $DnsProfile -ne "Default DHCP") {
+        $Script:LogTextBox.AppendText("ERRORE: Profilo DNS sconosciuto: $DnsProfile`r`n")
+        return
+    }
+
+    Try {
+        $networkAdapters = Get-NetAdapter | Where-Object { $_.Status -eq "Up" -and $_.LinkSpeed -ne $null -and $_.Name -notlike "*Bluetooth*" -and $_.Name -notlike "*VPN*" }
+
+        if (-not $networkAdapters) {
+            $Script:LogTextBox.AppendText("AVVISO: Nessun adattatore di rete attivo trovato per configurare il DNS.`r`n")
+            return
+        }
+
+        foreach ($adapter in $networkAdapters) {
+            $Script:LogTextBox.AppendText("Configurazione DNS per adattatore: $($adapter.Name)`r`n")
+            if ($DnsProfile -eq "Default DHCP") {
+                Set-DnsClientServerAddress -InterfaceAlias $adapter.Name -ResetServerAddresses -ErrorAction Stop
+                $Script:LogTextBox.AppendText("SUCCESSO: DNS per '$($adapter.Name)' ripristinato su DHCP.`r`n")
+            } else {
+                Set-DnsClientServerAddress -InterfaceAlias $adapter.Name -ServerAddresses $serversToSet -ErrorAction Stop
+                $Script:LogTextBox.AppendText("SUCCESSO: DNS per '$($adapter.Name)' impostato su $($serversToSet -join ', ').`r`n")
+            }
+        }
+    }
+    Catch {
+        $Script:LogTextBox.AppendText("ERRORE: Impossibile impostare la configurazione DNS. Errore: $($_.Exception.Message)`r`n")
+    }
+}
+
+Function Optimize-NetworkAdapter {
+    $Script:LogTextBox.AppendText("--- Avvio Ottimizzazione Processore Scheda di Rete Integrata ---`r`n")
+    Try {
+        $networkAdapters = Get-NetAdapter | Where-Object { $_.Status -eq "Up" -and $_.LinkSpeed -ne $null -and $_.Name -notlike "*Bluetooth*" -and $_.Name -notlike "*VPN*" }
+
+        if (-not $networkAdapters) {
+            $Script:LogTextBox.AppendText("AVVISO: Nessun adattatore di rete attivo trovato per l'ottimizzazione.`r`n")
+            return
+        }
+
+        foreach ($adapter in $networkAdapters) {
+            $Script:LogTextBox.AppendText("Ottimizzazione adattatore: $($adapter.Name)`r`n")
+
+            # Disabilita il risparmio energetico
+            Try {
+                Set-NetAdapterPowerManagement -Name $adapter.Name -DeviceSleepOnDisconnect Disabled -ErrorAction Stop
+                Set-NetAdapterPowerManagement -Name $adapter.Name -WakeOnMagicPacket Disabled -ErrorAction Stop
+                Set-NetAdapterPowerManagement -Name $adapter.Name -WakeOnPattern Disabled -ErrorAction Stop
+                Set-NetAdapterAdvancedProperty -Name $adapter.Name -DisplayName "Energy Efficient Ethernet" -DisplayValue "Disabled" -ErrorAction Stop
+                Set-NetAdapterAdvancedProperty -Name $adapter.Name -DisplayName "Green Ethernet" -DisplayValue "Disabled" -ErrorAction Stop
+                Set-NetAdapterAdvancedProperty -Name $adapter.Name -DisplayName "Power Saving Mode" -DisplayValue "Disabled" -ErrorAction Stop
+                $Script:LogTextBox.AppendText("SUCCESSO: Risparmio energetico disabilitato per '$($adapter.Name)'.`r`n")
+            } Catch {
+                $Script:LogTextBox.AppendText("AVVISO: Impossibile disabilitare il risparmio energetico per '$($adapter.Name)'. Errore: $($_.Exception.Message)`r`n")
+            }
+
+            # Abilita Receive Side Scaling (RSS)
+            Try {
+                Set-NetAdapterAdvancedProperty -Name $adapter.Name -DisplayName "Receive Side Scaling" -DisplayValue "Enabled" -ErrorAction Stop
+                $Script:LogTextBox.AppendText("SUCCESSO: Receive Side Scaling (RSS) abilitato per '$($adapter.Name)'.`r`n")
+            } Catch {
+                $Script:LogTextBox.AppendText("AVVISO: Impossibile abilitare Receive Side Scaling (RSS) per '$($adapter.Name)'. Errore: $($_.Exception.Message)`r`n")
+            }
+        }
+        $Script:LogTextBox.AppendText("--- Fine Ottimizzazione Processore Scheda di Rete Integrata ---`r`n")
+    } Catch {
+        $Script:LogTextBox.AppendText("ERRORE: Eccezione generale durante l'ottimizzazione della scheda di rete. Errore: $($_.Exception.Message)`r`n")
+    }
+}
+
+Function Show-StartupAppsManager {
+    $StartupForm = New-Object System.Windows.Forms.Form
+    $StartupForm.Text = "Gestore App in Avvio Automatico"
+    $StartupForm.Size = New-Object System.Drawing.Size(800, 600)
+    $StartupForm.StartPosition = "CenterScreen"
+    $StartupForm.FormBorderStyle = "FixedSingle"
+    $StartupForm.MaximizeBox = $false
+    $StartupForm.MinimizeBox = $true
+    $StartupForm.Font = New-Object System.Drawing.Font("Segoe UI", 9)
+    $StartupForm.BackColor = [System.Drawing.Color]::FromArgb(30, 30, 30)
+    $StartupForm.ForeColor = [System.Drawing.Color]::LightGray
+
+    $StartupDataGridView = New-Object System.Windows.Forms.DataGridView
+    $StartupDataGridView.Location = New-Object System.Drawing.Point(10, 10)
+    $StartupDataGridView.Size = New-Object System.Drawing.Size(760, 480)
+    $StartupDataGridView.AllowUserToAddRows = $false
+    $StartupDataGridView.AllowUserToDeleteRows = $false
+    $StartupDataGridView.ReadOnly = $true
+    $StartupDataGridView.MultiSelect = $true
+    $StartupDataGridView.SelectionMode = "FullRowSelect"
+    $StartupDataGridView.AutoGenerateColumns = $false
+    $StartupDataGridView.BackgroundColor = [System.Drawing.Color]::FromArgb(45, 45, 48)
+    $StartupDataGridView.ForeColor = [System.Drawing.Color]::Black # Per il testo delle celle
+    $StartupDataGridView.DefaultCellStyle.BackColor = [System.Drawing.Color]::FromArgb(60, 60, 60) # Colore di sfondo delle celle
+    $StartupDataGridView.DefaultCellStyle.ForeColor = [System.Drawing.Color]::LightGray # Colore del testo delle celle
+    $StartupDataGridView.ColumnHeadersDefaultCellStyle.BackColor = [System.Drawing.Color]::FromArgb(75, 75, 75)
+    $StartupDataGridView.ColumnHeadersDefaultCellStyle.ForeColor = [System.Drawing.Color]::White
+    $StartupDataGridView.EnableHeadersVisualStyles = $false # Necessario per applicare stili personalizzati all'intestazione
+    
+    # Aggiungi colonne
+    $colName = New-Object System.Windows.Forms.DataGridViewTextBoxColumn
+    $colName.Name = "Name"
+    $colName.HeaderText = "Nome"
+    $colName.DataPropertyName = "Name"
+    $colName.AutoSizeMode = "AllCells"
+    $StartupDataGridView.Columns.Add($colName)
+
+    $colPath = New-Object System.Windows.Forms.DataGridViewTextBoxColumn
+    $colPath.Name = "Path"
+    $colPath.HeaderText = "Percorso/Comando"
+    $colPath.DataPropertyName = "Path"
+    $colPath.AutoSizeMode = "Fill"
+    $StartupDataGridView.Columns.Add($colPath)
+
+    $colStatus = New-Object System.Windows.Forms.DataGridViewTextBoxColumn
+    $colStatus.Name = "Status"
+    $colStatus.HeaderText = "Stato"
+    $colStatus.DataPropertyName = "Status"
+    $colStatus.AutoSizeMode = "AllCells"
+    $StartupDataGridView.Columns.Add($colStatus)
+    
+    $colSource = New-Object System.Windows.Forms.DataGridViewTextBoxColumn
+    $colSource.Name = "Source"
+    $colSource.HeaderText = "Origine"
+    $colSource.DataPropertyName = "Source"
+    $colSource.AutoSizeMode = "AllCells"
+    $StartupDataGridView.Columns.Add($colSource)
+
+    $StartupForm.Controls.Add($StartupDataGridView)
+
+    $RefreshButton = New-Object System.Windows.Forms.Button
+    $RefreshButton.Text = "Aggiorna Lista"
+    $RefreshButton.Location = New-Object System.Drawing.Point(10, 500)
+    $RefreshButton.Size = New-Object System.Drawing.Size(120, 30)
+    $RefreshButton.BackColor = [System.Drawing.Color]::FromArgb(60, 60, 60)
+    $RefreshButton.ForeColor = [System.Drawing.Color]::White
+    $RefreshButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+    $RefreshButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(90, 90, 90)
+    $RefreshButton.FlatAppearance.BorderSize = 1
+    $StartupForm.Controls.Add($RefreshButton)
+
+    $DisableButton = New-Object System.Windows.Forms.Button
+    $DisableButton.Text = "Disabilita Selezionati"
+    $DisableButton.Location = New-Object System.Drawing.Point(140, 500)
+    $DisableButton.Size = New-Object System.Drawing.Size(140, 30)
+    $DisableButton.BackColor = [System.Drawing.Color]::FromArgb(200, 50, 50) # Rosso per disabilitare
+    $DisableButton.ForeColor = [System.Drawing.Color]::White
+    $DisableButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+    $DisableButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(150, 30, 30)
+    $DisableButton.FlatAppearance.BorderSize = 1
+    $StartupForm.Controls.Add($DisableButton)
+
+    $EnableButton = New-Object System.Windows.Forms.Button
+    $EnableButton.Text = "Abilita Selezionati"
+    $EnableButton.Location = New-Object System.Drawing.Point(290, 500)
+    $EnableButton.Size = New-Object System.Drawing.Size(140, 30)
+    $EnableButton.BackColor = [System.Drawing.Color]::FromArgb(50, 200, 50) # Verde per abilitare
+    $EnableButton.ForeColor = [System.Drawing.Color]::White
+    $EnableButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+    $EnableButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(30, 150, 30)
+    $EnableButton.FlatAppearance.BorderSize = 1
+    $StartupForm.Controls.Add($EnableButton)
+
+    $CloseButton = New-Object System.Windows.Forms.Button
+    $CloseButton.Text = "Chiudi"
+    # Ho modificato questa riga per garantire che la sottrazione sia su tipi interi
+    $CloseButton.Location = New-Object System.Drawing.Point(([int]$StartupForm.Width - 100 - 30), 500)
+    $CloseButton.Size = New-Object System.Drawing.Size(100, 30)
+    $CloseButton.Add_Click({ $StartupForm.Close() })
+    $CloseButton.BackColor = [System.Drawing.Color]::FromArgb(70, 70, 70)
+    $CloseButton.ForeColor = [System.Drawing.Color]::White
+    $CloseButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+    $CloseButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(100, 100, 100)
+    $CloseButton.FlatAppearance.BorderSize = 1
+    $StartupForm.Controls.Add($CloseButton)
+
+    Function Load-StartupApps {
+        $apps = New-Object System.Collections.ArrayList
+        
+        # Registry Run keys
+        $runKeys = @(
+            "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run",
+            "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run",
+            "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce",
+            "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce"
+        )
+        foreach ($keyPath in $runKeys) {
+            If (Test-Path $keyPath) {
+                # Ottieni l'oggetto della chiave di registro
+                $regKey = Get-Item -Path $keyPath -ErrorAction SilentlyContinue
+                If ($regKey) {
+                    # Itera sui nomi delle proprietà (valori) nella chiave di registro
+                    foreach ($name in $regKey.Property) {
+                        # Recupera il valore specifico per ogni nome di proprietà
+                        $value = (Get-ItemProperty -Path $keyPath -Name $name -ErrorAction SilentlyContinue).$name
+                        $status = If ($value -eq "") {"Disabilitato (Valore Vuoto)"} Else {"Abilitato"}
+                        $apps.Add([PSCustomObject]@{
+                            Name = $name
+                            Path = $value
+                            Status = $status
+                            Source = "Registro: $keyPath"
+                            Type = "Registry"
+                            RegistryPath = $keyPath
+                            RegistryName = $name
+                        })
+                    }
+                }
+            }
+        }
+
+        # Startup folders
+        $startupFolders = @(
+            "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup",
+            "$env:PROGRAMDATA\Microsoft\Windows\Start Menu\Programs\Startup"
+        )
+        foreach ($folder in $startupFolders) {
+            If (Test-Path $folder) {
+                Get-ChildItem -Path $folder -Filter "*.lnk" -ErrorAction SilentlyContinue | ForEach-Object {
+                    $apps.Add([PSCustomObject]@{
+                        Name = $_.BaseName
+                        Path = $_.FullName
+                        Status = "Abilitato"
+                        Source = "Cartella Avvio: $folder"
+                        Type = "Folder"
+                        FilePath = $_.FullName
+                    })
+                }
+            }
+        }
+
+        # Scheduled Tasks (running at logon)
+        Try {
+            Get-ScheduledTask | Where-Object { $_.Triggers -ne $null } | ForEach-Object {
+                $task = $_
+                # Controlla se esiste almeno un trigger di accesso abilitato
+                $atLogonTrigger = $task.Triggers | Where-Object { $_.TriggerType -eq "Logon" -and $_.Enabled -eq $true }
+                if ($atLogonTrigger) {
+                    $apps.Add([PSCustomObject]@{
+                        Name = $task.TaskName
+                        Path = $task.Actions.Execute # Questo potrebbe essere un array o un oggetto complesso, potrebbe essere necessario stringificarlo
+                        Status = If ($task.State -eq "Ready" -or $task.State -eq "Running") {"Abilitato"} Else {"Disabilitato"}
+                        Source = "Attività Pianificata: $($task.TaskPath)"
+                        Type = "ScheduledTask"
+                        TaskPath = $task.TaskPath
+                        TaskName = $task.TaskName
+                    })
+                }
+            }
+        } Catch {
+            $Script:LogTextBox.AppendText("AVVISO: Impossibile recuperare le attività pianificate. Errore: $($_.Exception.Message)`r`n")
+        }
+        
+        $StartupDataGridView.DataSource = $apps
+        $StartupDataGridView.AutoResizeColumns()
+    }
+
+    $RefreshButton.Add_Click({ Load-StartupApps })
+
+    $DisableButton.Add_Click({
+        If ($StartupDataGridView.SelectedRows.Count -eq 0) {
+            Show-MessageBox "Nessuna applicazione selezionata per la disabilitazione." "Nessuna Selezione" "OK" "Warning"
+            Return
+        }
+        $confirm = Show-MessageBox "Sei sicuro di voler disabilitare le applicazioni selezionate? Alcune potrebbero essere essenziali per il sistema." "Conferma Disabilitazione" "YesNo" "Warning"
+        If ($confirm -ne [System.Windows.Forms.DialogResult]::Yes) { Return }
+
+        ForEach ($row in $StartupDataGridView.SelectedRows) {
+            $item = $row.DataBoundItem
+            Try {
+                Switch ($item.Type) {
+                    "Registry" {
+                        # Per disabilitare, impostiamo il valore su una stringa vuota o lo rimuoviamo se è un valore non essenziale.
+                        # Impostare su stringa vuota è più sicuro per le chiavi "Run"
+                        Set-ItemProperty -Path $item.RegistryPath -Name $item.RegistryName -Value "" -Force -ErrorAction Stop
+                        $Script:LogTextBox.AppendText("SUCCESSO: Disabilitato (Registro) '$($item.Name)'.`r`n")
+                    }
+                    "Folder" {
+                        $disabledFolder = Join-Path (Split-Path $item.FilePath) ".disabled"
+                        If (-not (Test-Path $disabledFolder)) { New-Item -Path $disabledFolder -ItemType Directory | Out-Null }
+                        Move-Item -LiteralPath $item.FilePath -Destination (Join-Path $disabledFolder $($item.Name + ".lnk")) -Force -ErrorAction Stop
+                        $Script:LogTextBox.AppendText("SUCCESSO: Disabilitato (Cartella) '$($item.Name)'.`r`n")
+                    }
+                    "ScheduledTask" {
+                        Disable-ScheduledTask -TaskPath $item.TaskPath -TaskName $item.TaskName -ErrorAction Stop
+                        $Script:LogTextBox.AppendText("SUCCESSO: Disabilitato (Attività Pianificata) '$($item.Name)'.`r`n")
+                    }
+                }
+            } Catch {
+                $Script:LogTextBox.AppendText("ERRORE: Impossibile disabilitare '$($item.Name)'. Errore: $($_.Exception.Message)`r`n")
+            }
+        }
+        Load-StartupApps # Ricarica la lista dopo le modifiche
+        Show-MessageBox "Le applicazioni selezionate sono state disabilitate. Potrebbe essere necessario un riavvio per avere pieno effetto." "Operazione Completata"
+    })
+
+    $EnableButton.Add_Click({
+        If ($StartupDataGridView.SelectedRows.Count -eq 0) {
+            Show-MessageBox "Nessuna applicazione selezionata per l'abilitazione." "Nessuna Selezione" "OK" "Warning"
+            Return
+        }
+        $confirm = Show-MessageBox "Sei sicuro di voler abilitare le applicazioni selezionate?" "Conferma Abilitazione" "YesNo" "Information"
+        If ($confirm -ne [System.Windows.Forms.DialogResult]::Yes) { Return }
+
+        ForEach ($row in $StartupDataGridView.SelectedRows) {
+            $item = $row.DataBoundItem
+            Try {
+                Switch ($item.Type) {
+                    "Registry" {
+                        # Per riabilitare, dobbiamo recuperare il valore originale.
+                        # Per le chiavi "Run", ripristiniamo il percorso originale memorizzato in $item.Path
+                        If ($item.Path -ne "") {
+                             Set-ItemProperty -Path $item.RegistryPath -Name $item.RegistryName -Value $item.Path -Force -ErrorAction Stop
+                             $Script:LogTextBox.AppendText("SUCCESSO: Abilitato (Registro) '$($item.Name)'.`r`n")
+                        } else {
+                            $Script:LogTextBox.AppendText("AVVISO: Impossibile riabilitare (Registro) '$($item.Name)' - Percorso originale sconosciuto.`r`n")
+                        }
+                    }
+                    "Folder" {
+                        $disabledFolder = Join-Path (Split-Path $item.FilePath) ".disabled"
+                        $disabledPath = Join-Path $disabledFolder $($item.Name + ".lnk")
+                        If (Test-Path $disabledPath) {
+                            Move-Item -LiteralPath $disabledPath -Destination $item.FilePath -Force -ErrorAction Stop
+                            $Script:LogTextBox.AppendText("SUCCESSO: Abilitato (Cartella) '$($item.Name)'.`r`n")
+                        } else {
+                            $Script:LogTextBox.AppendText("AVVISO: Impossibile riabilitare (Cartella) '$($item.Name)' - File disabilitato non trovato.`r`n")
+                        }
+                    }
+                    "ScheduledTask" {
+                        Enable-ScheduledTask -TaskPath $item.TaskPath -TaskName $item.TaskName -ErrorAction Stop
+                        $Script:LogTextBox.AppendText("SUCCESSO: Abilitato (Attività Pianificata) '$($item.Name)'.`r`n")
+                    }
+                }
+            } Catch {
+                $Script:LogTextBox.AppendText("ERRORE: Impossibile abilitare '$($item.Name)'. Errore: $($_.Exception.Message)`r`n")
+            }
+        }
+        Load-StartupApps # Ricarica la lista dopo le modifiche
+        Show-MessageBox "Le applicazioni selezionate sono state abilitate. Potrebbe essere necessario un riavvio per avere pieno effetto." "Operazione Completata"
+    })
+
+    Load-StartupApps # Carica le app all'apertura del form
+    $StartupForm.ShowDialog() | Out-Null
+}
 
 Function Apply-SelectedChanges {
     $Script:LogTextBox.Clear()
@@ -1337,8 +1761,8 @@ Function Deselect-AllCheckboxes {
 
 #region Crea Form Principale
 $Form = New-Object System.Windows.Forms.Form
-$Form.Text = "Luca - Ottimizzatore Registro di Windows" # Nome del form cambiato in "Luca"
-$Form.Size = New-Object System.Drawing.Size(800, 800) # Aumenta l'altezza per i nuovi pulsanti
+$Form.Text = "Luca - Ottimizzatore Registro di Windows"
+$Form.Size = New-Object System.Drawing.Size(800, 950) # Aumenta l'altezza per i nuovi pulsanti e sezioni
 $Form.StartPosition = "CenterScreen"
 $Form.FormBorderStyle = "FixedSingle" # Impedisce il ridimensionamento
 $Form.MaximizeBox = $false
@@ -1353,7 +1777,7 @@ $ToolTip = New-Object System.Windows.Forms.ToolTip
 # Pannello per le caselle di controllo (con scorrimento automatico)
 $Panel = New-Object System.Windows.Forms.Panel
 $Panel.Location = New-Object System.Drawing.Point(10, 10)
-$Panel.Size = New-Object System.Drawing.Size(760, 400)
+$Panel.Size = New-Object System.Drawing.Size(760, 450) # Aumenta l'altezza del pannello scorrevole
 $Panel.AutoScroll = $true
 $Panel.BorderStyle = "FixedSingle"
 $Panel.BackColor = [System.Drawing.Color]::FromArgb(45, 45, 48) # Sfondo scuro leggermente diverso
@@ -1364,6 +1788,10 @@ $yPos = 10
 $Script:CheckBoxes = @() # Memorizza le caselle di controllo per un facile accesso
 
 ForEach ($config in $RegistryConfigurations) {
+    # Salta "Abilita/Disabilita App in Background" dalla lista delle caselle di controllo
+    If ($config.Name -eq "Abilita/Disabilita App in Background") {
+        Continue
+    }
     $CheckBox = New-Object System.Windows.Forms.CheckBox
     $CheckBox.Text = $config.Name
     $CheckBox.Location = New-Object System.Drawing.Point(10, $yPos)
@@ -1411,6 +1839,18 @@ $DeselectAllButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb
 $DeselectAllButton.FlatAppearance.BorderSize = 1
 $Form.Controls.Add($DeselectAllButton)
 
+$OOSUButton = New-Object System.Windows.Forms.Button
+$OOSUButton.Text = "Esegui O&O ShutUp10"
+$OOSUButton.Location = New-Object System.Drawing.Point(([int]$DeselectAllButton.Location.X + [int]$DeselectAllButton.Width + 10), $currentButtonY)
+$OOSUButton.Size = New-Object System.Drawing.Size(140, 30)
+$OOSUButton.Add_Click({ Invoke-WPFOOSU })
+$OOSUButton.BackColor = [System.Drawing.Color]::FromArgb(0, 150, 136)
+$OOSUButton.ForeColor = [System.Drawing.Color]::White
+$OOSUButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+$OOSUButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(0, 120, 100)
+$OOSUButton.FlatAppearance.BorderSize = 1
+$Form.Controls.Add($OOSUButton)
+
 $ApplyButton = New-Object System.Windows.Forms.Button
 $ApplyButton.Text = "Applica Modifiche Selezionate"
 $ApplyButton.Location = New-Object System.Drawing.Point(([int]$Form.Width - 190), $currentButtonY)
@@ -1422,20 +1862,6 @@ $ApplyButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
 $ApplyButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(0, 100, 180)
 $ApplyButton.FlatAppearance.BorderSize = 1
 $Form.Controls.Add($ApplyButton)
-
-# Il pulsante Debloat Completo è stato rimosso.
-# Sposto il pulsante OOSU per riempire lo spazio.
-$OOSUButton = New-Object System.Windows.Forms.Button
-$OOSUButton.Text = "Esegui O&O ShutUp10"
-$OOSUButton.Location = New-Object System.Drawing.Point(([int]$DeselectAllButton.Location.X + [int]$DeselectAllButton.Width + 10), $currentButtonY) # Posizionato dopo Deseleziona Tutto
-$OOSUButton.Size = New-Object System.Drawing.Size(140, 30)
-$OOSUButton.Add_Click({ Invoke-WPFOOSU })
-$OOSUButton.BackColor = [System.Drawing.Color]::FromArgb(0, 150, 136)
-$OOSUButton.ForeColor = [System.Drawing.Color]::White
-$OOSUButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
-$OOSUButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(0, 120, 100)
-$OOSUButton.FlatAppearance.BorderSize = 1
-$Form.Controls.Add($OOSUButton)
 
 
 $currentButtonY += $SelectAllButton.Height + 15 # Spazio extra per la nuova sezione
@@ -1562,7 +1988,113 @@ $SystemRepairButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArg
 $SystemRepairButton.FlatAppearance.BorderSize = 1
 $Form.Controls.Add($SystemRepairButton)
 
-$currentButtonY += $SystemRepairButton.Height + 10
+# Nuovo pulsante per il gestore delle app in avvio automatico
+$StartupAppsButton = New-Object System.Windows.Forms.Button
+$StartupAppsButton.Text = "Gestisci App in Avvio Automatico"
+$StartupAppsButton.Location = New-Object System.Drawing.Point(([int]$SystemRepairButton.Location.X + [int]$SystemRepairButton.Width + 10), $currentButtonY)
+$StartupAppsButton.Size = New-Object System.Drawing.Size(250, 30)
+$StartupAppsButton.Add_Click({ Show-StartupAppsManager })
+$StartupAppsButton.BackColor = [System.Drawing.Color]::FromArgb(100, 50, 150) # Un colore viola
+$StartupAppsButton.ForeColor = [System.Drawing.Color]::White
+$StartupAppsButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+$StartupAppsButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(80, 30, 120)
+$StartupAppsButton.FlatAppearance.BorderSize = 1
+$Form.Controls.Add($StartupAppsButton)
+
+
+$currentButtonY += $SystemRepairButton.Height + 15 # Spazio extra per la nuova sezione DNS
+
+# Etichetta per la configurazione DNS
+$DnsLabel = New-Object System.Windows.Forms.Label
+$DnsLabel.Text = "Configurazione DNS Personalizzata:"
+$DnsLabel.Location = New-Object System.Drawing.Point(10, $currentButtonY)
+$DnsLabel.AutoSize = $true
+$DnsLabel.Font = New-Object System.Drawing.Font("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+$Form.Controls.Add($DnsLabel)
+
+$currentButtonY += $DnsLabel.Height + 5
+
+# ComboBox per la selezione DNS
+$DnsComboBox = New-Object System.Windows.Forms.ComboBox
+$DnsComboBox.Location = New-Object System.Drawing.Point(10, $currentButtonY)
+$DnsComboBox.Size = New-Object System.Drawing.Size(200, 25)
+$DnsComboBox.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList # Rende il ComboBox non modificabile
+$DnsComboBox.Items.AddRange(@("Default DHCP", "Google", "Cloudflare", "Cloudflare_Malware", "Cloudflare_Malware_Adult", "Open_DNS", "Quad9", "AdGuard_Ads_Trackers", "AdGuard_Ads_Trackers_Malware_Adult"))
+$DnsComboBox.SelectedIndex = 0 # Seleziona di default "Default DHCP"
+$DnsComboBox.BackColor = [System.Drawing.Color]::FromArgb(60, 60, 60)
+$DnsComboBox.ForeColor = [System.Drawing.Color]::White
+$Form.Controls.Add($DnsComboBox)
+
+# Pulsante per applicare il DNS selezionato
+$ApplyDnsButton = New-Object System.Windows.Forms.Button
+$ApplyDnsButton.Text = "Applica DNS Selezionato"
+$ApplyDnsButton.Location = New-Object System.Drawing.Point(([int]$DnsComboBox.Location.X + [int]$DnsComboBox.Width + 10), $currentButtonY)
+$ApplyDnsButton.Size = New-Object System.Drawing.Size(180, 25)
+$ApplyDnsButton.Add_Click({ Set-DNSConfiguration $DnsComboBox.SelectedItem })
+$ApplyDnsButton.BackColor = [System.Drawing.Color]::FromArgb(0, 122, 204)
+$ApplyDnsButton.ForeColor = [System.Drawing.Color]::White
+$ApplyDnsButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+$ApplyDnsButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(0, 100, 180)
+$ApplyDnsButton.FlatAppearance.BorderSize = 1
+$Form.Controls.Add($ApplyDnsButton)
+
+$currentButtonY += $DnsComboBox.Height + 15 # Spazio extra per la nuova sezione App in Background
+
+# Etichetta per le App in Background
+$BackgroundAppsLabel = New-Object System.Windows.Forms.Label
+$BackgroundAppsLabel.Text = "Gestione App in Background:"
+$BackgroundAppsLabel.Location = New-Object System.Drawing.Point(10, $currentButtonY)
+$BackgroundAppsLabel.AutoSize = $true
+$BackgroundAppsLabel.Font = New-Object System.Drawing.Font("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+$Form.Controls.Add($BackgroundAppsLabel)
+
+$currentButtonY += $BackgroundAppsLabel.Height + 5
+
+# Pulsante per abilitare/disabilitare App in Background
+$BackgroundAppsToggleButton = New-Object System.Windows.Forms.Button
+$BackgroundAppsToggleButton.Location = New-Object System.Drawing.Point(10, $currentButtonY)
+$BackgroundAppsToggleButton.Size = New-Object System.Drawing.Size(250, 30)
+$BackgroundAppsToggleButton.BackColor = [System.Drawing.Color]::FromArgb(50, 150, 200) # Un colore blu-verde
+$BackgroundAppsToggleButton.ForeColor = [System.Drawing.Color]::White
+$BackgroundAppsToggleButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+$BackgroundAppsToggleButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(30, 120, 180)
+$BackgroundAppsToggleButton.FlatAppearance.BorderSize = 1
+$Form.Controls.Add($BackgroundAppsToggleButton)
+
+# Funzione per aggiornare il testo e lo stato del pulsante App in Background
+Function Update-BackgroundAppsButtonState {
+    $currentValue = Get-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\BackgroundAccessApplications" -Name "GlobalUserDisabled" -ErrorAction SilentlyContinue
+    If ($currentValue -and $currentValue.GlobalUserDisabled -eq 1) {
+        $BackgroundAppsToggleButton.Text = "Abilita App in Background"
+        $BackgroundAppsToggleButton.Tag = "Disabled" # Usa Tag per memorizzare lo stato logico
+        $BackgroundAppsToggleButton.BackColor = [System.Drawing.Color]::FromArgb(200, 50, 50) # Rosso per indicare che sono disabilitate
+        $BackgroundAppsToggleButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(150, 30, 30)
+    } Else {
+        $BackgroundAppsToggleButton.Text = "Disabilita App in Background"
+        $BackgroundAppsToggleButton.Tag = "Enabled" # Usa Tag per memorizzare lo stato logico
+        $BackgroundAppsToggleButton.BackColor = [System.Drawing.Color]::FromArgb(50, 200, 50) # Verde per indicare che sono abilitate
+        $BackgroundAppsToggleButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(30, 150, 30)
+    }
+}
+
+# Aggiungi l'handler di click per il pulsante App in Background
+$BackgroundAppsToggleButton.Add_Click({
+    If ($BackgroundAppsToggleButton.Tag -eq "Enabled") {
+        # Disabilita
+        Set-RegistryValue -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\BackgroundAccessApplications" -Name "GlobalUserDisabled" -Value 1 -Type "DWord"
+        Show-MessageBox "Le app in background sono state disabilitate. Potrebbe essere necessario un riavvio per avere pieno effetto." "App in Background Disabilitate"
+    } Else {
+        # Abilita
+        Set-RegistryValue -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\BackgroundAccessApplications" -Name "GlobalUserDisabled" -Value 0 -Type "DWord"
+        Show-MessageBox "Le app in background sono state abilitate. Potrebbe essere necessario un riavvio per avere pieno effetto." "App in Background Abilitate"
+    }
+    Update-BackgroundAppsButtonState # Aggiorna lo stato del pulsante dopo la modifica
+})
+
+# Inizializza lo stato del pulsante all'avvio del form
+$Form.Add_Load({ Update-BackgroundAppsButtonState })
+
+$currentButtonY += $BackgroundAppsToggleButton.Height + 10
 
 # Casella di testo per il log
 $Script:LogTextBox = New-Object System.Windows.Forms.TextBox
