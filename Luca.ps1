@@ -15,7 +15,7 @@
 
 .NOTES
     Autore: Gemini
-    Versione: 6.6 (Correzione Sfondo Nero/Menu Start)
+    Versione: 6.8 (Correzione Sfondo Nero/Menu Start Migliorata)
     Data: 13 luglio 2025
 
     IMPORTANTE:
@@ -503,7 +503,7 @@ $RegistryConfigurations = @(
         Name = "Ottimizzazioni Effetti Visivi (Avanzato)"
         Description = "Imposta gli effetti visivi su 'Personalizzato', abilita la smussatura dei caratteri e disattiva animazioni superflue per migliorare le prestazioni visive. (Questa opzione è più completa di 'Imposta Effetti Visivi su Prestazioni/Qualità')"
         RegistryActions = @(
-            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects"; Name = "VisualFXSetting"; Value = 0; Type = "DWord"; Action = "Set" }, # CAMBIATO: da 3 a 0 per un comportamento più sicuro
+            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects"; Name = "VisualFXSetting"; Value = 1; Type = "DWord"; Action = "Set" }, # CAMBIATO a 1 (Personalizzato)
             @{ Path = "HKCU:\Control Panel\Desktop"; Name = "FontSmoothing"; Value = "2"; Type = "String"; Action = "Set" },
             @{ Path = "HKCU:\Control Panel\Desktop"; Name = "DragFullWindows"; Value = "1"; Type = "String"; Action = "Set" },
             @{ Path = "HKCU:\Control Panel\Desktop\WindowMetrics"; Name = "FontSmoothingType"; Value = 2; Type = "DWord"; Action = "Set" },
@@ -800,7 +800,6 @@ $RegistryConfigurations = @(
             @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"; Name = "ShowCopilotButton"; Value = 0; Type = "DWord"; Action = "Set" },
             @{ Path = "HKCU:\Software\Microsoft\Windows\Shell\Copilot\BingChat"; Name = "IsUserEligible"; Value = 0; Type = "DWord"; Action = "Set" },
             @{ Path = "HKLM:\SOFTWARE\Policies\Microsoft\Edge"; Name = "HubsSidebarEnabled"; Value = 0; Type = "DWord"; Action = "Set" }
-            # RIMOSSO: @{ Action = "RunCommand"; Command = "taskkill /f /im explorer.exe & start explorer" }
         )
     },
     @{
@@ -907,7 +906,20 @@ $RegistryConfigurations = @(
         Description = "Disabilita il pulsante Visualizzazione Attività e altre funzioni specifiche della barra delle applicazioni."
         RegistryActions = @(
             @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"; Name = "ShowTaskViewButton"; Value = 0; Type = "DWord"; Action = "Set" }
-            # RIMOSSO: @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"; Name = "TaskbarDa"; Value = 0; Type = "DWord"; Action = "Set" }
+        )
+    },
+    @{
+        Name = "Ripristina Interfaccia Utente (UI) e Sfondo Desktop"
+        Description = "Ripristina le impostazioni predefinite dell'interfaccia utente, imposta uno sfondo a tinta unita e riavvia Explorer.exe per risolvere problemi visivi e del menu Start."
+        RegistryActions = @(
+            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects"; Name = "VisualFXSetting"; Value = 1; Type = "DWord"; Action = "Set" }, # Imposta su Personalizzato
+            @{ Path = "HKCU:\Control Panel\Desktop"; Name = "WallpaperStyle"; Value = "10"; Type = "String"; Action = "Set" }, # Stile: Riempimento
+            @{ Path = "HKCU:\Control Panel\Desktop"; Name = "TileWallpaper"; Value = "0"; Type = "String"; Action = "Set" }, # Non affiancare
+            @{ Path = "HKCU:\Control Panel\Desktop"; Name = "Wallpaper"; Value = ""; Type = "String"; Action = "Set" }, # Rimuovi qualsiasi wallpaper specifico
+            @{ Path = "HKCU:\Control Panel\Colors"; Name = "Background"; Value = "26 26 26"; Type = "String"; Action = "Set" }, # Imposta un colore di sfondo solido (grigio scuro)
+            @{ Path = "HKCU:\Control Panel\Desktop"; Name = "FontSmoothing"; Value = "2"; Type = "String"; Action = "Set" }, # ClearType
+            @{ Path = "HKCU:\Control Panel\Desktop"; Name = "DragFullWindows"; Value = "1"; Type = "String"; Action = "Set" }, # Mostra il contenuto della finestra durante il trascinamento
+            @{ Action = "RunCommand"; Command = "taskkill /f /im explorer.exe & start explorer" } # Riavvia Explorer
         )
     }
 )
@@ -1723,8 +1735,61 @@ Function Show-StartupAppsManager {
     $StartupForm.ShowDialog() | Out-Null
 }
 
+Function Create-SystemRestorePoint {
+    Param (
+        [string]$Description = "Punto di ripristino creato da Luca - Ottimizzatore Registro di Windows"
+    )
+    $Script:LogTextBox.AppendText("--- Tentativo di creare un punto di ripristino del sistema ---`r`n")
+    Try {
+        # Controlla se il ripristino del sistema è abilitato sull'unità di sistema
+        $systemDrive = "$($env:SystemDrive)\"
+        $srStatus = Get-ComputerRestorePoint -ErrorAction SilentlyContinue
+        $isSrEnabled = $false
+        if ($srStatus) {
+            $srConfig = Get-ComputerRestorePoint -Drive $systemDrive -ErrorAction SilentlyContinue
+            if ($srConfig -and $srConfig.Enable -eq $true) {
+                $isSrEnabled = $true
+            }
+        }
+
+        if (-not $isSrEnabled) {
+            $Script:LogTextBox.AppendText("AVVISO: Il ripristino del sistema non è abilitato sull'unità di sistema ($systemDrive).`r`n")
+            $Script:LogTextBox.AppendText("Impossibile creare un punto di ripristino. Abilitalo in 'Protezione sistema' per usare questa funzione.`r`n")
+            Show-MessageBox "Il ripristino del sistema non è abilitato sull'unità di sistema ($systemDrive). Impossibile creare un punto di ripristino. Abilitalo in 'Protezione sistema' per usare questa funzione." "Ripristino Sistema Disabilitato" "OK" "Warning"
+            return $false
+        }
+
+        $Script:LogTextBox.AppendText("Creazione del punto di ripristino: '$Description'...`r`n")
+        Checkpoint-Computer -Description $Description -RestorePointType "MODIFY_SETTINGS" -ErrorAction Stop
+        $Script:LogTextBox.AppendText("SUCCESSO: Punto di ripristino creato con successo.`r`n")
+        Show-MessageBox "Punto di ripristino del sistema creato con successo!" "Punto di Ripristino Creato" "OK" "Information"
+        return $true
+    } Catch {
+        $Script:LogTextBox.AppendText("ERRORE: Impossibile creare il punto di ripristino del sistema. Errore: $($_.Exception.Message)`r`n")
+        Show-MessageBox "Si è verificato un errore durante la creazione del punto di ripristino del sistema. Controlla il log per i dettagli." "Errore Punto di Ripristino" "OK" "Error"
+        return $false
+    }
+    $Script:LogTextBox.AppendText("--- Fine creazione punto di ripristino ---`r`n`r`n")
+}
+
 Function Apply-SelectedChanges {
     $Script:LogTextBox.Clear()
+    $Script:LogTextBox.AppendText("Preparazione per l'applicazione delle modifiche...`r`n`r`n")
+
+    $createRestorePoint = Show-MessageBox "Vuoi creare un punto di ripristino del sistema prima di applicare le modifiche? Questo è fortemente raccomandato." "Crea Punto di Ripristino?" "YesNo" "Question"
+
+    If ($createRestorePoint -eq [System.Windows.Forms.DialogResult]::Yes) {
+        $restorePointCreated = Create-SystemRestorePoint
+        If (-not $restorePointCreated) {
+            $continueWithoutRestore = Show-MessageBox "La creazione del punto di ripristino è fallita o il ripristino del sistema non è abilitato. Vuoi continuare comunque ad applicare le modifiche?" "Continua Senza Ripristino?" "YesNo" "Warning"
+            If ($continueWithoutRestore -ne [System.Windows.Forms.DialogResult]::Yes) {
+                $Script:LogTextBox.AppendText("Operazione annullata dall'utente a causa del fallimento della creazione del punto di ripristino.`r`n")
+                Show-MessageBox "Operazione annullata." "Annullato"
+                Return
+            }
+        }
+    }
+    
     $Script:LogTextBox.AppendText("Applicazione delle modifiche al Registro selezionate...`r`n`r`n")
 
     ForEach ($config in $RegistryConfigurations) {
