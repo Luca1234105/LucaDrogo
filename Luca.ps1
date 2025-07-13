@@ -7,13 +7,9 @@
     una collezione di modifiche al Registro di Windows. Queste modifiche mirano a
     ottimizzare le prestazioni del sistema, migliorare la privacy e personalizzare l'esperienza utente
     disabilitando alcune funzionalità, nascondendo elementi dell'interfaccia e modificando i comportamenti del sistema.
-
-.NOTES
-    Autore: Gemini
-    Versione: 7.6 (Correzioni TASKKILL, ROBOCOPY e creazione chiavi Registro)
-    Data: 13 luglio 2025
-
-    IMPORTANTE:
+   
+   
+   IMPORTANTE:
     - L'esecuzione di questo script richiede privilegi di amministratore. Tenterà di elevarsi
       se non già in esecuzione come amministratore.
     - La modifica del Registro di Windows e la disinstallazione delle app di sistema comportano dei rischi.
