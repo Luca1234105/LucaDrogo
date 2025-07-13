@@ -15,7 +15,7 @@
 
 .NOTES
     Autore: Gemini
-    Versione: 6.5 (Aggiunto Pulsante Installa/Aggiorna Winget)
+    Versione: 6.6 (Correzione Sfondo Nero/Menu Start)
     Data: 13 luglio 2025
 
     IMPORTANTE:
@@ -503,7 +503,7 @@ $RegistryConfigurations = @(
         Name = "Ottimizzazioni Effetti Visivi (Avanzato)"
         Description = "Imposta gli effetti visivi su 'Personalizzato', abilita la smussatura dei caratteri e disattiva animazioni superflue per migliorare le prestazioni visive. (Questa opzione è più completa di 'Imposta Effetti Visivi su Prestazioni/Qualità')"
         RegistryActions = @(
-            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects"; Name = "VisualFXSetting"; Value = 3; Type = "DWord"; Action = "Set" },
+            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects"; Name = "VisualFXSetting"; Value = 0; Type = "DWord"; Action = "Set" }, # CAMBIATO: da 3 a 0 per un comportamento più sicuro
             @{ Path = "HKCU:\Control Panel\Desktop"; Name = "FontSmoothing"; Value = "2"; Type = "String"; Action = "Set" },
             @{ Path = "HKCU:\Control Panel\Desktop"; Name = "DragFullWindows"; Value = "1"; Type = "String"; Action = "Set" },
             @{ Path = "HKCU:\Control Panel\Desktop\WindowMetrics"; Name = "FontSmoothingType"; Value = 2; Type = "DWord"; Action = "Set" },
@@ -799,8 +799,8 @@ $RegistryConfigurations = @(
             @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings"; Name = "AutoOpenCopilotLargeScreens"; Value = 0; Type = "DWord"; Action = "Set" },
             @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"; Name = "ShowCopilotButton"; Value = 0; Type = "DWord"; Action = "Set" },
             @{ Path = "HKCU:\Software\Microsoft\Windows\Shell\Copilot\BingChat"; Name = "IsUserEligible"; Value = 0; Type = "DWord"; Action = "Set" },
-            @{ Path = "HKLM:\SOFTWARE\Policies\Microsoft\Edge"; Name = "HubsSidebarEnabled"; Value = 0; Type = "DWord"; Action = "Set" },
-            @{ Action = "RunCommand"; Command = "taskkill /f /im explorer.exe & start explorer" }
+            @{ Path = "HKLM:\SOFTWARE\Policies\Microsoft\Edge"; Name = "HubsSidebarEnabled"; Value = 0; Type = "DWord"; Action = "Set" }
+            # RIMOSSO: @{ Action = "RunCommand"; Command = "taskkill /f /im explorer.exe & start explorer" }
         )
     },
     @{
@@ -904,10 +904,10 @@ $RegistryConfigurations = @(
     },
     @{
         Name = "Disabilita Pulsante Visualizzazione Attività e Funzioni Barra delle Applicazioni"
-        Description = "Disabilita il pulsante Visualizzazione Attività e altre funzioni specifiche della barra delle applicazioni. (Nota: 'TaskbarDa' è un nome di valore insolito, assicurati che sia corretto per il tuo sistema.)"
+        Description = "Disabilita il pulsante Visualizzazione Attività e altre funzioni specifiche della barra delle applicazioni."
         RegistryActions = @(
-            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"; Name = "ShowTaskViewButton"; Value = 0; Type = "DWord"; Action = "Set" },
-            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"; Name = "TaskbarDa"; Value = 0; Type = "DWord"; Action = "Set" } # Questo valore è insolito, verifica la sua effettiva utilità.
+            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"; Name = "ShowTaskViewButton"; Value = 0; Type = "DWord"; Action = "Set" }
+            # RIMOSSO: @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"; Name = "TaskbarDa"; Value = 0; Type = "DWord"; Action = "Set" }
         )
     }
 )
