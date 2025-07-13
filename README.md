@@ -24,13 +24,13 @@ Open **PowerShell as Administrator** and run this command:
 
 ----
 📄 Credits
+
 This script includes portions of code adapted from:
 
 ChrisTitusTech/winutil
 
-Chris Titus' work is licensed under the MIT License, which permits reuse and modification with proper attribution.
+Chris Titus' original work is licensed under the MIT License, which permits reuse and modification with proper attribution.
 
-All modifications and additional features in this repository are by Luca Drogo and are also licensed under the MIT License.
-
+All modifications and additional features in this repository are the work of Luca Drogo, and are also licensed under the MIT License.
 
 
