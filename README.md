@@ -27,7 +27,7 @@ ChrisTitusTech/winutil
 
 Chris Titus' original work is licensed under the MIT License, which permits reuse and modification with proper attribution.
 
-All modifications and additional features in this repository are the work of Luca Drogo, and are also licensed under the MIT License.
+All modifications and additional features in this repository are provided under the MIT License and are based on publicly available resources and personal adaptations
 ----
 ⚠️ Disclaimer: This script is provided “as-is” without any warranties. Use at your own risk. I am not responsible for any damage, data loss, or system issues resulting from its use.
 
