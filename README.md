@@ -28,7 +28,8 @@ ChrisTitusTech/winutil
 Chris Titus' original work is licensed under the MIT License, which permits reuse and modification with proper attribution.
 
 All modifications and additional features in this repository are the work of Luca Drogo, and are also licensed under the MIT License.
-
+----
+⚠️ Disclaimer: This script is provided “as-is” without any warranties. Use at your own risk. I am not responsible for any damage, data loss, or system issues resulting from its use.
 
 -------
 ## 🖥️ How to Run
@@ -37,3 +38,5 @@ You can run the latest version of the script directly from PowerShell (as Admini
 
 ```powershell
 irm "https://tinyurl.com/LucaDrogo" | iex
+
+
