@@ -18,14 +18,7 @@ This project is inspired by and partially based on the work of [Chris Titus Tech
 
 ---
 
-## 🖥️ How to Run
 
-You can run the latest version of the script directly from PowerShell (as Administrator) with this single line:
-
-```powershell
-irm "https://tinyurl.com/LucaDrogo" | iex
-
-----
 📄 Credits
 
 This script includes portions of code adapted from:
@@ -37,3 +30,10 @@ Chris Titus' original work is licensed under the MIT License, which permits reus
 All modifications and additional features in this repository are the work of Luca Drogo, and are also licensed under the MIT License.
 
 
+-------
+## 🖥️ How to Run
+
+You can run the latest version of the script directly from PowerShell (as Administrator) with this single line:
+
+```powershell
+irm "https://tinyurl.com/LucaDrogo" | iex
