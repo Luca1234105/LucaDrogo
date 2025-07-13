@@ -15,7 +15,7 @@
 
 .NOTES
     Autore: Gemini
-    Versione: 6.3 (Correzione Layout GUI - Riorganizzazione Pulsanti e Nuova Opzione)
+    Versione: 6.4 (Correzione Layout GUI - Altezza Form e Spazio Ridotto)
     Data: 13 luglio 2025
 
     IMPORTANTE:
@@ -1907,7 +1907,7 @@ $DownloadConfigurations = @(
 #region Crea Form Principale
 $Form = New-Object System.Windows.Forms.Form
 $Form.Text = "Luca - Ottimizzatore Registro di Windows"
-$Form.Size = New-Object System.Drawing.Size(1200, 1150) # Altezza mantenuta, riorganizzazione interna
+$Form.Size = New-Object System.Drawing.Size(1200, 1180) # Altezza aumentata
 $Form.StartPosition = "CenterScreen"
 $Form.FormBorderStyle = "FixedSingle" # Impedisce il ridimensionamento
 $Form.MaximizeBox = $false
@@ -2232,7 +2232,7 @@ $BackgroundAppsToggleButton.Add_Click({
 # Inizializza lo stato del pulsante all'avvio del form
 $Form.Add_Load({ Update-BackgroundAppsButtonState })
 
-$currentButtonY += [int]($BackgroundAppsToggleButton.Height + 10) # Spazio dopo il pulsante background apps
+$currentButtonY += [int]($BackgroundAppsToggleButton.Height + 5) # Spazio ridotto dopo il pulsante background apps
 
 # Sposta il pulsante Gestisci App in Avvio Automatico qui
 $StartupAppsButton = New-Object System.Windows.Forms.Button
@@ -2247,7 +2247,7 @@ $StartupAppsButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb
 $StartupAppsButton.FlatAppearance.BorderSize = 1
 $Form.Controls.Add($StartupAppsButton)
 
-$currentButtonY += [int]($StartupAppsButton.Height + 5) # Spazio ridotto dopo il pulsante gestisci app avvio automatico
+$currentButtonY += [int]($StartupAppsButton.Height + 2) # Spazio ulteriormente ridotto dopo il pulsante gestisci app avvio automatico
 
 # Etichetta per la barra di avanzamento del download
 $Script:DownloadProgressLabel = New-Object System.Windows.Forms.Label
@@ -2257,7 +2257,7 @@ $Script:DownloadProgressLabel.Font = New-Object System.Drawing.Font("Segoe UI", 
 $Script:DownloadProgressLabel.Text = "" # Inizialmente vuoto
 $Form.Controls.Add($Script:DownloadProgressLabel)
 
-$currentButtonY += [int]($Script:DownloadProgressLabel.Height + 5) # Aggiungi altezza etichetta a Y
+$currentButtonY += [int]($Script:DownloadProgressLabel.Height + 2) # Aggiungi altezza etichetta a Y, spazio ridotto
 
 # Barra di avanzamento per i download delle app
 $Script:DownloadProgressBar = New-Object System.Windows.Forms.ProgressBar
@@ -2268,7 +2268,7 @@ $Script:DownloadProgressBar.Value = 0
 $Script:DownloadProgressBar.Visible = $false # Inizialmente nascosta
 $Form.Controls.Add($Script:DownloadProgressBar)
 
-$currentButtonY += [int]($Script:DownloadProgressBar.Height + 10) # Aggiungi altezza barra di avanzamento a Y
+$currentButtonY += [int]($Script:DownloadProgressBar.Height + 5) # Aggiungi altezza barra di avanzamento a Y, spazio ridotto
 
 # Nuovo GroupBox per le App da Scaricare
 $DownloadAppsGroupBox = New-Object System.Windows.Forms.GroupBox
