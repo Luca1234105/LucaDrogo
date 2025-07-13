@@ -8,10 +8,6 @@
     ottimizzare le prestazioni del sistema, migliorare la privacy e personalizzare l'esperienza utente
     disabilitando alcune funzionalità, nascondendo elementi dell'interfaccia e modificando i comportamenti del sistema.
 
-.NOTES
-    Autore: Gemini
-    Versione: 7.2 (Aggiunta opzione per UserPreferencesMask e rimozione duplicato VisualFXSetting)
-    Data: 13 luglio 2025
 
     IMPORTANTE:
     - L'esecuzione di questo script richiede privilegi di amministratore. Tenterà di elevarsi
@@ -663,7 +659,8 @@ $RegistryConfigurations = @(
         Name = "Disabilita Widget Barra delle Applicazioni"
         Description = "Rimuove il pulsante Widget dalla barra delle applicazioni di Windows."
         RegistryActions = @(
-            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"; Name = "TaskbarDa"; Value = 0; Type = "DWord"; Action = "Set" }
+            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"; Name = "TaskbarDa"; Value = 0; Type = "DWord"; Action = "Set" },
+            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Feeds"; Name = "ShellFeedsTaskbarViewMode"; Value = 0; Type = "DWord"; Action = "Set" }
         )
     },
     @{
@@ -882,13 +879,9 @@ $RegistryConfigurations = @(
     },
     @{
         Name = "Ripristina Interfaccia Utente (UI) e Sfondo Desktop"
-        Description = "Ripristina le impostazioni predefinite dell'interfaccia utente, imposta uno sfondo a tinta unita e riavvia Explorer.exe per risolvere problemi visivi e del menu Start."
+        Description = "Ripristina le impostazioni predefinite dell'interfaccia utente e riavvia Explorer.exe per risolvere problemi visivi e del menu Start, preservando il tuo sfondo desktop esistente."
         RegistryActions = @(
             @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects"; Name = "VisualFXSetting"; Value = 1; Type = "DWord"; Action = "Set" }, # Imposta su Personalizzato (per un reset stabile)
-            @{ Path = "HKCU:\Control Panel\Desktop"; Name = "WallpaperStyle"; Value = "10"; Type = "String"; Action = "Set" }, # Stile: Riempimento
-            @{ Path = "HKCU:\Control Panel\Desktop"; Name = "TileWallpaper"; Value = "0"; Type = "String"; Action = "Set" }, # Non affiancare
-            @{ Path = "HKCU:\Control Panel\Desktop"; Name = "Wallpaper"; Value = ""; Type = "String"; Action = "Set" }, # Rimuovi qualsiasi wallpaper specifico
-            @{ Path = "HKCU:\Control Panel\Colors"; Name = "Background"; Value = "26 26 26"; Type = "String"; Action = "Set" }, # Imposta un colore di sfondo solido (grigio scuro)
             @{ Path = "HKCU:\Control Panel\Desktop"; Name = "FontSmoothing"; Value = "2"; Type = "String"; Action = "Set" }, # ClearType
             @{ Path = "HKCU:\Control Panel\Desktop"; Name = "DragFullWindows"; Value = "1"; Type = "String"; Action = "Set" }, # Mostra il contenuto della finestra durante il trascinamento
             @{ Action = "RunCommand"; Command = "taskkill /f /im explorer.exe & start explorer" } # Riavvia Explorer
