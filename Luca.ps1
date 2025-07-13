@@ -13,8 +13,12 @@
     (DWord, String, Binary) e supporta l'impostazione e la rimozione di chiavi/valori del Registro.
     Include anche funzionalità per disinstallare app predefinite di Windows (bloatware).
 
+.NOTES
+    Autore: Gemini
+    Versione: 6.3 (Correzione Layout GUI - Riorganizzazione Pulsanti e Nuova Opzione)
+    Data: 13 luglio 2025
 
-     IMPORTANTE:
+    IMPORTANTE:
     - L'esecuzione di questo script richiede privilegi di amministratore. Tenterà di elevarsi
       se non già in esecuzione come amministratore.
     - La modifica del Registro di Windows e la disinstallazione delle app di sistema comportano dei rischi.
@@ -896,6 +900,14 @@ $RegistryConfigurations = @(
         Description = "Applica ottimizzazioni per la scheda di rete, inclusa la disabilitazione del risparmio energetico e l'abilitazione di Receive Side Scaling (RSS)."
         RegistryActions = @(
             @{ Action = "RunFunction"; FunctionName = "Optimize-NetworkAdapter" }
+        )
+    },
+    @{
+        Name = "Disabilita Pulsante Visualizzazione Attività e Funzioni Barra delle Applicazioni"
+        Description = "Disabilita il pulsante Visualizzazione Attività e altre funzioni specifiche della barra delle applicazioni. (Nota: 'TaskbarDa' è un nome di valore insolito, assicurati che sia corretto per il tuo sistema.)"
+        RegistryActions = @(
+            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"; Name = "ShowTaskViewButton"; Value = 0; Type = "DWord"; Action = "Set" },
+            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"; Name = "TaskbarDa"; Value = 0; Type = "DWord"; Action = "Set" } # Questo valore è insolito, verifica la sua effettiva utilità.
         )
     }
 )
@@ -1895,7 +1907,7 @@ $DownloadConfigurations = @(
 #region Crea Form Principale
 $Form = New-Object System.Windows.Forms.Form
 $Form.Text = "Luca - Ottimizzatore Registro di Windows"
-$Form.Size = New-Object System.Drawing.Size(1200, 1150) # ALTEZZA AUMENTATA per accomodare tutti gli elementi
+$Form.Size = New-Object System.Drawing.Size(1200, 1150) # Altezza mantenuta, riorganizzazione interna
 $Form.StartPosition = "CenterScreen"
 $Form.FormBorderStyle = "FixedSingle" # Impedisce il ridimensionamento
 $Form.MaximizeBox = $false
@@ -2128,20 +2140,6 @@ $SystemRepairButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArg
 $SystemRepairButton.FlatAppearance.BorderSize = 1
 $Form.Controls.Add($SystemRepairButton)
 
-# Nuovo pulsante per il gestore delle app in avvio automatico
-$StartupAppsButton = New-Object System.Windows.Forms.Button
-$StartupAppsButton.Text = "Gestisci App in Avvio Automatico"
-$StartupAppsButton.Location = New-Object System.Drawing.Point(([int]$SystemRepairButton.Location.X + [int]$SystemRepairButton.Width + 10), $currentButtonY)
-$StartupAppsButton.Size = New-Object System.Drawing.Size(250, 30)
-$StartupAppsButton.Add_Click({ Show-StartupAppsManager })
-$StartupAppsButton.BackColor = [System.Drawing.Color]::FromArgb(100, 50, 150) # Un colore viola
-$StartupAppsButton.ForeColor = [System.Drawing.Color]::White
-$StartupAppsButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
-$StartupAppsButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(80, 30, 120)
-$StartupAppsButton.FlatAppearance.BorderSize = 1
-$Form.Controls.Add($StartupAppsButton)
-
-
 $currentButtonY += [int]($SystemRepairButton.Height + 10) # Spazio ridotto
 
 # Etichetta per la configurazione DNS
@@ -2235,6 +2233,21 @@ $BackgroundAppsToggleButton.Add_Click({
 $Form.Add_Load({ Update-BackgroundAppsButtonState })
 
 $currentButtonY += [int]($BackgroundAppsToggleButton.Height + 10) # Spazio dopo il pulsante background apps
+
+# Sposta il pulsante Gestisci App in Avvio Automatico qui
+$StartupAppsButton = New-Object System.Windows.Forms.Button
+$StartupAppsButton.Text = "Gestisci App in Avvio Automatico"
+$StartupAppsButton.Location = New-Object System.Drawing.Point($currentButtonX, $currentButtonY) # Nuova posizione
+$StartupAppsButton.Size = New-Object System.Drawing.Size(250, 30)
+$StartupAppsButton.Add_Click({ Show-StartupAppsManager })
+$StartupAppsButton.BackColor = [System.Drawing.Color]::FromArgb(100, 50, 150) # Un colore viola
+$StartupAppsButton.ForeColor = [System.Drawing.Color]::White
+$StartupAppsButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+$StartupAppsButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(80, 30, 120)
+$StartupAppsButton.FlatAppearance.BorderSize = 1
+$Form.Controls.Add($StartupAppsButton)
+
+$currentButtonY += [int]($StartupAppsButton.Height + 5) # Spazio ridotto dopo il pulsante gestisci app avvio automatico
 
 # Etichetta per la barra di avanzamento del download
 $Script:DownloadProgressLabel = New-Object System.Windows.Forms.Label
