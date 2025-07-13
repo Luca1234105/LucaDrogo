@@ -8,6 +8,10 @@
     ottimizzare le prestazioni del sistema, migliorare la privacy e personalizzare l'esperienza utente
     disabilitando alcune funzionalità, nascondendo elementi dell'interfaccia e modificando i comportamenti del sistema.
 
+.NOTES
+    Autore: Gemini
+    Versione: 7.6 (Correzioni TASKKILL, ROBOCOPY e creazione chiavi Registro)
+    Data: 13 luglio 2025
 
     IMPORTANTE:
     - L'esecuzione di questo script richiede privilegi di amministratore. Tenterà di elevarsi
@@ -71,7 +75,7 @@ $RegistryConfigurations = @(
             @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager"; Name = "SubscribedContent-88000326Enabled"; Value = 0; Type = "DWord"; Action = "Set" },
             @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager"; Name = "SubscribedContentEnabled"; Value = 0; Type = "DWord"; Action = "Set" },
             @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager"; Name = "SystemPaneSuggestionsEnabled"; Value = 0; Type = "DWord"; Action = "Set" },
-            @{ Path = "HKLM:\Software\Policies\Microsoft\PushToInstall"; Name = "DisabilitaPushToInstall"; Value = 1; Type = "DWord"; Action = "Set" },
+            @{ Path = "HKLM:\Software\Policies\Microsoft\PushToInstall"; Name = "DisablePushToInstall"; Value = 1; Type = "DWord"; Action = "Set" },
             @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager\Subscriptions"; Action = "RemoveKey" },
             @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager\SuggestedApps"; Action = "RemoveKey" }
         )
@@ -864,7 +868,7 @@ $RegistryConfigurations = @(
         )
     },
     @{
-        Name = "Ottimizzazione Processore Scheda di Retetegrata"
+        Name = "Ottimizzazione Processore Scheda di Rete Integrata"
         Description = "Applica ottimizzazioni per la scheda di rete, inclusa la disabilitazione del risparmio energetico e l'abilitazione di Receive Side Scaling (RSS)."
         RegistryActions = @(
             @{ Action = "RunFunction"; FunctionName = "Optimize-NetworkAdapter" }
@@ -1040,7 +1044,8 @@ Function Run-CommandAction {
         $Script:LogTextBox.AppendText("Esecuzione comando: $Command`r`n")
         # Using Start-Process for commands that might require elevation or run external executables
         # -NoNewWindow hides the console window that might briefly appear for some commands
-        $process = Start-Process -FilePath "powershell.exe" -ArgumentList "-Command `"$Command`"" -Verb RunAs -PassThru -WindowStyle Hidden -ErrorAction SilentlyContinue
+        # Removed -ErrorAction SilentlyContinue from Start-Process as it's a PowerShell parameter
+        $process = Start-Process -FilePath "powershell.exe" -ArgumentList "-Command `"$Command`"" -Verb RunAs -PassThru -WindowStyle Hidden
         $process.WaitForExit()
         If ($process.ExitCode -eq 0) {
             $Script:LogTextBox.AppendText("SUCCESSO: Comando eseguito: '$Command'.`r`n")
@@ -1817,6 +1822,7 @@ Function Update-Winget {
         $tempErrorFile = [System.IO.Path]::GetTempFileName()
 
         # Execute winget upgrade --all and redirect output
+        # -NoNewWindow hides the console window that might briefly appear for some commands
         $process = Start-Process -FilePath $wingetPath -ArgumentList "upgrade --all --source winget --accept-package-agreements --accept-source-agreements" -Wait -PassThru -NoNewWindow -RedirectStandardOutput $tempOutputFile -RedirectStandardError $tempErrorFile -ErrorAction Stop
         
         # Read output from temporary files after process exits
@@ -1998,7 +2004,8 @@ Function Perform-UninstallOneDrive {
 
     Try {
         $Script:LogTextBox.AppendText("Terminazione del processo OneDrive.exe...`r`n")
-        taskkill /f /im OneDrive.exe /ErrorAction SilentlyContinue | Out-Null
+        # Removed /ErrorAction as it's a PowerShell parameter, not for taskkill.exe
+        taskkill /f /im OneDrive.exe | Out-Null
     } Catch {
         $Script:LogTextBox.AppendText("AVVISO: Impossibile terminare OneDrive.exe. Errore: $($_.Exception.Message)`r`n")
     }
@@ -2028,20 +2035,28 @@ Function Perform-UninstallOneDrive {
     # Verifica se OneDrive è stato disinstallato (controllando la voce del Registro)
     If (-not (Test-Path $regPathUninstall)) {
         $Script:LogTextBox.AppendText("Copia dei file scaricati dalla cartella OneDrive alla cartella utente principale...`r`n")
-        Try {
-            # Utilizza robocopy per spostare i file. Aggiungi il flag /MT per multithreading se supportato (Win 7+).
-            # I flag /ndl /nfl /njh /njs /nc /ns /np sono per il logging, non per la funzionalità di copia.
-            # Il flag /mov è cruciale per spostare e non copiare.
-            $robocopyArgs = "`"$OneDrivePath`" `"$($env:USERPROFILE.TrimEnd())\`" /mov /e /xj /ndl /nfl /njh /njs /nc /ns /np"
-            $Script:LogTextBox.AppendText("Esecuzione robocopy: robocopy $robocopyArgs`r`n")
-            $process = Start-Process -FilePath "robocopy.exe" -ArgumentList $robocopyArgs -NoNewWindow -Wait -PassThru -ErrorAction SilentlyContinue
-            If ($process.ExitCode -le 8) { # Robocopy exit codes: 0-7 are success with info, 8+ are errors
-                $Script:LogTextBox.AppendText("SUCCESSO: File OneDrive copiati nella cartella utente principale.`r`n")
-            } Else {
-                $Script:LogTextBox.AppendText("AVVISO: Robocopy terminato con codice di uscita: $($process.ExitCode). Potrebbero esserci stati errori durante la copia dei file.`r`n")
+        # Check if the OneDrive folder exists before attempting to robocopy
+        If (Test-Path $OneDrivePath) {
+            Try {
+                # Use an array for -ArgumentList to ensure correct parsing of robocopy arguments
+                $robocopyArgs = @(
+                    "$OneDrivePath",
+                    "$($env:USERPROFILE.TrimEnd())\",
+                    "/mov", "/e", "/xj", # /mov to move, /e for empty dirs, /xj for junction points
+                    "/ndl", "/nfl", "/njh", "/njs", "/nc", "/ns", "/np" # Logging options
+                )
+                $Script:LogTextBox.AppendText("Esecuzione robocopy con argomenti: $($robocopyArgs -join ' ')`r`n")
+                $process = Start-Process -FilePath "robocopy.exe" -ArgumentList $robocopyArgs -NoNewWindow -Wait -PassThru -ErrorAction SilentlyContinue
+                If ($process.ExitCode -le 8) { # Robocopy exit codes: 0-7 are success with info, 8+ are errors
+                    $Script:LogTextBox.AppendText("SUCCESSO: File OneDrive copiati nella cartella utente principale.`r`n")
+                } Else {
+                    $Script:LogTextBox.AppendText("AVVISO: Robocopy terminato con codice di uscita: $($process.ExitCode). Potrebbero esserci stati errori durante la copia dei file.`r`n")
+                }
+            } Catch {
+                $Script:LogTextBox.AppendText("ERRORE: Errore durante la copia dei file OneDrive. Errore: $($_.Exception.Message)`r`n")
             }
-        } Catch {
-            $Script:LogTextBox.AppendText("ERRORE: Errore durante la copia dei file OneDrive. Errore: $($_.Exception.Message)`r`n")
+        } Else {
+            $Script:LogTextBox.AppendText("INFO: La cartella OneDrive '$OneDrivePath' non esiste, salto la copia dei file.`r`n")
         }
 
         $Script:LogTextBox.AppendText("Rimozione dei file residui di OneDrive...`r`n")
@@ -2155,8 +2170,8 @@ Function Perform-UninstallOneDrive {
         }
 
         $Script:LogTextBox.AppendText("Riavvio di Explorer.exe...`r`n")
-        taskkill.exe /F /IM "explorer.exe" /ErrorAction SilentlyContinue | Out-Null
-        Start-Process "explorer.exe" -ErrorAction SilentlyContinue | Out-Null
+        taskkill.exe /F /IM "explorer.exe" | Out-Null # Removed /ErrorAction
+        Start-Process "explorer.exe" | Out-Null # Removed /ErrorAction
         $Script:LogTextBox.AppendText("SUCCESSO: Explorer.exe riavviato.`r`n")
         $Script:LogTextBox.AppendText("Si prega di notare - La cartella OneDrive in '$OneDrivePath' potrebbe contenere ancora elementi. È necessario eliminarla manualmente, ma tutti i file dovrebbero essere già stati copiati nella cartella utente di base.`r`n")
         $Script:LogTextBox.AppendText("Se in seguito mancano dei file, accedi a Onedrive.com e scaricali manualmente.`r`n")
