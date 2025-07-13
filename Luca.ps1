@@ -15,7 +15,7 @@
 
 .NOTES
     Autore: Gemini
-    Versione: 6.4 (Correzione Layout GUI - Altezza Form e Spazio Ridotto)
+    Versione: 6.5 (Aggiunto Pulsante Installa/Aggiorna Winget)
     Data: 13 luglio 2025
 
     IMPORTANTE:
@@ -1763,6 +1763,63 @@ Function Deselect-AllCheckboxes {
     }
 }
 
+Function Update-Winget {
+    $Script:LogTextBox.Clear()
+    $Script:LogTextBox.AppendText("Controllo e aggiornamento di Winget...`r`n`r`n")
+
+    Try {
+        # Check if winget.exe is available
+        $wingetPath = Get-Command winget.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source
+
+        If (-not $wingetPath) {
+            $Script:LogTextBox.AppendText("Winget (Gestione Pacchetti di Windows) non è stato trovato sul tuo sistema.`r`n")
+            $Script:LogTextBox.AppendText("Per installarlo, apri il Microsoft Store e cerca 'App Installer'.`r`n")
+            $Script:LogTextBox.AppendText("Oppure, scaricalo manualmente da: https://github.com/microsoft/winget-cli/releases`r`n")
+            Show-MessageBox "Winget (Gestione Pacchetti di Windows) non è stato trovato. Per installarlo, apri il Microsoft Store e cerca 'App Installer', oppure scaricalo da GitHub." "Winget non Trovato" "OK" "Error"
+            Return
+        }
+
+        $Script:LogTextBox.AppendText("Winget trovato: $wingetPath.`r`n")
+        $Script:LogTextBox.AppendText("Tentativo di aggiornare tutte le app e Winget stesso...`r`n")
+
+        # Create temporary files for output redirection
+        $tempOutputFile = [System.IO.Path]::GetTempFileName()
+        $tempErrorFile = [System.IO.Path]::GetTempFileName()
+
+        # Execute winget upgrade --all and redirect output
+        $process = Start-Process -FilePath $wingetPath -ArgumentList "upgrade --all --source winget --accept-package-agreements --accept-source-agreements" -Wait -PassThru -NoNewWindow -RedirectStandardOutput $tempOutputFile -RedirectStandardError $tempErrorFile -ErrorAction Stop
+        
+        # Read output from temporary files after process exits
+        $wingetOutput = Get-Content $tempOutputFile -Raw -ErrorAction SilentlyContinue
+        $wingetError = Get-Content $tempErrorFile -Raw -ErrorAction SilentlyContinue
+
+        If ($wingetOutput) {
+            $Script:LogTextBox.AppendText("Output Winget:`r`n$wingetOutput`r`n")
+        }
+        If ($wingetError) {
+            $Script:LogTextBox.AppendText("Errore Winget:`r`n$wingetError`r`n")
+        }
+
+        If ($process.ExitCode -eq 0) {
+            $Script:LogTextBox.AppendText("SUCCESSO: Tutte le app (e Winget) sono state aggiornate con successo tramite Winget.`r`n")
+            Show-MessageBox "Winget e tutte le app installate sono state aggiornate con successo!" "Aggiornamento Winget Completato" "OK" "Information"
+        } Else {
+            $Script:LogTextBox.AppendText("AVVISO: L'aggiornamento di Winget/app è terminato con codice di uscita: $($process.ExitCode). Potrebbero esserci stati errori o nessuna app da aggiornare.`r`n")
+            Show-MessageBox "L'aggiornamento di Winget/app è terminato. Controlla il log per i dettagli. Potrebbero esserci stati errori o nessuna app da aggiornare." "Aggiornamento Winget Completato (con avvisi)" "OK" "Warning"
+        }
+    }
+    Catch {
+        $Script:LogTextBox.AppendText("ERRORE: Eccezione durante l'aggiornamento di Winget. Errore: $($_.Exception.Message)`r`n")
+        Show-MessageBox "Si è verificato un errore durante l'aggiornamento di Winget. Controlla il log per i dettagli." "Errore Aggiornamento Winget" "OK" "Error"
+    }
+    Finally {
+        # Clean up temporary files
+        If (Test-Path $tempOutputFile) { Remove-Item $tempOutputFile -ErrorAction SilentlyContinue }
+        If (Test-Path $tempErrorFile) { Remove-Item $tempErrorFile -ErrorAction SilentlyContinue }
+        $Script:LogTextBox.AppendText("--- Fine aggiornamento Winget ---`r`n")
+    }
+}
+
 #region Funzioni di Download App
 Function Install-WingetApp {
     Param (
@@ -2139,6 +2196,19 @@ $SystemRepairButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
 $SystemRepairButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(80, 80, 0)
 $SystemRepairButton.FlatAppearance.BorderSize = 1
 $Form.Controls.Add($SystemRepairButton)
+
+# Nuovo Pulsante per Winget
+$WingetUpdateButton = New-Object System.Windows.Forms.Button
+$WingetUpdateButton.Text = "Installa/Aggiorna Winget"
+$WingetUpdateButton.Location = New-Object System.Drawing.Point(([int]$SystemRepairButton.Location.X + [int]$SystemRepairButton.Width + 10), $currentButtonY)
+$WingetUpdateButton.Size = New-Object System.Drawing.Size(180, 30)
+$WingetUpdateButton.Add_Click({ Update-Winget })
+$WingetUpdateButton.BackColor = [System.Drawing.Color]::FromArgb(0, 100, 180) # Un colore blu
+$WingetUpdateButton.ForeColor = [System.Drawing.Color]::White
+$WingetUpdateButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+$WingetUpdateButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(0, 80, 150)
+$WingetUpdateButton.FlatAppearance.BorderSize = 1
+$Form.Controls.Add($WingetUpdateButton)
 
 $currentButtonY += [int]($SystemRepairButton.Height + 10) # Spazio ridotto
 
