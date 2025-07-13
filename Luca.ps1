@@ -15,7 +15,7 @@
 
 .NOTES
     Autore: Gemini
-    Versione: 4.0 (Correzioni errori AutoScroll e Layout Finestra)
+    Versione: 5.4 (Correzione Layout GUI e Visibilità Elementi)
     Data: 13 luglio 2025
 
     IMPORTANTE:
@@ -43,8 +43,6 @@ If (-not $currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Adm
 #region Carica gli assembly per la GUI
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
-# System.Security.Principal è implicitamente disponibile o non strettamente necessario con il nuovo controllo
-# Add-Type -AssemblyName System.Security.Principal # Rimosso, il nuovo controllo non ne ha bisogno direttamente
 #endregion
 
 #region Configurazioni del Registro
@@ -1621,7 +1619,6 @@ Function Show-StartupAppsManager {
 
     $CloseButton = New-Object System.Windows.Forms.Button
     $CloseButton.Text = "Chiudi"
-    # Ho modificato questa riga per garantire che la sottrazione sia su tipi interi
     $CloseButton.Location = New-Object System.Drawing.Point(([int]$StartupForm.Width - 100 - 30), 500)
     $CloseButton.Size = New-Object System.Drawing.Size(100, 30)
     $CloseButton.Add_Click({ $StartupForm.Close() })
@@ -1772,7 +1769,7 @@ Function Install-WingetApp {
         If (-not $wingetPath) {
             $Script:LogTextBox.AppendText("ERRORE: Winget non trovato. Assicurati che 'App Installer' sia installato dal Microsoft Store.`r`n")
             Show-MessageBox "Winget (Gestione Pacchetti di Windows) non è stato trovato sul tuo sistema. Per utilizzare questa funzionalità, installa 'App Installer' dal Microsoft Store o aggiornalo." "Winget non Trovato" "OK" "Error"
-            Return
+            Return $false # Indica fallimento
         }
 
         $Script:LogTextBox.AppendText("Winget trovato: $wingetPath. Avvio installazione...`r`n")
@@ -1782,13 +1779,49 @@ Function Install-WingetApp {
         
         If ($process.ExitCode -eq 0) {
             $Script:LogTextBox.AppendText("SUCCESSO: '$WingetId' installato con successo.`r`n")
+            Return $true # Indica successo
         } Else {
             $Script:LogTextBox.AppendText("ERRORE: Installazione di '$WingetId' fallita. Codice di uscita: $($process.ExitCode).`r`n")
             $Script:LogTextBox.AppendText("Potrebbe essere necessario eseguire lo script come amministratore o il pacchetto Winget potrebbe non esistere/essere valido.`r`n")
+            Return $false # Indica fallimento
         }
     }
     Catch {
         $Script:LogTextBox.AppendText("ERRORE: Eccezione durante l'installazione di '$WingetId'. Errore: $($_.Exception.Message)`r`n")
+        Return $false # Indica fallimento
+    }
+}
+
+Function Install-SelectedDownloadApps {
+    $Script:LogTextBox.Clear()
+    $Script:LogTextBox.AppendText("Avvio installazione delle app selezionate...`r`n`r`n")
+
+    $selectedAppsCount = 0
+    ForEach ($item in $Script:DownloadAppsCheckedListBox.CheckedItems) {
+        $selectedAppsCount++
+        # Ora accediamo direttamente alla proprietà WingetId dell'oggetto personalizzato
+        $wingetId = $item.WingetId 
+        Install-WingetApp $wingetId
+    }
+
+    If ($selectedAppsCount -eq 0) {
+        $Script:LogTextBox.AppendText("Nessuna app selezionata per l'installazione.`r`n")
+        Show-MessageBox "Nessuna app selezionata per l'installazione." "Nessuna Selezione" "OK" "Information"
+    } Else {
+        $Script:LogTextBox.AppendText("`r`nInstallazione delle app selezionate completata. Si prega di rivedere il log sopra.`r`n")
+        Show-MessageBox "Installazione delle app selezionate completata. Si prega di controllare il log per i dettagli." "Installazione Completata"
+    }
+}
+
+Function Select-AllDownloadApps {
+    For ($i = 0; $i -lt $Script:DownloadAppsCheckedListBox.Items.Count; $i++) {
+        $Script:DownloadAppsCheckedListBox.SetItemChecked($i, $true)
+    }
+}
+
+Function Deselect-AllDownloadApps {
+    For ($i = 0; $i -lt $Script:DownloadAppsCheckedListBox.Items.Count; $i++) {
+        $Script:DownloadAppsCheckedListBox.SetItemChecked($i, $false)
     }
 }
 
@@ -1823,7 +1856,7 @@ $DownloadConfigurations = @(
 #region Crea Form Principale
 $Form = New-Object System.Windows.Forms.Form
 $Form.Text = "Luca - Ottimizzatore Registro di Windows"
-$Form.Size = New-Object System.Drawing.Size(800, 950) # Ridotto l'altezza
+$Form.Size = New-Object System.Drawing.Size(1200, 1050) # ALTEZZA AUMENTATA per accomodare tutti gli elementi
 $Form.StartPosition = "CenterScreen"
 $Form.FormBorderStyle = "FixedSingle" # Impedisce il ridimensionamento
 $Form.MaximizeBox = $false
@@ -1835,10 +1868,15 @@ $Form.ForeColor = [System.Drawing.Color]::LightGray # Testo chiaro
 # Aggiungi un componente ToolTip al form
 $ToolTip = New-Object System.Windows.Forms.ToolTip
 
+# Larghezza del pannello principale (ottimizzazioni)
+$padding = 10
+$logPanelWidth = 400 # Circa 1/3 della larghezza del form
+$mainPanelWidth = [int]($Form.Width - $logPanelWidth - (3 * $padding)) # Calcola dinamicamente la larghezza del pannello principale
+
 # Pannello per le caselle di controllo (con scorrimento automatico)
 $Panel = New-Object System.Windows.Forms.Panel
-$Panel.Location = New-Object System.Drawing.Point(10, 10)
-$Panel.Size = New-Object System.Drawing.Size(760, 350) # Altezza ridotta
+$Panel.Location = New-Object System.Drawing.Point($padding, $padding)
+$Panel.Size = New-Object System.Drawing.Size($mainPanelWidth, 350) # Altezza delle checkbox di ottimizzazione
 $Panel.AutoScroll = $true
 $Panel.BorderStyle = "FixedSingle"
 $Panel.BackColor = [System.Drawing.Color]::FromArgb(45, 45, 48) # Sfondo scuro leggermente diverso
@@ -1850,6 +1888,7 @@ $Script:CheckBoxes = @() # Memorizza le caselle di controllo per un facile acces
 
 ForEach ($config in $RegistryConfigurations) {
     # Salta "Abilita/Disabilita App in Background" dalla lista delle caselle di controllo
+    # Questa è ora gestita da un pulsante separato per una migliore UX
     If ($config.Name -eq "Abilita/Disabilita App in Background") {
         Continue
     }
@@ -1875,10 +1914,11 @@ $Panel.AutoScrollMinSize = New-Object System.Drawing.Size(0, $yPos)
 
 # Pulsanti Azione Principali
 $currentButtonY = [int]($Panel.Location.Y + $Panel.Height + 10) # Cast esplicito a int
+$currentButtonX = $padding
 
 $SelectAllButton = New-Object System.Windows.Forms.Button
 $SelectAllButton.Text = "Seleziona Tutto"
-$SelectAllButton.Location = New-Object System.Drawing.Point(10, $currentButtonY)
+$SelectAllButton.Location = New-Object System.Drawing.Point($currentButtonX, $currentButtonY)
 $SelectAllButton.Size = New-Object System.Drawing.Size(100, 30)
 $SelectAllButton.Add_Click({ Select-AllCheckboxes })
 $SelectAllButton.BackColor = [System.Drawing.Color]::FromArgb(60, 60, 60)
@@ -1914,7 +1954,7 @@ $Form.Controls.Add($OOSUButton)
 
 $ApplyButton = New-Object System.Windows.Forms.Button
 $ApplyButton.Text = "Applica Modifiche Selezionate"
-$ApplyButton.Location = New-Object System.Drawing.Point(([int]$Form.Width - 190), $currentButtonY)
+$ApplyButton.Location = New-Object System.Drawing.Point(([int]$Panel.Location.X + [int]$Panel.Width - 170), $currentButtonY) # Allineato a destra del pannello
 $ApplyButton.Size = New-Object System.Drawing.Size(170, 30)
 $ApplyButton.Add_Click({ Apply-SelectedChanges })
 $ApplyButton.BackColor = [System.Drawing.Color]::FromArgb(0, 122, 204)
@@ -1930,7 +1970,7 @@ $currentButtonY += [int]($SelectAllButton.Height + 15) # Spazio extra per la nuo
 # Etichetta per i pulsanti del Pannello di Controllo
 $ControlPanelLabel = New-Object System.Windows.Forms.Label
 $ControlPanelLabel.Text = "Pannelli di Controllo Rapidi:"
-$ControlPanelLabel.Location = New-Object System.Drawing.Point(10, $currentButtonY)
+$ControlPanelLabel.Location = New-Object System.Drawing.Point($currentButtonX, $currentButtonY)
 $ControlPanelLabel.AutoSize = $true
 $ControlPanelLabel.Font = New-Object System.Drawing.Font("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
 $Form.Controls.Add($ControlPanelLabel)
@@ -1940,7 +1980,7 @@ $currentButtonY += [int]($ControlPanelLabel.Height + 5)
 # Pulsanti per i pannelli di controllo
 $ControlPanelButton = New-Object System.Windows.Forms.Button
 $ControlPanelButton.Text = "Pannello di Controllo"
-$ControlPanelButton.Location = New-Object System.Drawing.Point(10, $currentButtonY)
+$ControlPanelButton.Location = New-Object System.Drawing.Point($currentButtonX, $currentButtonY)
 $ControlPanelButton.Size = New-Object System.Drawing.Size(140, 30)
 $ControlPanelButton.Add_Click({ Invoke-WPFControlPanel "WPFPanelcontrol" })
 $ControlPanelButton.BackColor = [System.Drawing.Color]::FromArgb(70, 70, 70)
@@ -1990,7 +2030,7 @@ $currentButtonY += [int]($ControlPanelButton.Height + 10) # Nuova riga per i pul
 
 $SoundButton = New-Object System.Windows.Forms.Button
 $SoundButton.Text = "Audio"
-$SoundButton.Location = New-Object System.Drawing.Point(10, $currentButtonY)
+$SoundButton.Location = New-Object System.Drawing.Point($currentButtonX, $currentButtonY)
 $SoundButton.Size = New-Object System.Drawing.Size(140, 30)
 $SoundButton.Add_Click({ Invoke-WPFControlPanel "WPFPanelsound" })
 $SoundButton.BackColor = [System.Drawing.Color]::FromArgb(70, 70, 70)
@@ -2029,7 +2069,7 @@ $currentButtonY += [int]($SoundButton.Height + 15) # Spazio extra per la nuova s
 # Etichetta per gli strumenti di riparazione
 $RepairToolsLabel = New-Object System.Windows.Forms.Label
 $RepairToolsLabel.Text = "Strumenti di Riparazione Sistema:"
-$RepairToolsLabel.Location = New-Object System.Drawing.Point(10, $currentButtonY)
+$RepairToolsLabel.Location = New-Object System.Drawing.Point($currentButtonX, $currentButtonY)
 $RepairToolsLabel.AutoSize = $true
 $RepairToolsLabel.Font = New-Object System.Drawing.Font("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
 $Form.Controls.Add($RepairToolsLabel)
@@ -2039,7 +2079,7 @@ $currentButtonY += [int]($RepairToolsLabel.Height + 5)
 # Pulsante per DISM e SFC
 $SystemRepairButton = New-Object System.Windows.Forms.Button
 $SystemRepairButton.Text = "Esegui Riparazione Sistema (DISM & SFC)"
-$SystemRepairButton.Location = New-Object System.Drawing.Point(10, $currentButtonY)
+$SystemRepairButton.Location = New-Object System.Drawing.Point($currentButtonX, $currentButtonY)
 $SystemRepairButton.Size = New-Object System.Drawing.Size(280, 30)
 $SystemRepairButton.Add_Click({ Perform-SystemRepair })
 $SystemRepairButton.BackColor = [System.Drawing.Color]::FromArgb(100, 100, 0) # Un colore giallo-verde per l'azione di riparazione
@@ -2068,7 +2108,7 @@ $currentButtonY += [int]($SystemRepairButton.Height + 15) # Spazio extra per la 
 # Etichetta per la configurazione DNS
 $DnsLabel = New-Object System.Windows.Forms.Label
 $DnsLabel.Text = "Configurazione DNS Personalizzata:"
-$DnsLabel.Location = New-Object System.Drawing.Point(10, $currentButtonY)
+$DnsLabel.Location = New-Object System.Drawing.Point($currentButtonX, $currentButtonY)
 $DnsLabel.AutoSize = $true
 $DnsLabel.Font = New-Object System.Drawing.Font("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
 $Form.Controls.Add($DnsLabel)
@@ -2077,7 +2117,7 @@ $currentButtonY += [int]($DnsLabel.Height + 5)
 
 # ComboBox per la selezione DNS
 $DnsComboBox = New-Object System.Windows.Forms.ComboBox
-$DnsComboBox.Location = New-Object System.Drawing.Point(10, $currentButtonY)
+$DnsComboBox.Location = New-Object System.Drawing.Point($currentButtonX, $currentButtonY)
 $DnsComboBox.Size = New-Object System.Drawing.Size(200, 25)
 $DnsComboBox.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList # Rende il ComboBox non modificabile
 $DnsComboBox.Items.AddRange(@("Default DHCP", "Google", "Cloudflare", "Cloudflare_Malware", "Cloudflare_Malware_Adult", "Open_DNS", "Quad9", "AdGuard_Ads_Trackers", "AdGuard_Ads_Trackers_Malware_Adult"))
@@ -2104,7 +2144,7 @@ $currentButtonY += [int]($DnsComboBox.Height + 15) # Spazio extra per la nuova s
 # Etichetta per le App in Background
 $BackgroundAppsLabel = New-Object System.Windows.Forms.Label
 $BackgroundAppsLabel.Text = "Gestione App in Background:"
-$BackgroundAppsLabel.Location = New-Object System.Drawing.Point(10, $currentButtonY)
+$BackgroundAppsLabel.Location = New-Object System.Drawing.Point($currentButtonX, $currentButtonY)
 $BackgroundAppsLabel.AutoSize = $true
 $BackgroundAppsLabel.Font = New-Object System.Drawing.Font("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
 $Form.Controls.Add($BackgroundAppsLabel)
@@ -2113,7 +2153,7 @@ $currentButtonY += [int]($BackgroundAppsLabel.Height + 5)
 
 # Pulsante per abilitare/disabilitare App in Background
 $BackgroundAppsToggleButton = New-Object System.Windows.Forms.Button
-$BackgroundAppsToggleButton.Location = New-Object System.Drawing.Point(10, $currentButtonY)
+$BackgroundAppsToggleButton.Location = New-Object System.Drawing.Point($currentButtonX, $currentButtonY)
 $BackgroundAppsToggleButton.Size = New-Object System.Drawing.Size(250, 30)
 $BackgroundAppsToggleButton.BackColor = [System.Drawing.Color]::FromArgb(50, 150, 200) # Un colore blu-verde
 $BackgroundAppsToggleButton.ForeColor = [System.Drawing.Color]::White
@@ -2160,62 +2200,77 @@ $currentButtonY += [int]($BackgroundAppsToggleButton.Height + 10)
 # Nuovo GroupBox per le App da Scaricare
 $DownloadAppsGroupBox = New-Object System.Windows.Forms.GroupBox
 $DownloadAppsGroupBox.Text = "Download App con Winget"
-$DownloadAppsGroupBox.Location = New-Object System.Drawing.Point(10, $currentButtonY)
-$DownloadAppsGroupBox.Size = New-Object System.Drawing.Size(760, 150) # Altezza ridotta
+$DownloadAppsGroupBox.Location = New-Object System.Drawing.Point($currentButtonX, $currentButtonY)
+$DownloadAppsGroupBox.Size = New-Object System.Drawing.Size($mainPanelWidth, 300) # Altezza sufficiente per la CheckedListBox e i suoi pulsanti
 $DownloadAppsGroupBox.BackColor = [System.Drawing.Color]::FromArgb(45, 45, 48)
 $DownloadAppsGroupBox.ForeColor = [System.Drawing.Color]::LightGray
 $Form.Controls.Add($DownloadAppsGroupBox)
 
-# Panel all'interno del GroupBox per gestire lo scorrimento dei pulsanti
-$DownloadAppsPanel = New-Object System.Windows.Forms.Panel
-$DownloadAppsPanel.Location = New-Object System.Drawing.Point(5, 20) # Posizione relativa al GroupBox
-$DownloadAppsPanel.Size = New-Object System.Drawing.Size(([int]$DownloadAppsGroupBox.Width - 10), ([int]$DownloadAppsGroupBox.Height - 25)) # Cast esplicito a int per la sottrazione
-$DownloadAppsPanel.AutoScroll = $true
-$DownloadAppsPanel.BackColor = [System.Drawing.Color]::FromArgb(45, 45, 48) # Stesso sfondo del GroupBox
-$DownloadAppsGroupBox.Controls.Add($DownloadAppsPanel)
+# CheckedListBox per le app scaricabili
+$Script:DownloadAppsCheckedListBox = New-Object System.Windows.Forms.CheckedListBox
+$Script:DownloadAppsCheckedListBox.Location = New-Object System.Drawing.Point(10, 25)
+$Script:DownloadAppsCheckedListBox.Size = New-Object System.Drawing.Size(([int]$DownloadAppsGroupBox.Width - 20), 220) # Altezza per la lista
+$Script:DownloadAppsCheckedListBox.CheckOnClick = $true
+$Script:DownloadAppsCheckedListBox.BackColor = [System.Drawing.Color]::FromArgb(60, 60, 60)
+$Script:DownloadAppsCheckedListBox.ForeColor = [System.Drawing.Color]::LightGray
+$Script:DownloadAppsCheckedListBox.BorderStyle = "FixedSingle"
+$DownloadAppsGroupBox.Controls.Add($Script:DownloadAppsCheckedListBox)
 
-
-$downloadBtnYPos = 0 # Posizione Y iniziale all'interno del DownloadAppsPanel
-$buttonXOffset = 5 # Posizione X per la prima colonna all'interno del DownloadAppsPanel
-$buttonWidth = 160
-$buttonHeight = 30
-$buttonSpacingX = 10
-$buttonSpacingY = 5
-$columns = 4 # Numero di colonne per i pulsanti
-
-For ($i = 0; $i -lt $DownloadConfigurations.Count; $i++) {
-    $config = $DownloadConfigurations[$i]
-    $col = [int]($i % $columns) # Cast esplicito a int
-    $row = [int]([Math]::Floor($i / $columns)) # Cast esplicito a int
-
-    $DownloadButton = New-Object System.Windows.Forms.Button
-    $DownloadButton.Text = $config.Name
-    # Cast esplicito a int per tutti gli operandi nelle operazioni di posizionamento
-    $DownloadButton.Location = New-Object System.Drawing.Point(([int]$buttonXOffset + ([int]$col * ([int]$buttonWidth + [int]$buttonSpacingX))), ([int]$downloadBtnYPos + ([int]$row * ([int]$buttonHeight + [int]$buttonSpacingY))))
-    $DownloadButton.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
-    $DownloadButton.Tag = $config.WingetId # Memorizza l'ID Winget nel Tag del pulsante
-    $DownloadButton.Add_Click({ Install-WingetApp $_.Source.Tag }) # Passa l'ID Winget dal Tag del pulsante
-    $DownloadButton.BackColor = [System.Drawing.Color]::FromArgb(60, 90, 120) # Un colore bluastro per i download
-    $DownloadButton.ForeColor = [System.Drawing.Color]::White
-    $DownloadButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
-    $DownloadButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(40, 70, 100)
-    $DownloadButton.FlatAppearance.BorderSize = 1
-    $DownloadAppsPanel.Controls.Add($DownloadButton) # Aggiungi al DownloadAppsPanel
+# Popola la CheckedListBox con oggetti personalizzati
+ForEach ($config in $DownloadConfigurations) {
+    # Crea un oggetto personalizzato che CheckedListBox può visualizzare e da cui può estrarre l'ID
+    $listItem = [PSCustomObject]@{
+        DisplayName = $config.Name
+        WingetId = $config.WingetId
+    }
+    $Script:DownloadAppsCheckedListBox.Items.Add($listItem)
 }
-
-# Regola la dimensione virtuale del DownloadAppsPanel per ospitare tutti i pulsanti
-$lastButtonRow = [int]([Math]::Floor(($DownloadConfigurations.Count - 1) / $columns))
-$lastButtonY = [int]($downloadBtnYPos + ($lastButtonRow * ([int]$buttonHeight + [int]$buttonSpacingY)) + [int]$buttonHeight)
-$DownloadAppsPanel.AutoScrollMinSize = New-Object System.Drawing.Size(0, ([int]$lastButtonY + [int]$buttonSpacingY)) # Cast esplicito a int
+# Imposta quale proprietà dell'oggetto deve essere visualizzata
+$Script:DownloadAppsCheckedListBox.DisplayMember = "DisplayName"
 
 
-$currentButtonY += [int]($DownloadAppsGroupBox.Height + 10) # Aggiorna la posizione Y per la casella di log
+# Pulsanti per la CheckedListBox delle app
+$DownloadSelectAllButton = New-Object System.Windows.Forms.Button
+$DownloadSelectAllButton.Text = "Seleziona Tutto"
+$DownloadSelectAllButton.Location = New-Object System.Drawing.Point(10, ([int]$Script:DownloadAppsCheckedListBox.Location.Y + [int]$Script:DownloadAppsCheckedListBox.Height + 10))
+$DownloadSelectAllButton.Size = New-Object System.Drawing.Size(120, 30)
+$DownloadSelectAllButton.Add_Click({ Select-AllDownloadApps })
+$DownloadSelectAllButton.BackColor = [System.Drawing.Color]::FromArgb(60, 60, 60)
+$DownloadSelectAllButton.ForeColor = [System.Drawing.Color]::White
+$DownloadSelectAllButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+$DownloadSelectAllButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(90, 90, 90)
+$DownloadSelectAllButton.FlatAppearance.BorderSize = 1
+$DownloadAppsGroupBox.Controls.Add($DownloadSelectAllButton)
 
-# Casella di testo per il log
+$DownloadDeselectAllButton = New-Object System.Windows.Forms.Button
+$DownloadDeselectAllButton.Text = "Deseleziona Tutto"
+$DownloadDeselectAllButton.Location = New-Object System.Drawing.Point(([int]$DownloadSelectAllButton.Location.X + [int]$DownloadSelectAllButton.Width + 10), ([int]$Script:DownloadAppsCheckedListBox.Location.Y + [int]$Script:DownloadAppsCheckedListBox.Height + 10))
+$DownloadDeselectAllButton.Size = New-Object System.Drawing.Size(120, 30)
+$DownloadDeselectAllButton.Add_Click({ Deselect-AllDownloadApps })
+$DownloadDeselectAllButton.BackColor = [System.Drawing.Color]::FromArgb(60, 60, 60)
+$DownloadDeselectAllButton.ForeColor = [System.Drawing.Color]::White
+$DownloadDeselectAllButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+$DownloadDeselectAllButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(90, 90, 90)
+$DownloadDeselectAllButton.FlatAppearance.BorderSize = 1
+$DownloadAppsGroupBox.Controls.Add($DownloadDeselectAllButton)
+
+$InstallSelectedAppsButton = New-Object System.Windows.Forms.Button
+$InstallSelectedAppsButton.Text = "Installa App Selezionate"
+$InstallSelectedAppsButton.Location = New-Object System.Drawing.Point(([int]$DownloadDeselectAllButton.Location.X + [int]$DownloadDeselectAllButton.Width + 10), ([int]$Script:DownloadAppsCheckedListBox.Location.Y + [int]$Script:DownloadAppsCheckedListBox.Height + 10))
+$InstallSelectedAppsButton.Size = New-Object System.Drawing.Size(180, 30)
+$InstallSelectedAppsButton.Add_Click({ Install-SelectedDownloadApps })
+$InstallSelectedAppsButton.BackColor = [System.Drawing.Color]::FromArgb(0, 122, 204)
+$InstallSelectedAppsButton.ForeColor = [System.Drawing.Color]::White
+$InstallSelectedAppsButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+$InstallSelectedAppsButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(0, 100, 180)
+$InstallSelectedAppsButton.FlatAppearance.BorderSize = 1
+$DownloadAppsGroupBox.Controls.Add($InstallSelectedAppsButton)
+
+
+# Casella di testo per il log (spostata a destra)
 $Script:LogTextBox = New-Object System.Windows.Forms.TextBox
-$logTextBoxHeight = [int]($Form.Height - $currentButtonY - 60) # Ricalcola l'altezza del log, cast esplicito a int
-$Script:LogTextBox.Location = New-Object System.Drawing.Point(10, $currentButtonY)
-$Script:LogTextBox.Size = New-Object System.Drawing.Size(760, $logTextBoxHeight)
+$Script:LogTextBox.Location = New-Object System.Drawing.Point(([int]$Panel.Location.X + [int]$Panel.Width + $padding), $padding)
+$Script:LogTextBox.Size = New-Object System.Drawing.Size($logPanelWidth, ([int]$Form.Height - (2 * $padding) - 30)) # Altezza quasi totale del form
 $Script:LogTextBox.MultiLine = $true
 $Script:LogTextBox.ReadOnly = $true
 $Script:LogTextBox.ScrollBars = "Vertical"
