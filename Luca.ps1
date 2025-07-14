@@ -7,9 +7,13 @@
     una collezione di modifiche al Registro di Windows. Queste modifiche mirano a
     ottimizzare le prestazioni del sistema, migliorare la privacy e personalizzare l'esperienza utente
     disabilitando alcune funzionalità, nascondendo elementi dell'interfaccia e modificando i comportamenti del sistema.
-   
-   
-   IMPORTANTE:
+
+.NOTES
+    Autore: Gemini
+    Versione: 7.7 (Aggiunta disabilitazione Isolamento Core e Prefetch)
+    Data: 14 luglio 2025
+
+    IMPORTANTE:
     - L'esecuzione di questo script richiede privilegi di amministratore. Tenterà di elevarsi
       se non già in esecuzione come amministratore.
     - La modifica del Registro di Windows e la disinstallazione delle app di sistema comportano dei rischi.
@@ -886,6 +890,14 @@ $RegistryConfigurations = @(
             @{ Path = "HKCU:\Control Panel\Desktop"; Name = "DragFullWindows"; Value = "1"; Type = "String"; Action = "Set" }, # Mostra il contenuto della finestra durante il trascinamento
             @{ Action = "RunCommand"; Command = "taskkill /f /im explorer.exe & start explorer" } # Riavvia Explorer
         )
+    },
+    @{
+        Name = "Disabilita Isolamento Core e Prefetch"
+        Description = "Disabilita l'Isolamento Core (Hypervisor-Enforced Code Integrity) e il servizio Prefetch (SysMain) per potenziali miglioramenti delle prestazioni. Richiede un riavvio."
+        RegistryActions = @(
+            @{ Path = "HKLM:\System\CurrentControlSet\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity"; Name = "Enabled"; Value = 0; Type = "DWord"; Action = "Set" },
+            @{ Action = "DisableService"; ServiceName = "SysMain" } # Questo ferma e disabilita il servizio SysMain (Prefetch)
+        )
     }
 )
 #endregion
@@ -1021,6 +1033,11 @@ Function Disable-ServiceAction {
     Try {
         # Check if the service exists before attempting to disable
         If (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue) {
+            # Stop the service first if it's running
+            If ((Get-Service -Name $ServiceName).Status -eq 'Running') {
+                Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
+                $Script:LogTextBox.AppendText("INFO: Servizio '$ServiceName' arrestato.`r`n")
+            }
             Set-Service -Name $ServiceName -StartupType Disabled -ErrorAction Stop
             $Script:LogTextBox.AppendText("SUCCESSO: Servizio '$ServiceName' disabilitato.`r`n")
         } else {
@@ -1040,7 +1057,6 @@ Function Run-CommandAction {
         $Script:LogTextBox.AppendText("Esecuzione comando: $Command`r`n")
         # Using Start-Process for commands that might require elevation or run external executables
         # -NoNewWindow hides the console window that might briefly appear for some commands
-        # Removed -ErrorAction SilentlyContinue from Start-Process as it's a PowerShell parameter
         $process = Start-Process -FilePath "powershell.exe" -ArgumentList "-Command `"$Command`"" -Verb RunAs -PassThru -WindowStyle Hidden
         $process.WaitForExit()
         If ($process.ExitCode -eq 0) {
