@@ -10,7 +10,7 @@
 
 .NOTES
     Autore: Gemini
-    Versione: 7.7 (Aggiunta disabilitazione Isolamento Core e Prefetch)
+    Versione: 8.3 (Correzione definitiva DrawString)
     Data: 14 luglio 2025
 
     IMPORTANTE:
@@ -2197,7 +2197,7 @@ Function Perform-UninstallOneDrive {
 #region Crea Form Principale
 $Form = New-Object System.Windows.Forms.Form
 $Form.Text = "Luca - Ottimizzatore Registro di Windows"
-$Form.Size = New-Object System.Drawing.Size(1200, 1180) # Altezza aumentata
+$Form.Size = New-Object System.Drawing.Size(1200, 750) # Altezza ridotta per adattarsi ai tab
 $Form.StartPosition = "CenterScreen"
 $Form.FormBorderStyle = "FixedSingle" # Impedisce il ridimensionamento
 $Form.MaximizeBox = $false
@@ -2209,93 +2209,132 @@ $Form.ForeColor = [System.Drawing.Color]::LightGray # Testo chiaro
 # Aggiungi un componente ToolTip al form
 $ToolTip = New-Object System.Windows.Forms.ToolTip
 
-# Larghezza del pannello principale (ottimizzazioni)
 $padding = 10
 $logPanelWidth = 400 # Circa 1/3 della larghezza del form
-$mainPanelWidth = [int]($Form.Width - $logPanelWidth - (3 * $padding)) # Calcola dinamicamente la larghezza del pannello principale
+$mainContentWidth = [int]($Form.Width - $logPanelWidth - (3 * $padding)) # Larghezza per i tab
 
-# Pannello per le caselle di controllo (con scorrimento automatico)
-$Panel = New-Object System.Windows.Forms.Panel
-$Panel.Location = New-Object System.Drawing.Point($padding, $padding)
-$Panel.Size = New-Object System.Drawing.Size($mainPanelWidth, 350) # Altezza delle checkbox di ottimizzazione
-$Panel.AutoScroll = $true
-$Panel.BorderStyle = "FixedSingle"
-$Panel.BackColor = [System.Drawing.Color]::FromArgb(45, 45, 48) # Sfondo scuro leggermente diverso
-$Panel.ForeColor = [System.Drawing.Color]::LightGray # Testo chiaro
-$Form.Controls.Add($Panel)
+# Casella di testo per il log (spostata a destra)
+$Script:LogTextBox = New-Object System.Windows.Forms.TextBox
+$Script:LogTextBox.Location = New-Object System.Drawing.Point(([int]$mainContentWidth + (2 * $padding)), $padding)
+$Script:LogTextBox.Size = New-Object System.Drawing.Size($logPanelWidth, ([int]$Form.Height - (2 * $padding) - 30)) # Altezza quasi totale del form
+$Script:LogTextBox.MultiLine = $true
+$Script:LogTextBox.ReadOnly = $true
+$Script:LogTextBox.ScrollBars = "Vertical"
+$Script:LogTextBox.BackColor = [System.Drawing.Color]::FromArgb(25, 25, 25) # Sfondo molto scuro per il log
+$Script:LogTextBox.ForeColor = [System.Drawing.Color]::LightGray # Testo chiaro per il log
+$Form.Controls.Add($Script:LogTextBox)
 
-$yPos = 10
+# TabControl per organizzare le sezioni
+$TabControl = New-Object System.Windows.Forms.TabControl
+$TabControl.Location = New-Object System.Drawing.Point($padding, $padding)
+$TabControl.Size = New-Object System.Drawing.Size($mainContentWidth, ([int]$Form.Height - (2 * $padding) - 30))
+$TabControl.Font = New-Object System.Drawing.Font("Segoe UI", 10, [System.Drawing.FontStyle]::Bold)
+$TabControl.Appearance = [System.Windows.Forms.TabAppearance]::FlatButtons # Correzione: Usato FlatButtons
+$TabControl.DrawMode = [System.Windows.Forms.TabDrawMode]::OwnerDrawFixed # Per disegnare le tab personalizzate
+$TabControl.ItemSize = New-Object System.Drawing.Size(120, 30) # Dimensione fissa per le tab
+$TabControl.Add_DrawItem({
+    param($sender, $e)
+    $g = $e.Graphics
+    $tabRect = $TabControl.GetTabRect($e.Index)
+    $tabText = $TabControl.TabPages[$e.Index].Text
+    $sf = New-Object System.Drawing.StringFormat
+    $sf.Alignment = [System.Drawing.StringAlignment]::Center
+    $sf.LineAlignment = [System.Drawing.StringAlignment]::Center
+
+    # Colori personalizzati per le tab
+    $backColor = [System.Drawing.Color]::FromArgb(60, 60, 60)
+    $foreColor = [System.Drawing.Color]::LightGray
+    if ($TabControl.SelectedIndex -eq $e.Index) {
+        $backColor = [System.Drawing.Color]::FromArgb(0, 122, 204) # Colore attivo
+        $foreColor = [System.Drawing.Color]::White
+    }
+
+    $brush = New-Object System.Drawing.SolidBrush($backColor)
+    $g.FillRectangle($brush, $tabRect)
+    $brush.Dispose()
+
+    $font = New-Object System.Drawing.Font("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+    $textBrush = New-Object System.Drawing.SolidBrush($foreColor)
+    $g.DrawString($tabText, $font, $textBrush, [System.Drawing.RectangleF]$tabRect, $sf) # Correzione: Cast a RectangleF
+    $font.Dispose()
+    $textBrush.Dispose()
+    $sf.Dispose()
+})
+$Form.Controls.Add($TabControl)
+
+#region Tab: Ottimizzazioni Registro
+$RegistryOptimizationsTab = New-Object System.Windows.Forms.TabPage
+$RegistryOptimizationsTab.Text = "Ottimizzazioni Registro"
+$RegistryOptimizationsTab.BackColor = [System.Drawing.Color]::FromArgb(45, 45, 48)
+$TabControl.Controls.Add($RegistryOptimizationsTab)
+
+$PanelRegistry = New-Object System.Windows.Forms.Panel
+$PanelRegistry.Location = New-Object System.Drawing.Point(10, 10)
+$PanelRegistry.Size = New-Object System.Drawing.Size(([int]$mainContentWidth - 40), ([int]$TabControl.Height - 120)) # Correzione: Cast a int
+$PanelRegistry.AutoScroll = $true
+$PanelRegistry.BorderStyle = "FixedSingle"
+$PanelRegistry.BackColor = [System.Drawing.Color]::FromArgb(45, 45, 48)
+$PanelRegistry.ForeColor = [System.Drawing.Color]::LightGray
+$RegistryOptimizationsTab.Controls.Add($PanelRegistry)
+
+$yPosRegistry = 10
 $Script:CheckBoxes = @() # Memorizza le caselle di controllo per un facile accesso
 
 ForEach ($config in $RegistryConfigurations) {
     # Salta "Abilita/Disabilita App in Background" dalla lista delle caselle di controllo
-    # Questa è ora gestita da un pulsante separato per una migliore UX
+    # Questa è ora gestita da un pulsante separato per una migliore UX nella tab Strumenti
     If ($config.Name -eq "Abilita/Disabilita App in Background") {
         Continue
     }
     $CheckBox = New-Object System.Windows.Forms.CheckBox
     $CheckBox.Text = $config.Name
-    $CheckBox.Location = New-Object System.Drawing.Point(10, $yPos)
+    $CheckBox.Location = New-Object System.Drawing.Point(10, $yPosRegistry)
     $CheckBox.AutoSize = $true
-    $CheckBox.Width = $Panel.Width - 30 # Assicurati che rientri nel pannello
+    $CheckBox.Width = $PanelRegistry.Width - 30 # Assicurati che rientri nel pannello
     $CheckBox.Tag = $config.Name # Usa Tag per collegare alla configurazione
     $CheckBox.ForeColor = [System.Drawing.Color]::LightGray # Testo chiaro per le checkbox
-    $CheckBox.BackColor = $Panel.BackColor # Sfondo della checkbox come il pannello
+    $CheckBox.BackColor = $PanelRegistry.BackColor # Sfondo della checkbox come il pannello
 
     # Imposta il tooltip usando il componente ToolTip
     $ToolTip.SetToolTip($CheckBox, $config.Description)
     
-    $Panel.Controls.Add($CheckBox)
+    $PanelRegistry.Controls.Add($CheckBox)
     $Script:CheckBoxes += $CheckBox
-    $yPos += $CheckBox.Height + 5 # Aggiungi un po' di spaziatura
+    $yPosRegistry += $CheckBox.Height + 5 # Aggiungi un po' di spaziatura
 }
+$PanelRegistry.AutoScrollMinSize = New-Object System.Drawing.Size(0, $yPosRegistry)
 
-# Regola la dimensione virtuale del pannello per ospitare tutte le caselle di controllo
-$Panel.AutoScrollMinSize = New-Object System.Drawing.Size(0, $yPos)
-
-# Pulsanti Azione Principali
-$currentButtonY = [int]($Panel.Location.Y + $Panel.Height + 10) # Cast esplicito a int
-$currentButtonX = $padding
+# Pulsanti Azione Principali per Ottimizzazioni Registro
+$currentButtonYRegistry = [int]($PanelRegistry.Location.Y + $PanelRegistry.Height + 10)
+$currentButtonXRegistry = 10
 
 $SelectAllButton = New-Object System.Windows.Forms.Button
 $SelectAllButton.Text = "Seleziona Tutto"
-$SelectAllButton.Location = New-Object System.Drawing.Point($currentButtonX, $currentButtonY)
-$SelectAllButton.Size = New-Object System.Drawing.Size(100, 30)
+$SelectAllButton.Location = New-Object System.Drawing.Point($currentButtonXRegistry, $currentButtonYRegistry)
+$SelectAllButton.Size = New-Object System.Drawing.Size(120, 30)
 $SelectAllButton.Add_Click({ Select-AllCheckboxes })
 $SelectAllButton.BackColor = [System.Drawing.Color]::FromArgb(60, 60, 60)
 $SelectAllButton.ForeColor = [System.Drawing.Color]::White
 $SelectAllButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
 $SelectAllButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(90, 90, 90)
 $SelectAllButton.FlatAppearance.BorderSize = 1
-$Form.Controls.Add($SelectAllButton)
+$RegistryOptimizationsTab.Controls.Add($SelectAllButton)
 
 $DeselectAllButton = New-Object System.Windows.Forms.Button
 $DeselectAllButton.Text = "Deseleziona Tutto"
-$DeselectAllButton.Location = New-Object System.Drawing.Point(([int]$SelectAllButton.Location.X + [int]$SelectAllButton.Width + 10), $currentButtonY)
-$DeselectAllButton.Size = New-Object System.Drawing.Size(120, 30)
+$DeselectAllButton.Location = New-Object System.Drawing.Point(([int]$SelectAllButton.Location.X + [int]$SelectAllButton.Width + 10), $currentButtonYRegistry)
+$DeselectAllButton.Size = New-Object System.Drawing.Size(140, 30)
 $DeselectAllButton.Add_Click({ Deselect-AllCheckboxes })
 $DeselectAllButton.BackColor = [System.Drawing.Color]::FromArgb(60, 60, 60)
 $DeselectAllButton.ForeColor = [System.Drawing.Color]::White
 $DeselectAllButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
 $DeselectAllButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(90, 90, 90)
 $DeselectAllButton.FlatAppearance.BorderSize = 1
-$Form.Controls.Add($DeselectAllButton)
-
-$OOSUButton = New-Object System.Windows.Forms.Button
-$OOSUButton.Text = "Esegui O&O ShutUp10"
-$OOSUButton.Location = New-Object System.Drawing.Point(([int]$DeselectAllButton.Location.X + [int]$DeselectAllButton.Width + 10), $currentButtonY)
-$OOSUButton.Size = New-Object System.Drawing.Size(140, 30)
-$OOSUButton.Add_Click({ Invoke-WPFOOSU })
-$OOSUButton.BackColor = [System.Drawing.Color]::FromArgb(0, 150, 136)
-$OOSUButton.ForeColor = [System.Drawing.Color]::White
-$OOSUButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
-$OOSUButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(0, 120, 100)
-$OOSUButton.FlatAppearance.BorderSize = 1
-$Form.Controls.Add($OOSUButton)
+$RegistryOptimizationsTab.Controls.Add($DeselectAllButton)
 
 $ApplyButton = New-Object System.Windows.Forms.Button
 $ApplyButton.Text = "Applica Modifiche Selezionate"
-$ApplyButton.Location = New-Object System.Drawing.Point(([int]$Panel.Location.X + [int]$Panel.Width - 170), $currentButtonY) # Allineato a destra del pannello
+$ApplyButton.Location = New-Object System.Drawing.Point(([int]$PanelRegistry.Location.X + [int]$PanelRegistry.Width - 170), $currentButtonYRegistry)
 $ApplyButton.Size = New-Object System.Drawing.Size(170, 30)
 $ApplyButton.Add_Click({ Apply-SelectedChanges })
 $ApplyButton.BackColor = [System.Drawing.Color]::FromArgb(0, 122, 204)
@@ -2303,25 +2342,32 @@ $ApplyButton.ForeColor = [System.Drawing.Color]::White
 $ApplyButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
 $ApplyButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(0, 100, 180)
 $ApplyButton.FlatAppearance.BorderSize = 1
-$Form.Controls.Add($ApplyButton)
+$RegistryOptimizationsTab.Controls.Add($ApplyButton)
+#endregion
 
+#region Tab: Strumenti
+$ToolsTab = New-Object System.Windows.Forms.TabPage
+$ToolsTab.Text = "Strumenti"
+$ToolsTab.BackColor = [System.Drawing.Color]::FromArgb(45, 45, 48)
+$TabControl.Controls.Add($ToolsTab)
 
-$currentButtonY += [int]($SelectAllButton.Height + 10) # Spazio ridotto
+$yPosTools = 10
+$xPosTools = 10
 
 # Etichetta per i pulsanti del Pannello di Controllo
 $ControlPanelLabel = New-Object System.Windows.Forms.Label
 $ControlPanelLabel.Text = "Pannelli di Controllo Rapidi:"
-$ControlPanelLabel.Location = New-Object System.Drawing.Point($currentButtonX, $currentButtonY)
+$ControlPanelLabel.Location = New-Object System.Drawing.Point($xPosTools, $yPosTools)
 $ControlPanelLabel.AutoSize = $true
 $ControlPanelLabel.Font = New-Object System.Drawing.Font("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
-$Form.Controls.Add($ControlPanelLabel)
+$ToolsTab.Controls.Add($ControlPanelLabel)
 
-$currentButtonY += [int]($ControlPanelLabel.Height + 5)
+$yPosTools += [int]($ControlPanelLabel.Height + 5)
 
 # Pulsanti per i pannelli di controllo
 $ControlPanelButton = New-Object System.Windows.Forms.Button
 $ControlPanelButton.Text = "Pannello di Controllo"
-$ControlPanelButton.Location = New-Object System.Drawing.Point($currentButtonX, $currentButtonY)
+$ControlPanelButton.Location = New-Object System.Drawing.Point($xPosTools, $yPosTools)
 $ControlPanelButton.Size = New-Object System.Drawing.Size(140, 30)
 $ControlPanelButton.Add_Click({ Invoke-WPFControlPanel "WPFPanelcontrol" })
 $ControlPanelButton.BackColor = [System.Drawing.Color]::FromArgb(70, 70, 70)
@@ -2329,11 +2375,11 @@ $ControlPanelButton.ForeColor = [System.Drawing.Color]::White
 $ControlPanelButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
 $ControlPanelButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(100, 100, 100)
 $ControlPanelButton.FlatAppearance.BorderSize = 1
-$Form.Controls.Add($ControlPanelButton)
+$ToolsTab.Controls.Add($ControlPanelButton)
 
 $NetworkButton = New-Object System.Windows.Forms.Button
 $NetworkButton.Text = "Connessioni di Rete"
-$NetworkButton.Location = New-Object System.Drawing.Point(([int]$ControlPanelButton.Location.X + [int]$ControlPanelButton.Width + 10), $currentButtonY)
+$NetworkButton.Location = New-Object System.Drawing.Point(([int]$ControlPanelButton.Location.X + [int]$ControlPanelButton.Width + 10), $yPosTools)
 $NetworkButton.Size = New-Object System.Drawing.Size(140, 30)
 $NetworkButton.Add_Click({ Invoke-WPFControlPanel "WPFPanelnetwork" })
 $NetworkButton.BackColor = [System.Drawing.Color]::FromArgb(70, 70, 70)
@@ -2341,11 +2387,11 @@ $NetworkButton.ForeColor = [System.Drawing.Color]::White
 $NetworkButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
 $NetworkButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(100, 100, 100)
 $NetworkButton.FlatAppearance.BorderSize = 1
-$Form.Controls.Add($NetworkButton)
+$ToolsTab.Controls.Add($NetworkButton)
 
 $PowerButton = New-Object System.Windows.Forms.Button
 $PowerButton.Text = "Opzioni Alimentazione"
-$PowerButton.Location = New-Object System.Drawing.Point(([int]$NetworkButton.Location.X + [int]$NetworkButton.Width + 10), $currentButtonY)
+$PowerButton.Location = New-Object System.Drawing.Point(([int]$NetworkButton.Location.X + [int]$NetworkButton.Width + 10), $yPosTools)
 $PowerButton.Size = New-Object System.Drawing.Size(140, 30)
 $PowerButton.Add_Click({ Invoke-WPFControlPanel "WPFPanelpower" })
 $PowerButton.BackColor = [System.Drawing.Color]::FromArgb(70, 70, 70)
@@ -2353,11 +2399,11 @@ $PowerButton.ForeColor = [System.Drawing.Color]::White
 $PowerButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
 $PowerButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(100, 100, 100)
 $PowerButton.FlatAppearance.BorderSize = 1
-$Form.Controls.Add($PowerButton)
+$ToolsTab.Controls.Add($PowerButton)
 
 $RegionButton = New-Object System.Windows.Forms.Button
 $RegionButton.Text = "Area Geografica"
-$RegionButton.Location = New-Object System.Drawing.Point(([int]$PowerButton.Location.X + [int]$PowerButton.Width + 10), $currentButtonY)
+$RegionButton.Location = New-Object System.Drawing.Point(([int]$PowerButton.Location.X + [int]$PowerButton.Width + 10), $yPosTools)
 $RegionButton.Size = New-Object System.Drawing.Size(140, 30)
 $RegionButton.Add_Click({ Invoke-WPFControlPanel "WPFPanelregion" })
 $RegionButton.BackColor = [System.Drawing.Color]::FromArgb(70, 70, 70)
@@ -2365,13 +2411,13 @@ $RegionButton.ForeColor = [System.Drawing.Color]::White
 $RegionButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
 $RegionButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(100, 100, 100)
 $RegionButton.FlatAppearance.BorderSize = 1
-$Form.Controls.Add($RegionButton)
+$ToolsTab.Controls.Add($RegionButton)
 
-$currentButtonY += [int]($ControlPanelButton.Height + 5) # Spazio ridotto
+$yPosTools += [int]($ControlPanelButton.Height + 5)
 
 $SoundButton = New-Object System.Windows.Forms.Button
 $SoundButton.Text = "Audio"
-$SoundButton.Location = New-Object System.Drawing.Point($currentButtonX, $currentButtonY)
+$SoundButton.Location = New-Object System.Drawing.Point($xPosTools, $yPosTools)
 $SoundButton.Size = New-Object System.Drawing.Size(140, 30)
 $SoundButton.Add_Click({ Invoke-WPFControlPanel "WPFPanelsound" })
 $SoundButton.BackColor = [System.Drawing.Color]::FromArgb(70, 70, 70)
@@ -2379,11 +2425,11 @@ $SoundButton.ForeColor = [System.Drawing.Color]::White
 $SoundButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
 $SoundButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(100, 100, 100)
 $SoundButton.FlatAppearance.BorderSize = 1
-$Form.Controls.Add($SoundButton)
+$ToolsTab.Controls.Add($SoundButton)
 
 $SystemButton = New-Object System.Windows.Forms.Button
 $SystemButton.Text = "Sistema"
-$SystemButton.Location = New-Object System.Drawing.Point(([int]$SoundButton.Location.X + [int]$SoundButton.Width + 10), $currentButtonY)
+$SystemButton.Location = New-Object System.Drawing.Point(([int]$SoundButton.Location.X + [int]$SoundButton.Width + 10), $yPosTools)
 $SystemButton.Size = New-Object System.Drawing.Size(140, 30)
 $SystemButton.Add_Click({ Invoke-WPFControlPanel "WPFPanelsystem" })
 $SystemButton.BackColor = [System.Drawing.Color]::FromArgb(70, 70, 70)
@@ -2391,11 +2437,11 @@ $SystemButton.ForeColor = [System.Drawing.Color]::White
 $SystemButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
 $SystemButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(100, 100, 100)
 $SystemButton.FlatAppearance.BorderSize = 1
-$Form.Controls.Add($SystemButton)
+$ToolsTab.Controls.Add($SystemButton)
 
 $UserButton = New-Object System.Windows.Forms.Button
 $UserButton.Text = "Account Utente"
-$UserButton.Location = New-Object System.Drawing.Point(([int]$SystemButton.Location.X + [int]$SystemButton.Width + 10), $currentButtonY)
+$UserButton.Location = New-Object System.Drawing.Point(([int]$SystemButton.Location.X + [int]$SystemButton.Width + 10), $yPosTools)
 $UserButton.Size = New-Object System.Drawing.Size(140, 30)
 $UserButton.Add_Click({ Invoke-WPFControlPanel "WPFPaneluser" })
 $UserButton.BackColor = [System.Drawing.Color]::FromArgb(70, 70, 70)
@@ -2403,24 +2449,24 @@ $UserButton.ForeColor = [System.Drawing.Color]::White
 $UserButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
 $UserButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(100, 100, 100)
 $UserButton.FlatAppearance.BorderSize = 1
-$Form.Controls.Add($UserButton)
+$ToolsTab.Controls.Add($UserButton)
 
-$currentButtonY += [int]($SoundButton.Height + 10) # Spazio ridotto
+$yPosTools += [int]($SoundButton.Height + 10)
 
 # Etichetta per gli strumenti di riparazione
 $RepairToolsLabel = New-Object System.Windows.Forms.Label
 $RepairToolsLabel.Text = "Strumenti di Riparazione Sistema:"
-$RepairToolsLabel.Location = New-Object System.Drawing.Point($currentButtonX, $currentButtonY)
+$RepairToolsLabel.Location = New-Object System.Drawing.Point($xPosTools, $yPosTools)
 $RepairToolsLabel.AutoSize = $true
 $RepairToolsLabel.Font = New-Object System.Drawing.Font("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
-$Form.Controls.Add($RepairToolsLabel)
+$ToolsTab.Controls.Add($RepairToolsLabel)
 
-$currentButtonY += [int]($RepairToolsLabel.Height + 5)
+$yPosTools += [int]($RepairToolsLabel.Height + 5)
 
 # Pulsante per DISM e SFC
 $SystemRepairButton = New-Object System.Windows.Forms.Button
 $SystemRepairButton.Text = "Esegui Riparazione Sistema (DISM & SFC)"
-$SystemRepairButton.Location = New-Object System.Drawing.Point($currentButtonX, $currentButtonY)
+$SystemRepairButton.Location = New-Object System.Drawing.Point($xPosTools, $yPosTools)
 $SystemRepairButton.Size = New-Object System.Drawing.Size(280, 30)
 $SystemRepairButton.Add_Click({ Perform-SystemRepair })
 $SystemRepairButton.BackColor = [System.Drawing.Color]::FromArgb(100, 100, 0) # Un colore giallo-verde per l'azione di riparazione
@@ -2428,48 +2474,48 @@ $SystemRepairButton.ForeColor = [System.Drawing.Color]::White
 $SystemRepairButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
 $SystemRepairButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(80, 80, 0)
 $SystemRepairButton.FlatAppearance.BorderSize = 1
-$Form.Controls.Add($SystemRepairButton)
+$ToolsTab.Controls.Add($SystemRepairButton)
 
-# Nuovo Pulsante per Winget
-$WingetUpdateButton = New-Object System.Windows.Forms.Button
-$WingetUpdateButton.Text = "Installa/Aggiorna Winget"
-$WingetUpdateButton.Location = New-Object System.Drawing.Point(([int]$SystemRepairButton.Location.X + [int]$SystemRepairButton.Width + 10), $currentButtonY)
-$WingetUpdateButton.Size = New-Object System.Drawing.Size(180, 30)
-$WingetUpdateButton.Add_Click({ Update-Winget })
-$WingetUpdateButton.BackColor = [System.Drawing.Color]::FromArgb(0, 100, 180) # Un colore blu
-$WingetUpdateButton.ForeColor = [System.Drawing.Color]::White
-$WingetUpdateButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
-$WingetUpdateButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(0, 80, 150)
-$WingetUpdateButton.FlatAppearance.BorderSize = 1
-$Form.Controls.Add($WingetUpdateButton)
+# Pulsante per O&O ShutUp10
+$OOSUButton = New-Object System.Windows.Forms.Button
+$OOSUButton.Text = "Esegui O&O ShutUp10"
+$OOSUButton.Location = New-Object System.Drawing.Point(([int]$SystemRepairButton.Location.X + [int]$SystemRepairButton.Width + 10), $yPosTools)
+$OOSUButton.Size = New-Object System.Drawing.Size(180, 30)
+$OOSUButton.Add_Click({ Invoke-WPFOOSU })
+$OOSUButton.BackColor = [System.Drawing.Color]::FromArgb(0, 150, 136)
+$OOSUButton.ForeColor = [System.Drawing.Color]::White
+$OOSUButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+$OOSUButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(0, 120, 100)
+$OOSUButton.FlatAppearance.BorderSize = 1
+$ToolsTab.Controls.Add($OOSUButton)
 
-$currentButtonY += [int]($SystemRepairButton.Height + 10) # Spazio ridotto
+$yPosTools += [int]($SystemRepairButton.Height + 10)
 
 # Etichetta per la configurazione DNS
 $DnsLabel = New-Object System.Windows.Forms.Label
 $DnsLabel.Text = "Configurazione DNS Personalizzata:"
-$DnsLabel.Location = New-Object System.Drawing.Point($currentButtonX, $currentButtonY)
+$DnsLabel.Location = New-Object System.Drawing.Point($xPosTools, $yPosTools)
 $DnsLabel.AutoSize = $true
 $DnsLabel.Font = New-Object System.Drawing.Font("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
-$Form.Controls.Add($DnsLabel)
+$ToolsTab.Controls.Add($DnsLabel)
 
-$currentButtonY += [int]($DnsLabel.Height + 5)
+$yPosTools += [int]($DnsLabel.Height + 5)
 
 # ComboBox per la selezione DNS
 $DnsComboBox = New-Object System.Windows.Forms.ComboBox
-$DnsComboBox.Location = New-Object System.Drawing.Point($currentButtonX, $currentButtonY)
+$DnsComboBox.Location = New-Object System.Drawing.Point($xPosTools, $yPosTools)
 $DnsComboBox.Size = New-Object System.Drawing.Size(200, 25)
 $DnsComboBox.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList # Rende il ComboBox non modificabile
 $DnsComboBox.Items.AddRange(@("Default DHCP", "Google", "Cloudflare", "Cloudflare_Malware", "Cloudflare_Malware_Adult", "Open_DNS", "Quad9", "AdGuard_Ads_Trackers", "AdGuard_Ads_Trackers_Malware_Adult"))
 $DnsComboBox.SelectedIndex = 0 # Seleziona di default "Default DHCP"
 $DnsComboBox.BackColor = [System.Drawing.Color]::FromArgb(60, 60, 60)
 $DnsComboBox.ForeColor = [System.Drawing.Color]::White
-$Form.Controls.Add($DnsComboBox)
+$ToolsTab.Controls.Add($DnsComboBox)
 
 # Pulsante per applicare il DNS selezionato
 $ApplyDnsButton = New-Object System.Windows.Forms.Button
 $ApplyDnsButton.Text = "Applica DNS Selezionato"
-$ApplyDnsButton.Location = New-Object System.Drawing.Point(([int]$DnsComboBox.Location.X + [int]$DnsComboBox.Width + 10), $currentButtonY)
+$ApplyDnsButton.Location = New-Object System.Drawing.Point(([int]$DnsComboBox.Location.X + [int]$DnsComboBox.Width + 10), $yPosTools)
 $ApplyDnsButton.Size = New-Object System.Drawing.Size(180, 25)
 $ApplyDnsButton.Add_Click({ Set-DNSConfiguration $DnsComboBox.SelectedItem })
 $ApplyDnsButton.BackColor = [System.Drawing.Color]::FromArgb(0, 122, 204)
@@ -2477,30 +2523,30 @@ $ApplyDnsButton.ForeColor = [System.Drawing.Color]::White
 $ApplyDnsButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
 $ApplyDnsButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(0, 100, 180)
 $ApplyDnsButton.FlatAppearance.BorderSize = 1
-$Form.Controls.Add($ApplyDnsButton)
+$ToolsTab.Controls.Add($ApplyDnsButton)
 
-$currentButtonY += [int]($DnsComboBox.Height + 10) # Spazio ridotto
+$yPosTools += [int]($DnsComboBox.Height + 10)
 
 # Etichetta per le App in Background
 $BackgroundAppsLabel = New-Object System.Windows.Forms.Label
 $BackgroundAppsLabel.Text = "Gestione App in Background:"
-$BackgroundAppsLabel.Location = New-Object System.Drawing.Point($currentButtonX, $currentButtonY)
+$BackgroundAppsLabel.Location = New-Object System.Drawing.Point($xPosTools, $yPosTools)
 $BackgroundAppsLabel.AutoSize = $true
 $BackgroundAppsLabel.Font = New-Object System.Drawing.Font("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
-$Form.Controls.Add($BackgroundAppsLabel)
+$ToolsTab.Controls.Add($BackgroundAppsLabel)
 
-$currentButtonY += [int]($BackgroundAppsLabel.Height + 5)
+$yPosTools += [int]($BackgroundAppsLabel.Height + 5)
 
 # Pulsante per abilitare/disabilitare App in Background
 $BackgroundAppsToggleButton = New-Object System.Windows.Forms.Button
-$BackgroundAppsToggleButton.Location = New-Object System.Drawing.Point($currentButtonX, $currentButtonY)
+$BackgroundAppsToggleButton.Location = New-Object System.Drawing.Point($xPosTools, $yPosTools)
 $BackgroundAppsToggleButton.Size = New-Object System.Drawing.Size(250, 30)
 $BackgroundAppsToggleButton.BackColor = [System.Drawing.Color]::FromArgb(50, 150, 200) # Un colore blu-verde
 $BackgroundAppsToggleButton.ForeColor = [System.Drawing.Color]::White
 $BackgroundAppsToggleButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
 $BackgroundAppsToggleButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(30, 120, 180)
 $BackgroundAppsToggleButton.FlatAppearance.BorderSize = 1
-$Form.Controls.Add($BackgroundAppsToggleButton)
+$ToolsTab.Controls.Add($BackgroundAppsToggleButton)
 
 # Funzione per aggiornare il testo e lo stato del pulsante App in Background
 Function Update-BackgroundAppsButtonState {
@@ -2535,12 +2581,12 @@ $BackgroundAppsToggleButton.Add_Click({
 # Inizializza lo stato del pulsante all'avvio del form
 $Form.Add_Load({ Update-BackgroundAppsButtonState })
 
-$currentButtonY += [int]($BackgroundAppsToggleButton.Height + 5) # Spazio ridotto dopo il pulsante background apps
+$yPosTools += [int]($BackgroundAppsToggleButton.Height + 5)
 
 # Sposta il pulsante Gestisci App in Avvio Automatico qui
 $StartupAppsButton = New-Object System.Windows.Forms.Button
 $StartupAppsButton.Text = "Gestisci App in Avvio Automatico"
-$StartupAppsButton.Location = New-Object System.Drawing.Point($currentButtonX, $currentButtonY) # Nuova posizione
+$StartupAppsButton.Location = New-Object System.Drawing.Point($xPosTools, $yPosTools)
 $StartupAppsButton.Size = New-Object System.Drawing.Size(250, 30)
 $StartupAppsButton.Add_Click({ Show-StartupAppsManager })
 $StartupAppsButton.BackColor = [System.Drawing.Color]::FromArgb(100, 50, 150) # Un colore viola
@@ -2548,44 +2594,67 @@ $StartupAppsButton.ForeColor = [System.Drawing.Color]::White
 $StartupAppsButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
 $StartupAppsButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(80, 30, 120)
 $StartupAppsButton.FlatAppearance.BorderSize = 1
-$Form.Controls.Add($StartupAppsButton)
+$ToolsTab.Controls.Add($StartupAppsButton)
 
-$currentButtonY += [int]($StartupAppsButton.Height + 2) # Spazio ulteriormente ridotto dopo il pulsante gestisci app avvio automatico
+$yPosTools += [int]($StartupAppsButton.Height + 10)
+
+# Nuovo Pulsante per Winget
+$WingetUpdateButton = New-Object System.Windows.Forms.Button
+$WingetUpdateButton.Text = "Installa/Aggiorna Winget"
+$WingetUpdateButton.Location = New-Object System.Drawing.Point($xPosTools, $yPosTools)
+$WingetUpdateButton.Size = New-Object System.Drawing.Size(250, 30)
+$WingetUpdateButton.Add_Click({ Update-Winget })
+$WingetUpdateButton.BackColor = [System.Drawing.Color]::FromArgb(0, 100, 180) # Un colore blu
+$WingetUpdateButton.ForeColor = [System.Drawing.Color]::White
+$WingetUpdateButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+$WingetUpdateButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(0, 80, 150)
+$WingetUpdateButton.FlatAppearance.BorderSize = 1
+$ToolsTab.Controls.Add($WingetUpdateButton)
+#endregion
+
+#region Tab: Download App
+$DownloadAppsTab = New-Object System.Windows.Forms.TabPage
+$DownloadAppsTab.Text = "Download App"
+$DownloadAppsTab.BackColor = [System.Drawing.Color]::FromArgb(45, 45, 48)
+$TabControl.Controls.Add($DownloadAppsTab)
+
+$yPosDownload = 10
+$xPosDownload = 10
 
 # Etichetta per la barra di avanzamento del download
 $Script:DownloadProgressLabel = New-Object System.Windows.Forms.Label
-$Script:DownloadProgressLabel.Location = New-Object System.Drawing.Point($currentButtonX, $currentButtonY)
+$Script:DownloadProgressLabel.Location = New-Object System.Drawing.Point($xPosDownload, $yPosDownload)
 $Script:DownloadProgressLabel.AutoSize = $true
 $Script:DownloadProgressLabel.Font = New-Object System.Drawing.Font("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
 $Script:DownloadProgressLabel.Text = "" # Inizialmente vuoto
-$Form.Controls.Add($Script:DownloadProgressLabel)
+$DownloadAppsTab.Controls.Add($Script:DownloadProgressLabel)
 
-$currentButtonY += [int]($Script:DownloadProgressLabel.Height + 2) # Aggiungi altezza etichetta a Y, spazio ridotto
+$yPosDownload += [int]($Script:DownloadProgressLabel.Height + 5)
 
 # Barra di avanzamento per i download delle app
 $Script:DownloadProgressBar = New-Object System.Windows.Forms.ProgressBar
-$Script:DownloadProgressBar.Location = New-Object System.Drawing.Point($currentButtonX, $currentButtonY)
-$Script:DownloadProgressBar.Size = New-Object System.Drawing.Size($mainPanelWidth, 20)
+$Script:DownloadProgressBar.Location = New-Object System.Drawing.Point($xPosDownload, $yPosDownload)
+$Script:DownloadProgressBar.Size = New-Object System.Drawing.Size(([int]$mainContentWidth - 40), 20) # Correzione: Cast a int
 $Script:DownloadProgressBar.Minimum = 0
 $Script:DownloadProgressBar.Value = 0
 $Script:DownloadProgressBar.Visible = $false # Inizialmente nascosta
-$Form.Controls.Add($Script:DownloadProgressBar)
+$DownloadAppsTab.Controls.Add($Script:DownloadProgressBar)
 
-$currentButtonY += [int]($Script:DownloadProgressBar.Height + 5) # Aggiungi altezza barra di avanzamento a Y, spazio ridotto
+$yPosDownload += [int]($Script:DownloadProgressBar.Height + 10)
 
-# Nuovo GroupBox per le App da Scaricare
+# GroupBox per le App da Scaricare
 $DownloadAppsGroupBox = New-Object System.Windows.Forms.GroupBox
-$DownloadAppsGroupBox.Text = "Download App con Winget"
-$DownloadAppsGroupBox.Location = New-Object System.Drawing.Point($currentButtonX, $currentButtonY)
-$DownloadAppsGroupBox.Size = New-Object System.Drawing.Size($mainPanelWidth, 330) # Altezza aumentata per la CheckedListBox e i suoi pulsanti
+$DownloadAppsGroupBox.Text = "Seleziona App da Installare"
+$DownloadAppsGroupBox.Location = New-Object System.Drawing.Point($xPosDownload, $yPosDownload)
+$DownloadAppsGroupBox.Size = New-Object System.Drawing.Size(([int]$mainContentWidth - 40), ([int]$TabControl.Height - $yPosDownload - 100)) # Correzione: Cast a int
 $DownloadAppsGroupBox.BackColor = [System.Drawing.Color]::FromArgb(45, 45, 48)
 $DownloadAppsGroupBox.ForeColor = [System.Drawing.Color]::LightGray
-$Form.Controls.Add($DownloadAppsGroupBox)
+$DownloadAppsTab.Controls.Add($DownloadAppsGroupBox)
 
 # CheckedListBox per le app scaricabili
 $Script:DownloadAppsCheckedListBox = New-Object System.Windows.Forms.CheckedListBox
 $Script:DownloadAppsCheckedListBox.Location = New-Object System.Drawing.Point(10, 25)
-$Script:DownloadAppsCheckedListBox.Size = New-Object System.Drawing.Size(([int]$DownloadAppsGroupBox.Width - 20), 250) # Altezza aumentata per la lista
+$Script:DownloadAppsCheckedListBox.Size = New-Object System.Drawing.Size(([int]$DownloadAppsGroupBox.Width - 20), ([int]$DownloadAppsGroupBox.Height - 80)) # Correzione: Cast a int
 $Script:DownloadAppsCheckedListBox.CheckOnClick = $true
 $Script:DownloadAppsCheckedListBox.BackColor = [System.Drawing.Color]::FromArgb(60, 60, 60)
 $Script:DownloadAppsCheckedListBox.ForeColor = [System.Drawing.Color]::LightGray
@@ -2641,18 +2710,7 @@ $InstallSelectedAppsButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
 $InstallSelectedAppsButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(0, 100, 180)
 $InstallSelectedAppsButton.FlatAppearance.BorderSize = 1
 $DownloadAppsGroupBox.Controls.Add($InstallSelectedAppsButton)
-
-
-# Casella di testo per il log (spostata a destra)
-$Script:LogTextBox = New-Object System.Windows.Forms.TextBox
-$Script:LogTextBox.Location = New-Object System.Drawing.Point(([int]$Panel.Location.X + [int]$Panel.Width + $padding), $padding)
-$Script:LogTextBox.Size = New-Object System.Drawing.Size($logPanelWidth, ([int]$Form.Height - (2 * $padding) - 30)) # Altezza quasi totale del form
-$Script:LogTextBox.MultiLine = $true
-$Script:LogTextBox.ReadOnly = $true
-$Script:LogTextBox.ScrollBars = "Vertical"
-$Script:LogTextBox.BackColor = [System.Drawing.Color]::FromArgb(25, 25, 25) # Sfondo molto scuro per il log
-$Script:LogTextBox.ForeColor = [System.Drawing.Color]::LightGray # Testo chiaro per il log
-$Form.Controls.Add($Script:LogTextBox)
+#endregion
 
 # Mostra il form
 $Form.ShowDialog() | Out-Null
