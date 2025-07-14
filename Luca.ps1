@@ -10,7 +10,7 @@
 
 .NOTES
     Autore: Gemini
-    Versione: 8.3 (Correzione definitiva DrawString)
+    Versione: 8.4 (Correzioni Edge, Widget, Termina Attività)
     Data: 14 luglio 2025
 
     IMPORTANTE:
@@ -56,6 +56,7 @@ Add-Type -AssemblyName System.Drawing
 # 'ServiceName': Per le azioni di disabilitazione dei servizi.
 # 'Command': Per le azioni di esecuzione di comandi arbitrari.
 # 'FunctionName': Per le azioni che chiamano una funzione PowerShell specifica.
+# 'Args': Array di argomenti da passare a FunctionName (se Action è "RunFunction").
 $RegistryConfigurations = @(
     @{
         Name = "Disabilita Schermata di Blocco Dinamica e Consegna Contenuti"
@@ -663,8 +664,7 @@ $RegistryConfigurations = @(
         Name = "Disabilita Widget Barra delle Applicazioni"
         Description = "Rimuove il pulsante Widget dalla barra delle applicazioni di Windows."
         RegistryActions = @(
-            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"; Name = "TaskbarDa"; Value = 0; Type = "DWord"; Action = "Set" },
-            @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Feeds"; Name = "ShellFeedsTaskbarViewMode"; Value = 0; Type = "DWord"; Action = "Set" }
+            @{ Action = "RunFunction"; FunctionName = "Set-TaskbarWidgetsState"; Args = @($true) } # Passa $true per disabilitare
         )
     },
     @{
@@ -921,15 +921,15 @@ Function Set-RegistryValue {
         [string]$Type
     )
     Try {
-        # Assicurati che il percorso padre esista prima di impostare la proprietà
-        $ParentPath = Split-Path -Path $Path -Parent
-        If (-not (Test-Path $ParentPath)) {
-            New-Item -Path $ParentPath -Force | Out-Null
+        # Ensure the full registry key path exists. New-Item with -Force will create parent keys as needed.
+        If (-not (Test-Path -LiteralPath $Path)) {
+            New-Item -Path $Path -Force | Out-Null
         }
         
         # Converte il tipo stringa in enum RegistryValueKind
         $RegistryValueKind = [Microsoft.Win32.RegistryValueKind]::$Type
 
+        # Set-ItemProperty will create the property if it doesn't exist, or update it if it does.
         Set-ItemProperty -LiteralPath $Path -Name $Name -Value $Value -Force -ErrorAction Stop -Type $RegistryValueKind
         $Script:LogTextBox.AppendText("SUCCESSO: Impostato '$Name' su '$Value' in '$Path'`r`n")
     }
@@ -1787,7 +1787,14 @@ Function Apply-SelectedChanges {
                     "DisableScheduledTask" { Disable-ScheduledTaskAction -TaskPath $action.TaskPath -TaskNamePattern $action.TaskName }
                     "DisableService" { Disable-ServiceAction -ServiceName $action.ServiceName }
                     "RunCommand" { Run-CommandAction -Command $action.Command }
-                    "RunFunction" { Invoke-Expression "$($action.FunctionName)" }
+                    "RunFunction" { 
+                        if ($action.Args) {
+                            # Pass arguments directly to the function using the call operator
+                            & $($action.FunctionName) @($action.Args)
+                        } else {
+                            Invoke-Expression "$($action.FunctionName)"
+                        }
+                    }
                     Default { $Script:LogTextBox.AppendText("AVVISO: Tipo di azione sconosciuto '$($action.Action)' per $($config.Name).`r`n") }
                 }
             }
@@ -2191,6 +2198,30 @@ Function Perform-UninstallOneDrive {
         $Script:LogTextBox.AppendText("ERRORE: Qualcosa è andato storto durante la disinstallazione di OneDrive. La voce del Registro di sistema è ancora presente.`r`n")
     }
     $Script:LogTextBox.AppendText("--- Fine disinstallazione completa di OneDrive ---`r`n`r`n")
+}
+
+Function Set-TaskbarWidgetsState {
+    Param (
+        [bool]$DisableWidgets # True per disabilitare, False per abilitare
+    )
+    Try {
+        $taskbarDaValue = If ($DisableWidgets) { 0 } Else { 1 }
+        $feedsViewModeValue = If ($DisableWidgets) { 0 } Else { 1 } # 0 per nascosto/disabilitato, 1 per abilitato
+
+        # Imposta TaskbarDa
+        Set-RegistryValue -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "TaskbarDa" -Value $taskbarDaValue -Type "DWord"
+        
+        # Imposta ShellFeedsTaskbarViewMode
+        Set-RegistryValue -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Feeds" -Name "ShellFeedsTaskbarViewMode" -Value $feedsViewModeValue -Type "DWord"
+
+        If ($DisableWidgets) {
+            $Script:LogTextBox.AppendText("SUCCESSO: Widget Barra delle Applicazioni disabilitati.`r`n")
+        } Else {
+            $Script:LogTextBox.AppendText("SUCCESSO: Widget Barra delle Applicazioni abilitati.`r`n")
+        }
+    } Catch {
+        $Script:LogTextBox.AppendText("ERRORE: Impossibile modificare lo stato dei Widget Barra delle Applicazioni. Errore: $($_.Exception.Message)`r`n")
+    }
 }
 #endregion
 
