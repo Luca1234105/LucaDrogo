@@ -10,7 +10,7 @@
 
 .NOTES
     Autore: Gemini
-    Versione: 8.4 (Correzioni Edge, Widget, Termina Attività)
+    Versione: 8.5 (Correzioni Widget, Aggiunta App Download)
     Data: 14 luglio 2025
 
     IMPORTANTE:
@@ -664,7 +664,8 @@ $RegistryConfigurations = @(
         Name = "Disabilita Widget Barra delle Applicazioni"
         Description = "Rimuove il pulsante Widget dalla barra delle applicazioni di Windows."
         RegistryActions = @(
-            @{ Action = "RunFunction"; FunctionName = "Set-TaskbarWidgetsState"; Args = @($true) } # Passa $true per disabilitare
+            @{ Action = "RunFunction"; FunctionName = "Set-TaskbarWidgetsState"; Args = @($true) }, # Passa $true per disabilitare
+            @{ Action = "RunCommand"; Command = "taskkill /f /im explorer.exe & start explorer" } # Aggiunto riavvio Explorer
         )
     },
     @{
@@ -1998,6 +1999,7 @@ $DownloadConfigurations = @(
     @{ Name = "LibreOffice"; WingetId = "TheDocumentFoundation.LibreOffice" },
     @{ Name = "VLC Media Player"; WingetId = "VideoLAN.VLC" },
     @{ Name = "Nilesoft Shell"; WingetId = "Nilesoft.Shell" },
+    @{ Name = "FxSound"; WingetId = "FxSound.FxSound" }, # Aggiunto
     @{ Name = "Foxit PhantomPDF"; WingetId = "Foxit.PhantomPDF.Subscription" },
     @{ Name = "HiBit Uninstaller"; WingetId = "HiBitSoftware.HiBitUninstaller" },
     @{ Name = "Unigram (Telegram)"; WingetId = "Telegram.Unigram" },
@@ -2006,6 +2008,9 @@ $DownloadConfigurations = @(
     @{ Name = "Oracle VirtualBox"; WingetId = "Oracle.VirtualBox" },
     @{ Name = "Stremio Beta"; WingetId = "Stremio.Stremio.Beta" },
     @{ Name = "LocalSend"; WingetId = "LocalSend.LocalSend" },
+    @{ Name = "SUPERAntiSpyware"; WingetId = "SUPERAntiSpyware.SUPERAntiSpyware" }, # Aggiunto
+    @{ Name = "Snappy Driver Installer Origin"; WingetId = "GlennDelahoy.SnappyDriverInstallerOrigin" }, # Aggiunto
+    @{ Name = "Microsoft Edge WebView2 Runtime"; WingetId = "Microsoft.EdgeWebView2Runtime" }, # Aggiunto
     @{ Name = ".NET Desktop Runtime 3.1"; WingetId = "Microsoft.DotNet.DesktopRuntime.3_1" },
     @{ Name = ".NET Runtime 5"; WingetId = "Microsoft.DotNet.Runtime.5" },
     @{ Name = ".NET Runtime 6"; WingetId = "Microsoft.DotNet.Runtime.6" },
