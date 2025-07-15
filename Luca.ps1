@@ -10,8 +10,8 @@
 
 .NOTES
     Autore: Gemini
-    Versione: 8.5 (Correzioni Widget, Aggiunta App Download)
-    Data: 14 luglio 2025
+    Versione: 8.7 (Aggiunta Rimozione AI, Tweaks Driver/CEIP, Disabilita Funzionalità Opzionali, Rimozione Cartella Accessibilità)
+    Data: 15 luglio 2025
 
     IMPORTANTE:
     - L'esecuzione di questo script richiede privilegi di amministratore. Tenterà di elevarsi
@@ -898,6 +898,24 @@ $RegistryConfigurations = @(
         RegistryActions = @(
             @{ Path = "HKLM:\System\CurrentControlSet\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity"; Name = "Enabled"; Value = 0; Type = "DWord"; Action = "Set" },
             @{ Action = "DisableService"; ServiceName = "SysMain" } # Questo ferma e disabilita il servizio SysMain (Prefetch)
+        )
+    },
+    @{
+        Name = "Ripristina Visualizzazioni Cartelle Esplora File"
+        Description = "Elimina le preferenze di visualizzazione delle cartelle e ripristina la visualizzazione predefinita 'Non Specificato', quindi riavvia Esplora file."
+        RegistryActions = @(
+            @{ Action = "RemoveKey"; Path = "HKCU:\SOFTWARE\Classes\Local Settings\Software\Microsoft\Windows\Shell\BagMRU" },
+            @{ Action = "RemoveKey"; Path = "HKCU:\SOFTWARE\Classes\Local Settings\Software\Microsoft\Windows\Shell\Bags" },
+            @{ Action = "Set"; Path = "HKCU:\SOFTWARE\Classes\Local Settings\Software\Microsoft\Windows\Shell\BagMRU"; Name = $null; Value = ""; Type = "String" }, # Ricrea la chiave BagMRU (valore predefinito)
+            @{ Action = "Set"; Path = "HKCU:\SOFTWARE\Classes\Local Settings\Software\Microsoft\Windows\Shell\Bags\AllFolders\Shell"; Name = "FolderType"; Value = "NotSpecified"; Type = "String" },
+            @{ Action = "RunCommand"; Command = "taskkill /f /im explorer.exe & start explorer.exe" }
+        )
+    },
+    @{
+        Name = "Rimuovi Cartella Accessibilità dal Menu Start"
+        Description = "Rimuove la cartella 'Accessibilità' dal menu Start dell'utente corrente."
+        RegistryActions = @(
+            @{ Action = "RunCommand"; Command = "cmd /c if exist ""%APPDATA%\Microsoft\Windows\Start Menu\Programs\Accessibility"" ( rd /s /q ""%APPDATA%\Microsoft\Windows\Start Menu\Programs\Accessibility"" && echo Cartella ""Accessibility"" rimossa con successo. ) else ( echo La cartella ""Accessibility"" non esiste. )" }
         )
     }
 )
@@ -2228,6 +2246,95 @@ Function Set-TaskbarWidgetsState {
         $Script:LogTextBox.AppendText("ERRORE: Impossibile modificare lo stato dei Widget Barra delle Applicazioni. Errore: $($_.Exception.Message)`r`n")
     }
 }
+
+Function Invoke-RemoveWindowsAI {
+    $Script:LogTextBox.Clear()
+    $Script:LogTextBox.AppendText("--- Avvio esecuzione script RemoveWindowsAi.ps1 da GitHub ---`r`n")
+    Try {
+        $Script:LogTextBox.AppendText("Download e esecuzione dello script...`r`n")
+        # Ensure the script runs with elevated privileges if it needs to
+        $command = "iwr https://raw.githubusercontent.com/zoicware/RemoveWindowsAI/main/RemoveWindowsAi.ps1 | iex"
+        $process = Start-Process -FilePath "powershell.exe" -ArgumentList "-NoProfile -ExecutionPolicy Bypass -Command `"$command`"" -Verb RunAs -PassThru -WindowStyle Hidden
+        $process.WaitForExit()
+        If ($process.ExitCode -eq 0) {
+            $Script:LogTextBox.AppendText("SUCCESSO: Script RemoveWindowsAi.ps1 eseguito con successo.`r`n")
+            Show-MessageBox "Lo script RemoveWindowsAi.ps1 è stato eseguito con successo. Potrebbe essere necessario un riavvio per avere pieno effetto." "Script AI Eseguito" "OK" "Information"
+        } Else {
+            $Script:LogTextBox.AppendText("ERRORE: L'esecuzione dello script RemoveWindowsAi.ps1 è terminata con codice di uscita: $($process.ExitCode).`r`n")
+            Show-MessageBox "Si è verificato un errore durante l'esecuzione dello script RemoveWindowsAi.ps1. Controlla il log per i dettagli." "Errore Script AI" "OK" "Error"
+        }
+    } Catch {
+        $Script:LogTextBox.AppendText("ERRORE: Eccezione durante l'esecuzione dello script RemoveWindowsAi.ps1. Errore: $($_.Exception.Message)`r`n")
+        Show-MessageBox "Si è verificato un errore critico durante il download/esecuzione dello script RemoveWindowsAi.ps1. Controlla la tua connessione internet o i permessi." "Errore Critico Script AI" "OK" "Error"
+    }
+    $Script:LogTextBox.AppendText("--- Fine esecuzione script RemoveWindowsAi.ps1 ---`r`n`r`n")
+}
+
+Function Invoke-DriverUpdateAndCEIPTweaks {
+    $Script:LogTextBox.Clear()
+    $Script:LogTextBox.AppendText("--- Avvio applicazione tweaks driver e CEIP ---`r`n")
+    Try {
+        # Disabilita CEIP
+        Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\SQMClient\Windows" -Name "CEIPEnable" -Value 0 -Type "DWord"
+
+        # Impedisce a Windows Update di scaricare driver
+        Set-RegistryValue -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate" -Name "ExcludeWUDriversInQualityUpdate" -Value 1 -Type "DWord"
+
+        # Disattiva l'installazione automatica dei driver da parte di Device Installation
+        Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\DriverSearching" -Name "SearchOrderConfig" -Value 0 -Type "DWord"
+
+        # Disabilita aggiornamento automatico dei driver tramite Pannello di Controllo
+        Set-RegistryValue -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Device Metadata" -Name "PreventDeviceMetadataFromNetwork" -Value 1 -Type "DWord"
+
+        $Script:LogTextBox.AppendText("SUCCESSO: Tweaks driver e CEIP applicati correttamente.`r`n")
+        Show-MessageBox "I tweaks per i driver e CEIP sono stati applicati correttamente. Potrebbe essere necessario un riavvio per avere pieno effetto." "Tweaks Applicati" "OK" "Information"
+    } Catch {
+        $Script:LogTextBox.AppendText("ERRORE: Si è verificato un errore durante l'applicazione dei tweaks driver e CEIP. Errore: $($_.Exception.Message)`r`n")
+        Show-MessageBox "Si è verificato un errore durante l'applicazione dei tweaks driver e CEIP. Controlla il log per i dettagli." "Errore Tweaks" "OK" "Error"
+    }
+    $Script:LogTextBox.AppendText("--- Fine applicazione tweaks driver e CEIP ---`r`n`r`n")
+}
+
+Function Invoke-DisableOptionalFeatures {
+    $Script:LogTextBox.Clear()
+    $Script:LogTextBox.AppendText("--- Avvio disabilitazione funzionalità opzionali non essenziali ---`r`n")
+    Try {
+        # Richiedi privilegi amministrativi (già gestito all'inizio dello script, ma per sicurezza)
+        if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator"))
+        {
+            $Script:LogTextBox.AppendText("ERRORE: Lo script non è in esecuzione come amministratore. Impossibile disabilitare le funzionalità opzionali.`r`n")
+            Show-MessageBox "Questo script deve essere eseguito come amministratore per disabilitare le funzionalità opzionali." "Permessi Insufficienti" "OK" "Error"
+            Return
+        }
+
+        # Funzionalità da mantenere attive
+        $allowedFeatures = @(
+            "NetFx4",
+            "NetFx4-AdvSrvs"
+        )
+
+        # Elenco di tutte le funzionalità attive
+        $features = Get-WindowsOptionalFeature -Online | Where-Object { $_.State -eq "Enabled" }
+
+        foreach ($feature in $features) {
+            $featureName = $feature.FeatureName
+
+            if ($allowedFeatures -contains $featureName) {
+                $Script:LogTextBox.AppendText("Mantengo attivo: $featureName`r`n")
+            }
+            else {
+                $Script:LogTextBox.AppendText("Disabilito: $featureName`r`n")
+                Disable-WindowsOptionalFeature -FeatureName $featureName -Online -NoRestart -ErrorAction SilentlyContinue
+            }
+        }
+        $Script:LogTextBox.AppendText("SUCCESSO: Disattivazione delle funzionalità opzionali completata. Riavvia il PC per completare la disattivazione.`r`n")
+        Show-MessageBox "Disattivazione delle funzionalità opzionali completata. Riavvia il PC per completare la disattivazione." "Operazione Completata" "OK" "Information"
+    } Catch {
+        $Script:LogTextBox.AppendText("ERRORE: Si è verificato un errore durante la disabilitazione delle funzionalità opzionali. Errore: $($_.Exception.Message)`r`n")
+        Show-MessageBox "Si è verificato un errore durante la disabilitazione delle funzionalità opzionali. Controlla il log per i dettagli." "Errore Funzionalità Opzionali" "OK" "Error"
+    }
+    $Script:LogTextBox.AppendText("--- Fine disabilitazione funzionalità opzionali non essenziali ---`r`n`r`n")
+}
 #endregion
 
 #region Crea Form Principale
@@ -2646,6 +2753,62 @@ $WingetUpdateButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
 $WingetUpdateButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(0, 80, 150)
 $WingetUpdateButton.FlatAppearance.BorderSize = 1
 $ToolsTab.Controls.Add($WingetUpdateButton)
+
+$yPosTools += [int]($WingetUpdateButton.Height + 10)
+
+# Etichetta per Strumenti Avanzati di Sistema
+$AdvancedToolsLabel = New-Object System.Windows.Forms.Label
+$AdvancedToolsLabel.Text = "Strumenti Avanzati di Sistema:"
+$AdvancedToolsLabel.Location = New-Object System.Drawing.Point($xPosTools, $yPosTools)
+$AdvancedToolsLabel.AutoSize = $true
+$AdvancedToolsLabel.Font = New-Object System.Drawing.Font("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+$ToolsTab.Controls.Add($AdvancedToolsLabel)
+
+$yPosTools += [int]($AdvancedToolsLabel.Height + 5)
+
+# Pulsante per RemoveWindowsAI
+$RemoveAIButton = New-Object System.Windows.Forms.Button
+$RemoveAIButton.Text = "Esegui Script Rimozione AI (Online)"
+$RemoveAIButton.Location = New-Object System.Drawing.Point($xPosTools, $yPosTools)
+$RemoveAIButton.Size = New-Object System.Drawing.Size(280, 30)
+$RemoveAIButton.Add_Click({ Invoke-RemoveWindowsAI })
+$RemoveAIButton.BackColor = [System.Drawing.Color]::FromArgb(255, 140, 0) # Arancione
+$RemoveAIButton.ForeColor = [System.Drawing.Color]::White
+$RemoveAIButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+$RemoveAIButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(200, 100, 0)
+$RemoveAIButton.FlatAppearance.BorderSize = 1
+$ToolsTab.Controls.Add($RemoveAIButton)
+
+$yPosTools += [int]($RemoveAIButton.Height + 5)
+
+# Pulsante per Tweaks Driver e CEIP
+$DriverCEIPTweaksButton = New-Object System.Windows.Forms.Button
+$DriverCEIPTweaksButton.Text = "Applica Tweaks Driver e CEIP"
+$DriverCEIPTweaksButton.Location = New-Object System.Drawing.Point($xPosTools, $yPosTools)
+$DriverCEIPTweaksButton.Size = New-Object System.Drawing.Size(280, 30)
+$DriverCEIPTweaksButton.Add_Click({ Invoke-DriverUpdateAndCEIPTweaks })
+$DriverCEIPTweaksButton.BackColor = [System.Drawing.Color]::FromArgb(150, 75, 0) # Marrone
+$DriverCEIPTweaksButton.ForeColor = [System.Drawing.Color]::White
+$DriverCEIPTweaksButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+$DriverCEIPTweaksButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(100, 50, 0)
+$DriverCEIPTweaksButton.FlatAppearance.BorderSize = 1
+$ToolsTab.Controls.Add($DriverCEIPTweaksButton)
+
+$yPosTools += [int]($DriverCEIPTweaksButton.Height + 5)
+
+# Pulsante per Disabilita Funzionalità Opzionali
+$DisableOptionalFeaturesButton = New-Object System.Windows.Forms.Button
+$DisableOptionalFeaturesButton.Text = "Disabilita Funzionalità Opzionali Non Essenziali"
+$DisableOptionalFeaturesButton.Location = New-Object System.Drawing.Point($xPosTools, $yPosTools)
+$DisableOptionalFeaturesButton.Size = New-Object System.Drawing.Size(280, 30)
+$DisableOptionalFeaturesButton.Add_Click({ Invoke-DisableOptionalFeatures })
+$DisableOptionalFeaturesButton.BackColor = [System.Drawing.Color]::FromArgb(75, 0, 130) # Viola scuro
+$DisableOptionalFeaturesButton.ForeColor = [System.Drawing.Color]::White
+$DisableOptionalFeaturesButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+$DisableOptionalFeaturesButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(50, 0, 100)
+$DisableOptionalFeaturesButton.FlatAppearance.BorderSize = 1
+$ToolsTab.Controls.Add($DisableOptionalFeaturesButton)
+
 #endregion
 
 #region Tab: Download App
