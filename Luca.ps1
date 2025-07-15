@@ -10,7 +10,7 @@
 
 .NOTES
     Autore: Gemini
-    Versione: 8.7 (Aggiunta Rimozione AI, Tweaks Driver/CEIP, Disabilita Funzionalità Opzionali, Rimozione Cartella Accessibilità)
+    Versione: 8.8 (Aggiornamento Nomi Pulsanti, Aggiunta Gestione Script PowerShell)
     Data: 15 luglio 2025
 
     IMPORTANTE:
@@ -2270,7 +2270,7 @@ Function Invoke-RemoveWindowsAI {
     $Script:LogTextBox.AppendText("--- Fine esecuzione script RemoveWindowsAi.ps1 ---`r`n`r`n")
 }
 
-Function Invoke-DriverUpdateAndCEIPTweaks {
+Function Invoke-DisableDriverUpdatesAndCEIP {
     $Script:LogTextBox.Clear()
     $Script:LogTextBox.AppendText("--- Avvio applicazione tweaks driver e CEIP ---`r`n")
     Try {
@@ -2295,7 +2295,7 @@ Function Invoke-DriverUpdateAndCEIPTweaks {
     $Script:LogTextBox.AppendText("--- Fine applicazione tweaks driver e CEIP ---`r`n`r`n")
 }
 
-Function Invoke-DisableOptionalFeatures {
+Function Invoke-DisableNonEssentialOptionalFeatures {
     $Script:LogTextBox.Clear()
     $Script:LogTextBox.AppendText("--- Avvio disabilitazione funzionalità opzionali non essenziali ---`r`n")
     Try {
@@ -2334,6 +2334,53 @@ Function Invoke-DisableOptionalFeatures {
         Show-MessageBox "Si è verificato un errore durante la disabilitazione delle funzionalità opzionali. Controlla il log per i dettagli." "Errore Funzionalità Opzionali" "OK" "Error"
     }
     $Script:LogTextBox.AppendText("--- Fine disabilitazione funzionalità opzionali non essenziali ---`r`n`r`n")
+}
+
+Function Manage-PowerShellScriptExecution {
+    Param (
+        [bool]$EnableScripts # $true per abilitare, $false per disabilitare
+    )
+    $Script:LogTextBox.Clear()
+    If ($EnableScripts) {
+        $Script:LogTextBox.AppendText("--- Avvio abilitazione script PowerShell e sblocco file ---`r`n")
+        Try {
+            # Allow double click powershell scripts
+            Run-CommandAction "reg add ""HKCR\Applications\powershell.exe\shell\open\command"" /ve /t REG_SZ /d ""C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -NoLogo -ExecutionPolicy unrestricted -File \""%%1\"""" /f"
+            
+            # Allow powershell scripts
+            Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\PowerShell\1\ShellIds\Microsoft.PowerShell" -Name "ExecutionPolicy" -Value "Unrestricted" -Type "String"
+            Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\PowerShell\1\ShellIds\Microsoft.PowerShell" -Name "ExecutionPolicy" -Value "Unrestricted" -Type "String"
+            
+            # Unblock all files in current directory (script's directory)
+            $scriptDir = Split-Path -Path $MyInvocation.MyCommand.Definition -Parent
+            $Script:LogTextBox.AppendText("Sblocco file nella directory: $scriptDir`r`n")
+            Get-ChildItem -Path $scriptDir -Recurse | Unblock-File -ErrorAction SilentlyContinue
+            
+            $Script:LogTextBox.AppendText("SUCCESSO: Script PowerShell abilitati e file sbloccati.`r`n")
+            Show-MessageBox "Script PowerShell abilitati e file sbloccati. Riavvia l'applicazione per applicare le modifiche." "Abilitazione Completata" "OK" "Information"
+        } Catch {
+            $Script:LogTextBox.AppendText("ERRORE: Impossibile abilitare script PowerShell o sbloccare file. Errore: $($_.Exception.Message)`r`n")
+            Show-MessageBox "Si è verificato un errore durante l'abilitazione degli script PowerShell. Controlla il log per i dettagli." "Errore Abilitazione" "OK" "Error"
+        }
+    } Else {
+        $Script:LogTextBox.AppendText("--- Avvio disabilitazione script PowerShell ---`r`n")
+        Try {
+            # Disallow double click powershell scripts
+            Run-CommandAction "reg delete ""HKCR\Applications\powershell.exe"" /f"
+            Run-CommandAction "reg delete ""HKCR\ps1_auto_file"" /f"
+            
+            # Disallow powershell scripts
+            Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\PowerShell\1\ShellIds\Microsoft.PowerShell" -Name "ExecutionPolicy" -Value "Restricted" -Type "String"
+            Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\PowerShell\1\ShellIds\Microsoft.PowerShell" -Name "ExecutionPolicy" -Value "Restricted" -Type "String"
+            
+            $Script:LogTextBox.AppendText("SUCCESSO: Script PowerShell disabilitati.`r`n")
+            Show-MessageBox "Script PowerShell disabilitati. Riavvia l'applicazione per applicare le modifiche." "Disabilitazione Completata" "OK" "Information"
+        } Catch {
+            $Script:LogTextBox.AppendText("ERRORE: Impossibile disabilitare script PowerShell. Errore: $($_.Exception.Message)`r`n")
+            Show-MessageBox "Si è verificato un errore durante la disabilitazione degli script PowerShell. Controlla il log per i dettagli." "Errore Disabilitazione" "OK" "Error"
+        }
+    }
+    $Script:LogTextBox.AppendText("--- Fine operazione script PowerShell ---`r`n`r`n")
 }
 #endregion
 
@@ -2649,7 +2696,7 @@ $DnsComboBox = New-Object System.Windows.Forms.ComboBox
 $DnsComboBox.Location = New-Object System.Drawing.Point($xPosTools, $yPosTools)
 $DnsComboBox.Size = New-Object System.Drawing.Size(200, 25)
 $DnsComboBox.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList # Rende il ComboBox non modificabile
-$DnsComboBox.Items.AddRange(@("Default DHCP", "Google", "Cloudflare", "Cloudflare_Malware", "Cloudflare_Malware_Adult", "Open_DNS", "Quad9", "AdGuard_Ads_Trackers", "AdGuard_Ads_Trackers_Malware_Adult"))
+$DnsComboBox.Items.AddRange(@("Default DHCP", "Google", "Cloudflare", "Cloudflare_Malware", "Cloudflare_Malware_Adult", "Open_DNS", "208.67.222.222", "Quad9", "AdGuard_Ads_Trackers", "AdGuard_Ads_Trackers_Malware_Adult"))
 $DnsComboBox.SelectedIndex = 0 # Seleziona di default "Default DHCP"
 $DnsComboBox.BackColor = [System.Drawing.Color]::FromArgb(60, 60, 60)
 $DnsComboBox.ForeColor = [System.Drawing.Color]::White
@@ -2781,12 +2828,12 @@ $ToolsTab.Controls.Add($RemoveAIButton)
 
 $yPosTools += [int]($RemoveAIButton.Height + 5)
 
-# Pulsante per Tweaks Driver e CEIP
+# Pulsante per Tweaks Driver e CEIP (rinominato)
 $DriverCEIPTweaksButton = New-Object System.Windows.Forms.Button
-$DriverCEIPTweaksButton.Text = "Applica Tweaks Driver e CEIP"
+$DriverCEIPTweaksButton.Text = "Disabilita Driver Updates"
 $DriverCEIPTweaksButton.Location = New-Object System.Drawing.Point($xPosTools, $yPosTools)
 $DriverCEIPTweaksButton.Size = New-Object System.Drawing.Size(280, 30)
-$DriverCEIPTweaksButton.Add_Click({ Invoke-DriverUpdateAndCEIPTweaks })
+$DriverCEIPTweaksButton.Add_Click({ Invoke-DisableDriverUpdatesAndCEIP })
 $DriverCEIPTweaksButton.BackColor = [System.Drawing.Color]::FromArgb(150, 75, 0) # Marrone
 $DriverCEIPTweaksButton.ForeColor = [System.Drawing.Color]::White
 $DriverCEIPTweaksButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
@@ -2796,18 +2843,47 @@ $ToolsTab.Controls.Add($DriverCEIPTweaksButton)
 
 $yPosTools += [int]($DriverCEIPTweaksButton.Height + 5)
 
-# Pulsante per Disabilita Funzionalità Opzionali
+# Pulsante per Disabilita Funzionalità Opzionali (rinominato)
 $DisableOptionalFeaturesButton = New-Object System.Windows.Forms.Button
-$DisableOptionalFeaturesButton.Text = "Disabilita Funzionalità Opzionali Non Essenziali"
+$DisableOptionalFeaturesButton.Text = "Disabilita Funzionalità Non Essenziali"
 $DisableOptionalFeaturesButton.Location = New-Object System.Drawing.Point($xPosTools, $yPosTools)
 $DisableOptionalFeaturesButton.Size = New-Object System.Drawing.Size(280, 30)
-$DisableOptionalFeaturesButton.Add_Click({ Invoke-DisableOptionalFeatures })
+$DisableOptionalFeaturesButton.Add_Click({ Invoke-DisableNonEssentialOptionalFeatures })
 $DisableOptionalFeaturesButton.BackColor = [System.Drawing.Color]::FromArgb(75, 0, 130) # Viola scuro
 $DisableOptionalFeaturesButton.ForeColor = [System.Drawing.Color]::White
 $DisableOptionalFeaturesButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
 $DisableOptionalFeaturesButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(50, 0, 100)
 $DisableOptionalFeaturesButton.FlatAppearance.BorderSize = 1
 $ToolsTab.Controls.Add($DisableOptionalFeaturesButton)
+
+$yPosTools += [int]($DisableOptionalFeaturesButton.Height + 5)
+
+# Nuovi pulsanti per la gestione degli script PowerShell
+$EnablePSScriptsButton = New-Object System.Windows.Forms.Button
+$EnablePSScriptsButton.Text = "Abilita Script PowerShell"
+$EnablePSScriptsButton.Location = New-Object System.Drawing.Point($xPosTools, $yPosTools)
+$EnablePSScriptsButton.Size = New-Object System.Drawing.Size(280, 30)
+$EnablePSScriptsButton.Add_Click({ Manage-PowerShellScriptExecution -EnableScripts $true })
+$EnablePSScriptsButton.BackColor = [System.Drawing.Color]::FromArgb(30, 170, 255) # Blu chiaro
+$EnablePSScriptsButton.ForeColor = [System.Drawing.Color]::White
+$EnablePSScriptsButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+$EnablePSScriptsButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(20, 120, 200)
+$EnablePSScriptsButton.FlatAppearance.BorderSize = 1
+$ToolsTab.Controls.Add($EnablePSScriptsButton)
+
+$yPosTools += [int]($EnablePSScriptsButton.Height + 5)
+
+$DisablePSScriptsButton = New-Object System.Windows.Forms.Button
+$DisablePSScriptsButton.Text = "Disabilita Script PowerShell"
+$DisablePSScriptsButton.Location = New-Object System.Drawing.Point($xPosTools, $yPosTools)
+$DisablePSScriptsButton.Size = New-Object System.Drawing.Size(280, 30)
+$DisablePSScriptsButton.Add_Click({ Manage-PowerShellScriptExecution -EnableScripts $false })
+$DisablePSScriptsButton.BackColor = [System.Drawing.Color]::FromArgb(255, 60, 60) # Rosso brillante
+$DisablePSScriptsButton.ForeColor = [System.Drawing.Color]::White
+$DisablePSScriptsButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+$DisablePSScriptsButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(200, 40, 40)
+$DisablePSScriptsButton.FlatAppearance.BorderSize = 1
+$ToolsTab.Controls.Add($DisablePSScriptsButton)
 
 #endregion
 
