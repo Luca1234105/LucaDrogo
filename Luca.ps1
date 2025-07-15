@@ -10,7 +10,7 @@
 
 .NOTES
     Autore: Gemini
-    Versione: 8.9 (Rimozione pulsante disabilita PS, Aggiunta Disabilita Avvio Rapido)
+    Versione: 8.11 (Risoluzione testo pulsanti troppo lungo)
     Data: 15 luglio 2025
 
     IMPORTANTE:
@@ -2532,8 +2532,8 @@ $RegistryOptimizationsTab.Controls.Add($DeselectAllButton)
 
 $ApplyButton = New-Object System.Windows.Forms.Button
 $ApplyButton.Text = "Applica Modifiche Selezionate"
-$ApplyButton.Location = New-Object System.Drawing.Point(([int]$PanelRegistry.Location.X + [int]$PanelRegistry.Width - 170), $currentButtonYRegistry)
-$ApplyButton.Size = New-Object System.Drawing.Size(170, 30)
+$ApplyButton.Location = New-Object System.Drawing.Point(([int]$PanelRegistry.Location.X + [int]$PanelRegistry.Width - 230), $currentButtonYRegistry) # Aumentata larghezza
+$ApplyButton.Size = New-Object System.Drawing.Size(220, 30) # Aumentata larghezza
 $ApplyButton.Add_Click({ Apply-SelectedChanges })
 $ApplyButton.BackColor = [System.Drawing.Color]::FromArgb(0, 122, 204)
 $ApplyButton.ForeColor = [System.Drawing.Color]::White
@@ -2563,10 +2563,13 @@ $ToolsTab.Controls.Add($ControlPanelLabel)
 $yPosTools += [int]($ControlPanelLabel.Height + 5)
 
 # Pulsanti per i pannelli di controllo
+$buttonWidth = 160 # Nuova larghezza per i pulsanti del pannello di controllo
+$buttonSpacing = 10
+
 $ControlPanelButton = New-Object System.Windows.Forms.Button
 $ControlPanelButton.Text = "Pannello di Controllo"
 $ControlPanelButton.Location = New-Object System.Drawing.Point($xPosTools, $yPosTools)
-$ControlPanelButton.Size = New-Object System.Drawing.Size(140, 30)
+$ControlPanelButton.Size = New-Object System.Drawing.Size($buttonWidth, 30)
 $ControlPanelButton.Add_Click({ Invoke-WPFControlPanel "WPFPanelcontrol" })
 $ControlPanelButton.BackColor = [System.Drawing.Color]::FromArgb(70, 70, 70)
 $ControlPanelButton.ForeColor = [System.Drawing.Color]::White
@@ -2577,8 +2580,8 @@ $ToolsTab.Controls.Add($ControlPanelButton)
 
 $NetworkButton = New-Object System.Windows.Forms.Button
 $NetworkButton.Text = "Connessioni di Rete"
-$NetworkButton.Location = New-Object System.Drawing.Point(([int]$ControlPanelButton.Location.X + [int]$ControlPanelButton.Width + 10), $yPosTools)
-$NetworkButton.Size = New-Object System.Drawing.Size(140, 30)
+$NetworkButton.Location = New-Object System.Drawing.Point(([int]$ControlPanelButton.Location.X + [int]$ControlPanelButton.Width + $buttonSpacing), $yPosTools)
+$NetworkButton.Size = New-Object System.Drawing.Size($buttonWidth, 30)
 $NetworkButton.Add_Click({ Invoke-WPFControlPanel "WPFPanelnetwork" })
 $NetworkButton.BackColor = [System.Drawing.Color]::FromArgb(70, 70, 70)
 $NetworkButton.ForeColor = [System.Drawing.Color]::White
@@ -2589,8 +2592,8 @@ $ToolsTab.Controls.Add($NetworkButton)
 
 $PowerButton = New-Object System.Windows.Forms.Button
 $PowerButton.Text = "Opzioni Alimentazione"
-$PowerButton.Location = New-Object System.Drawing.Point(([int]$NetworkButton.Location.X + [int]$NetworkButton.Width + 10), $yPosTools)
-$PowerButton.Size = New-Object System.Drawing.Size(140, 30)
+$PowerButton.Location = New-Object System.Drawing.Point(([int]$NetworkButton.Location.X + [int]$NetworkButton.Width + $buttonSpacing), $yPosTools)
+$PowerButton.Size = New-Object System.Drawing.Size($buttonWidth, 30)
 $PowerButton.Add_Click({ Invoke-WPFControlPanel "WPFPanelpower" })
 $PowerButton.BackColor = [System.Drawing.Color]::FromArgb(70, 70, 70)
 $PowerButton.ForeColor = [System.Drawing.Color]::White
@@ -2601,8 +2604,8 @@ $ToolsTab.Controls.Add($PowerButton)
 
 $RegionButton = New-Object System.Windows.Forms.Button
 $RegionButton.Text = "Area Geografica"
-$RegionButton.Location = New-Object System.Drawing.Point(([int]$PowerButton.Location.X + [int]$PowerButton.Width + 10), $yPosTools)
-$RegionButton.Size = New-Object System.Drawing.Size(140, 30)
+$RegionButton.Location = New-Object System.Drawing.Point(([int]$PowerButton.Location.X + [int]$PowerButton.Width + $buttonSpacing), $yPosTools)
+$RegionButton.Size = New-Object System.Drawing.Size($buttonWidth, 30)
 $RegionButton.Add_Click({ Invoke-WPFControlPanel "WPFPanelregion" })
 $RegionButton.BackColor = [System.Drawing.Color]::FromArgb(70, 70, 70)
 $RegionButton.ForeColor = [System.Drawing.Color]::White
@@ -2611,12 +2614,12 @@ $RegionButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(100,
 $RegionButton.FlatAppearance.BorderSize = 1
 $ToolsTab.Controls.Add($RegionButton)
 
-$yPosTools += [int]($ControlPanelButton.Height + 5)
+$yPosTools += [int]($ControlPanelButton.Height + $buttonSpacing)
 
 $SoundButton = New-Object System.Windows.Forms.Button
 $SoundButton.Text = "Audio"
 $SoundButton.Location = New-Object System.Drawing.Point($xPosTools, $yPosTools)
-$SoundButton.Size = New-Object System.Drawing.Size(140, 30)
+$SoundButton.Size = New-Object System.Drawing.Size($buttonWidth, 30)
 $SoundButton.Add_Click({ Invoke-WPFControlPanel "WPFPanelsound" })
 $SoundButton.BackColor = [System.Drawing.Color]::FromArgb(70, 70, 70)
 $SoundButton.ForeColor = [System.Drawing.Color]::White
@@ -2627,8 +2630,8 @@ $ToolsTab.Controls.Add($SoundButton)
 
 $SystemButton = New-Object System.Windows.Forms.Button
 $SystemButton.Text = "Sistema"
-$SystemButton.Location = New-Object System.Drawing.Point(([int]$SoundButton.Location.X + [int]$SoundButton.Width + 10), $yPosTools)
-$SystemButton.Size = New-Object System.Drawing.Size(140, 30)
+$SystemButton.Location = New-Object System.Drawing.Point(([int]$SoundButton.Location.X + [int]$SoundButton.Width + $buttonSpacing), $yPosTools)
+$SystemButton.Size = New-Object System.Drawing.Size($buttonWidth, 30)
 $SystemButton.Add_Click({ Invoke-WPFControlPanel "WPFPanelsystem" })
 $SystemButton.BackColor = [System.Drawing.Color]::FromArgb(70, 70, 70)
 $SystemButton.ForeColor = [System.Drawing.Color]::White
@@ -2639,8 +2642,8 @@ $ToolsTab.Controls.Add($SystemButton)
 
 $UserButton = New-Object System.Windows.Forms.Button
 $UserButton.Text = "Account Utente"
-$UserButton.Location = New-Object System.Drawing.Point(([int]$SystemButton.Location.X + [int]$SystemButton.Width + 10), $yPosTools)
-$UserButton.Size = New-Object System.Drawing.Size(140, 30)
+$UserButton.Location = New-Object System.Drawing.Point(([int]$SystemButton.Location.X + [int]$SystemButton.Width + $buttonSpacing), $yPosTools)
+$UserButton.Size = New-Object System.Drawing.Size($buttonWidth, 30)
 $UserButton.Add_Click({ Invoke-WPFControlPanel "WPFPaneluser" })
 $UserButton.BackColor = [System.Drawing.Color]::FromArgb(70, 70, 70)
 $UserButton.ForeColor = [System.Drawing.Color]::White
