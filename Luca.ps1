@@ -10,7 +10,7 @@
 
 .NOTES
     Autore: Gemini
-    Versione: 8.8 (Aggiornamento Nomi Pulsanti, Aggiunta Gestione Script PowerShell)
+    Versione: 8.9 (Rimozione pulsante disabilita PS, Aggiunta Disabilita Avvio Rapido)
     Data: 15 luglio 2025
 
     IMPORTANTE:
@@ -916,6 +916,13 @@ $RegistryConfigurations = @(
         Description = "Rimuove la cartella 'Accessibilità' dal menu Start dell'utente corrente."
         RegistryActions = @(
             @{ Action = "RunCommand"; Command = "cmd /c if exist ""%APPDATA%\Microsoft\Windows\Start Menu\Programs\Accessibility"" ( rd /s /q ""%APPDATA%\Microsoft\Windows\Start Menu\Programs\Accessibility"" && echo Cartella ""Accessibility"" rimossa con successo. ) else ( echo La cartella ""Accessibility"" non esiste. )" }
+        )
+    },
+    @{
+        Name = "Disabilita Avvio Rapido"
+        Description = "Disabilita la funzionalità di avvio rapido di Windows, che può causare problemi di spegnimento o riavvio."
+        RegistryActions = @(
+            @{ Path = "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Power"; Name = "HiberbootEnabled"; Value = 0; Type = "DWord"; Action = "Set" }
         )
     }
 )
@@ -2363,6 +2370,7 @@ Function Manage-PowerShellScriptExecution {
             Show-MessageBox "Si è verificato un errore durante l'abilitazione degli script PowerShell. Controlla il log per i dettagli." "Errore Abilitazione" "OK" "Error"
         }
     } Else {
+        # This branch is now effectively removed from the GUI, but keeping the function for completeness if needed elsewhere.
         $Script:LogTextBox.AppendText("--- Avvio disabilitazione script PowerShell ---`r`n")
         Try {
             # Disallow double click powershell scripts
@@ -2858,7 +2866,7 @@ $ToolsTab.Controls.Add($DisableOptionalFeaturesButton)
 
 $yPosTools += [int]($DisableOptionalFeaturesButton.Height + 5)
 
-# Nuovi pulsanti per la gestione degli script PowerShell
+# Nuovo pulsante per abilitare gli script PowerShell (il pulsante per disabilitare è stato rimosso)
 $EnablePSScriptsButton = New-Object System.Windows.Forms.Button
 $EnablePSScriptsButton.Text = "Abilita Script PowerShell"
 $EnablePSScriptsButton.Location = New-Object System.Drawing.Point($xPosTools, $yPosTools)
@@ -2870,20 +2878,6 @@ $EnablePSScriptsButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
 $EnablePSScriptsButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(20, 120, 200)
 $EnablePSScriptsButton.FlatAppearance.BorderSize = 1
 $ToolsTab.Controls.Add($EnablePSScriptsButton)
-
-$yPosTools += [int]($EnablePSScriptsButton.Height + 5)
-
-$DisablePSScriptsButton = New-Object System.Windows.Forms.Button
-$DisablePSScriptsButton.Text = "Disabilita Script PowerShell"
-$DisablePSScriptsButton.Location = New-Object System.Drawing.Point($xPosTools, $yPosTools)
-$DisablePSScriptsButton.Size = New-Object System.Drawing.Size(280, 30)
-$DisablePSScriptsButton.Add_Click({ Manage-PowerShellScriptExecution -EnableScripts $false })
-$DisablePSScriptsButton.BackColor = [System.Drawing.Color]::FromArgb(255, 60, 60) # Rosso brillante
-$DisablePSScriptsButton.ForeColor = [System.Drawing.Color]::White
-$DisablePSScriptsButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
-$DisablePSScriptsButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(200, 40, 40)
-$DisablePSScriptsButton.FlatAppearance.BorderSize = 1
-$ToolsTab.Controls.Add($DisablePSScriptsButton)
 
 #endregion
 
