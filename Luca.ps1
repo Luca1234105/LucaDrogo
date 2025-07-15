@@ -10,7 +10,7 @@
 
 .NOTES
     Autore: Gemini
-    Versione: 8.11 (Risoluzione testo pulsanti troppo lungo)
+    Versione: 8.12 (Aggiunta pulizia sistema)
     Data: 15 luglio 2025
 
     IMPORTANTE:
@@ -2390,6 +2390,83 @@ Function Manage-PowerShellScriptExecution {
     }
     $Script:LogTextBox.AppendText("--- Fine operazione script PowerShell ---`r`n`r`n")
 }
+
+Function Perform-SystemCleanup {
+    $Script:LogTextBox.Clear()
+    $Script:LogTextBox.AppendText("--- Avvio Pulizia Sistema ---`r`n`r`n")
+
+    $confirm = Show-MessageBox "Questa operazione pulirà file temporanei, prefetch, code di stampa e log di sistema. Vuoi continuare?" "Conferma Pulizia Sistema" "YesNo" "Question"
+
+    If ($confirm -ne [System.Windows.Forms.DialogResult]::Yes) {
+        $Script:LogTextBox.AppendText("Operazione di pulizia sistema annullata dall'utente.`r`n")
+        Return
+    }
+
+    # Pulizia cartella Windows Temp
+    $Script:LogTextBox.AppendText("Pulizia di C:\Windows\Temp...`r`n")
+    Try {
+        Get-ChildItem -Path "C:\Windows\Temp" -Force -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force -Recurse -ErrorAction SilentlyContinue
+        $Script:LogTextBox.AppendText("SUCCESSO: Cartella C:\Windows\Temp pulita.`r`n")
+    } Catch {
+        $Script:LogTextBox.AppendText("ERRORE: Impossibile pulire C:\Windows\Temp. Errore: $($_.Exception.Message)`r`n")
+    }
+    $Script:LogTextBox.AppendText("`r`n")
+
+    # Pulizia cartella Prefetch
+    $Script:LogTextBox.AppendText("Pulizia di C:\Windows\Prefetch...`r`n")
+    Try {
+        Get-ChildItem -Path "C:\Windows\Prefetch" -Force -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force -Recurse -ErrorAction SilentlyContinue
+        $Script:LogTextBox.AppendText("SUCCESSO: Cartella C:\Windows\Prefetch pulita.`r`n")
+    } Catch {
+        $Script:LogTextBox.AppendText("ERRORE: Impossibile pulire C:\Windows\Prefetch. Errore: $($_.Exception.Message)`r`n")
+    }
+    $Script:LogTextBox.AppendText("`r`n")
+
+    # Pulizia cartella Temp utente
+    $Script:LogTextBox.AppendText("Pulizia della cartella temporanea utente ($env:TEMP)...`r`n")
+    Try {
+        Get-ChildItem -Path "$env:TEMP" -Force -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force -Recurse -ErrorAction SilentlyContinue
+        $Script:LogTextBox.AppendText("SUCCESSO: Cartella temporanea utente pulita.`r`n")
+    } Catch {
+        $Script:LogTextBox.AppendText("ERRORE: Impossibile pulire la cartella temporanea utente. Errore: $($_.Exception.Message)`r`n")
+    }
+    $Script:LogTextBox.AppendText("`r`n")
+
+    # Pulizia code di stampa
+    $Script:LogTextBox.AppendText("Pulizia code di stampa...`r`n")
+    Try {
+        $Script:LogTextBox.AppendText("Arresto del servizio Spooler di stampa...`r`n")
+        Stop-Service -Name Spooler -Force -ErrorAction Stop
+        $Script:LogTextBox.AppendText("Eliminazione file dalla coda di stampa...`r`n")
+        Get-ChildItem -Path "C:\Windows\System32\spool\PRINTERS" -Force -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force -Recurse -ErrorAction SilentlyContinue
+        $Script:LogTextBox.AppendText("Avvio del servizio Spooler di stampa...`r`n")
+        Start-Service -Name Spooler -ErrorAction Stop
+        $Script:LogTextBox.AppendText("SUCCESSO: Code di stampa pulite.`r`n")
+    } Catch {
+        $Script:LogTextBox.AppendText("ERRORE: Impossibile pulire le code di stampa. Errore: $($_.Exception.Message)`r`n")
+    }
+    $Script:LogTextBox.AppendText("`r`n")
+
+    # Pulizia log di sistema (Event Viewer)
+    $Script:LogTextBox.AppendText("Pulizia log di sistema (Visualizzatore Eventi)...`r`n")
+    Try {
+        Get-WinEvent -ListLog * -ErrorAction SilentlyContinue | ForEach-Object {
+            Try {
+                Clear-WinEvent -LogName $_.LogName -ErrorAction Stop
+                $Script:LogTextBox.AppendText("SUCCESSO: Log ' $($_.LogName)' pulito.`r`n")
+            } Catch {
+                $Script:LogTextBox.AppendText("AVVISO: Impossibile pulire il log ' $($_.LogName)'. Errore: $($_.Exception.Message)`r`n")
+            }
+        }
+        $Script:LogTextBox.AppendText("SUCCESSO: Tutti i log di sistema tentati sono stati puliti.`r`n")
+    } Catch {
+        $Script:LogTextBox.AppendText("ERRORE: Errore generale durante la pulizia dei log di sistema. Errore: $($_.Exception.Message)`r`n")
+    }
+    $Script:LogTextBox.AppendText("`r`n")
+
+    $Script:LogTextBox.AppendText("Pulizia sistema completata. Si prega di rivedere il log sopra.`r`n")
+    Show-MessageBox "La pulizia del sistema è stata completata. Si prega di controllare il log per i dettagli." "Pulizia Completata"
+}
 #endregion
 
 #region Crea Form Principale
@@ -2881,6 +2958,21 @@ $EnablePSScriptsButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
 $EnablePSScriptsButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(20, 120, 200)
 $EnablePSScriptsButton.FlatAppearance.BorderSize = 1
 $ToolsTab.Controls.Add($EnablePSScriptsButton)
+
+$yPosTools += [int]($EnablePSScriptsButton.Height + 10)
+
+# Nuovo pulsante per la pulizia del sistema
+$SystemCleanupButton = New-Object System.Windows.Forms.Button
+$SystemCleanupButton.Text = "Pulisci File Temporanei e Log"
+$SystemCleanupButton.Location = New-Object System.Drawing.Point($xPosTools, $yPosTools)
+$SystemCleanupButton.Size = New-Object System.Drawing.Size(280, 30)
+$SystemCleanupButton.Add_Click({ Perform-SystemCleanup })
+$SystemCleanupButton.BackColor = [System.Drawing.Color]::FromArgb(204, 102, 0) # Arancione scuro
+$SystemCleanupButton.ForeColor = [System.Drawing.Color]::White
+$SystemCleanupButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+$SystemCleanupButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(150, 70, 0)
+$SystemCleanupButton.FlatAppearance.BorderSize = 1
+$ToolsTab.Controls.Add($SystemCleanupButton)
 
 #endregion
 
