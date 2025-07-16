@@ -10,8 +10,8 @@
 
 .NOTES
     Autore: Gemini
-    Versione: 8.13 (Correzione bug $true/$false)
-    Data: 15 luglio 2025
+    Versione: 8.14 (Integrazione richieste utente)
+    Data: 16 luglio 2025
 
     IMPORTANTE:
     - L'esecuzione di questo script richiede privilegi di amministratore. Tenterà di elevarsi
@@ -220,7 +220,9 @@ $RegistryConfigurations = @(
             @{ Path = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Desktop\NameSpace\{f874310e-b6b7-47dc-bc84-b9e6b38f5903}"; Action = "RemoveKey" }, # Sblocca Home
             @{ Path = "HKCU:\Software\Classes\CLSID\{F02C1A0D-BE21-4350-88B0-7367FC96EF3C}\ShellFolder"; Name = "Attributes"; Value = 0xB0940064; Type = "DWord"; Action = "Set" }, # Rete
             @{ Path = "HKCU:\Software\Classes\Wow6432Node\CLSID\{F02C1A0D-BE21-4350-88B0-7367FC96EF3C}\ShellFolder"; Name = "Attributes"; Value = 0xB0940064; Type = "DWord"; Action = "Set" },
-            @{ Path = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer"; Name = "HubMode"; Value = 1; Type = "DWord"; Action = "Set" } # Rimuovi Accesso Rapido
+            @{ Path = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer"; Name = "HubMode"; Value = 1; Type = "DWord"; Action = "Set" }, # Rimuovi Accesso Rapido
+            @{ Path = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\MyComputer\NameSpace\{0DB7E03F-FC29-4DC6-9020-FF41B59E513A}"; Action = "RemoveKey" }, # Oggetti 3D
+            @{ Path = "HKLM:\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Explorer\MyComputer\NameSpace\{0DB7E03F-FC29-4DC6-9020-FF41B59E513A}"; Action = "RemoveKey" } # Oggetti 3D (Wow6432Node)
         )
     },
     @{
@@ -531,7 +533,10 @@ $RegistryConfigurations = @(
             @{ Path = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\GameDVR"; Name = "AutoGameModeEnabled"; Value = 0; Type = "DWord"; Action = "Set" },
             @{ Path = "HKCU:\SOFTWARE\Microsoft\GameBar"; Name = "UseNexusForGameBarEnabled"; Value = 0; Type = "DWord"; Action = "Set" },
             @{ Path = "HKCU:\SOFTWARE\Microsoft\GameBar"; Name = "ShowStartupPanel"; Value = 0; Type = "DWord"; Action = "Set" },
-            @{ Path = "HKCU:\SOFTWARE\Microsoft\GameBar"; Name = "AutoGameModeEnabled"; Value = 0; Type = "DWord"; Action = "Set" }
+            @{ Path = "HKCU:\SOFTWARE\Microsoft\GameBar"; Name = "AutoGameModeEnabled"; Value = 0; Type = "DWord"; Action = "Set" },
+            @{ Path = "HKCU:\System\GameConfigStore"; Name = "GameDVR_FSEBehavior"; Value = 2; Type = "DWord"; Action = "Set" }, # Aggiunto dal JSON
+            @{ Path = "HKCU:\System\GameConfigStore"; Name = "GameDVR_HonorUserFSEBehaviorMode"; Value = 1; Type = "DWord"; Action = "Set" }, # Aggiunto dal JSON
+            @{ Path = "HKCU:\System\GameConfigStore"; Name = "GameDVR_EFSEFeatureFlags"; Value = 0; Type = "DWord"; Action = "Set" } # Aggiunto dal JSON
         )
     },
     @{
@@ -877,7 +882,7 @@ $RegistryConfigurations = @(
     },
     @{
         Name = "Disabilita Pulsante Visualizzazione Attività e Funzioni Barra delle Applicazioni"
-        Description = "Disabilita il pulsante Visualizzazione Attività e altre funzioni specifiche della barra delle applicazioni."
+        Description = "Disabilita il pulsante Visualizzazione Attività e altre funzioni specifiche della barra delle Applicazioni."
         RegistryActions = @(
             @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"; Name = "ShowTaskViewButton"; Value = 0; Type = "DWord"; Action = "Set" }
         )
@@ -923,6 +928,21 @@ $RegistryConfigurations = @(
         Description = "Disabilita la funzionalità di avvio rapido di Windows, che può causare problemi di spegnimento o riavvio."
         RegistryActions = @(
             @{ Path = "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Power"; Name = "HiberbootEnabled"; Value = 0; Type = "DWord"; Action = "Set" }
+        )
+    },
+    @{
+        Name = "Abilita Menu Contesto Classico (Windows 11)"
+        Description = "Ripristina il menu contestuale completo di Windows 10 in Windows 11."
+        RegistryActions = @(
+            @{ Path = "HKCU:\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}"; Name = "InprocServer32"; Value = ""; Type = "String"; Action = "Set" },
+            @{ Action = "RunCommand"; Command = "taskkill /f /im explorer.exe & start explorer.exe" } # Riavvia Explorer
+        )
+    },
+    @{
+        Name = "Disabilita Funzionalità Consumer"
+        Description = "Impedisce a Windows di installare automaticamente giochi, app di terze parti o collegamenti alle applicazioni dal Microsoft Store per l'utente connesso."
+        RegistryActions = @(
+            @{ Path = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\CloudContent"; Name = "DisableWindowsConsumerFeatures"; Value = 1; Type = "DWord"; Action = "Set" }
         )
     }
 )
@@ -1218,14 +1238,6 @@ Function Perform-AdvancedSystemTweaks {
     }
 
     Try {
-        $Script:LogTextBox.AppendText("Rimozione della voce 'Oggetti 3D' da Esplora File...`r`n")
-        Remove-RegistryKey -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\MyComputer\NameSpace\{0DB7E03F-FC29-4DC6-9020-FF41B59E513A}"
-        Remove-RegistryKey -Path "HKLM:\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Explorer\MyComputer\NameSpace\{0DB7E03F-FC29-4DC6-9020-FF41B59E513A}"
-    } Catch {
-        $Script:LogTextBox.AppendText("ERRORE: Impossibile rimuovere la voce 'Oggetti 3D'. Errore: $($_.Exception.Message)`r`n")
-    }
-
-    Try {
         $Script:LogTextBox.AppendText("Pulizia delle policy di Microsoft Edge (se gestite dall'organizzazione)...`r`n")
         If (Test-Path "HKLM:\SOFTWARE\Policies\Microsoft\Edge") {
             Remove-RegistryKey -Path "HKLM:\SOFTWARE\Policies\Microsoft\Edge"
@@ -1278,7 +1290,7 @@ Function Perform-AdvancedSystemTweaks {
 Function Invoke-WPFOOSU {
     <#
     .SYNOPSIS
-        Downloads and runs OO Shutup 10
+        Downloads and runs OO ShutUp 10
     #>
     Try {
         $Script:LogTextBox.AppendText("Avvio del download di OOSU10.exe...`r`n")
@@ -1833,13 +1845,13 @@ Function Apply-SelectedChanges {
 
 Function Select-AllCheckboxes {
     ForEach ($checkbox in $Script:CheckBoxes) {
-        $checkbox.Checked = $true # Correzione: Usato $true
+        $checkbox.Checked = $true
     }
 }
 
 Function Deselect-AllCheckboxes {
     ForEach ($checkbox in $Script:CheckBoxes) {
-        $checkbox.Checked = $false # Correzione: Usato $false
+        $checkbox.Checked = $false
     }
 }
 
@@ -2004,13 +2016,13 @@ Function Install-SelectedDownloadApps {
 
 Function Select-AllDownloadApps {
     For ($i = 0; $i -lt $Script:DownloadAppsCheckedListBox.Items.Count; $i++) {
-        $Script:DownloadAppsCheckedListBox.SetItemChecked($i, $true) # Correzione: Usato $true
+        $Script:DownloadAppsCheckedListBox.SetItemChecked($i, $true)
     }
 }
 
 Function Deselect-AllDownloadApps {
     For ($i = 0; $i -lt $Script:DownloadAppsCheckedListBox.Items.Count; $i++) {
-        $Script:DownloadAppsCheckedListBox.SetItemChecked($i, $false) # Correzione: Usato $false
+        $Script:DownloadAppsCheckedListBox.SetItemChecked($i, $false)
     }
 }
 
@@ -2219,8 +2231,8 @@ Function Perform-UninstallOneDrive {
         }
 
         $Script:LogTextBox.AppendText("Riavvio di Explorer.exe...`r`n")
-        taskkill.exe /F /IM "explorer.exe" | Out-Null # Removed /ErrorAction
-        Start-Process "explorer.exe" | Out-Null # Removed /ErrorAction
+        taskkill.exe /F /IM "explorer.exe" | Out-Null
+        Start-Process "explorer.exe" | Out-Null
         $Script:LogTextBox.AppendText("SUCCESSO: Explorer.exe riavviato.`r`n")
         $Script:LogTextBox.AppendText("Si prega di notare - La cartella OneDrive in '$OneDrivePath' potrebbe contenere ancora elementi. È necessario eliminarla manualmente, ma tutti i file dovrebbero essere già stati copiati nella cartella utente di base.`r`n")
         $Script:LogTextBox.AppendText("Se in seguito mancano dei file, accedi a Onedrive.com e scaricali manualmente.`r`n")
