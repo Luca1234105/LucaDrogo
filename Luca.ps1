@@ -10,7 +10,7 @@
 
 .NOTES
     Autore: Gemini
-    Versione: 8.14 (Integrazione richieste utente)
+    Versione: 8.15 (Integrazione eliminazione defaultuser0)
     Data: 16 luglio 2025
 
     IMPORTANTE:
@@ -943,6 +943,41 @@ $RegistryConfigurations = @(
         Description = "Impedisce a Windows di installare automaticamente giochi, app di terze parti o collegamenti alle applicazioni dal Microsoft Store per l'utente connesso."
         RegistryActions = @(
             @{ Path = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\CloudContent"; Name = "DisableWindowsConsumerFeatures"; Value = 1; Type = "DWord"; Action = "Set" }
+        )
+    },
+    @{
+        Name = "Disabilita Sincronizzazione Cloud"
+        Description = "Disabilita la sincronizzazione delle impostazioni di Windows tramite il cloud (temi, password, preferenze app, ecc.)."
+        RegistryActions = @(
+            @{ Path = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\SettingSync"; Name = "DisableSettingSync"; Value = 2; Type = "DWord"; Action = "Set" },
+            @{ Path = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\SettingSync"; Name = "DisableSettingSyncUserOverride"; Value = 1; Type = "DWord"; Action = "Set" },
+            @{ Path = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\SettingSync"; Name = "DisableSyncOnPaidNetwork"; Value = 1; Type = "DWord"; Action = "Set" },
+            @{ Path = "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\SettingSync"; Name = "SyncPolicy"; Value = 5; Type = "DWord"; Action = "Set" },
+            @{ Path = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\SettingSync"; Name = "DisableApplicationSettingSync"; Value = 2; Type = "DWord"; Action = "Set" },
+            @{ Path = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\SettingSync"; Name = "DisableApplicationSettingSyncUserOverride"; Value = 1; Type = "DWord"; Action = "Set" },
+            @{ Path = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\SettingSync"; Name = "DisableAppSyncSettingSync"; Value = 2; Type = "DWord"; Action = "Set" },
+            @{ Path = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\SettingSync"; Name = "DisableAppSyncSettingSyncUserOverride"; Value = 1; Type = "DWord"; Action = "Set" },
+            @{ Path = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\SettingSync"; Name = "DisableCredentialsSettingSync"; Value = 2; Type = "DWord"; Action = "Set" },
+            @{ Path = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\SettingSync"; Name = "DisableCredentialsSettingSyncUserOverride"; Value = 1; Type = "DWord"; Action = "Set" },
+            @{ Path = "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\SettingSync\Groups\Credentials"; Name = "Enabled"; Value = 0; Type = "DWord"; Action = "Set" },
+            @{ Path = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\SettingSync"; Name = "DisableDesktopThemeSettingSync"; Value = 2; Type = "DWord"; Action = "Set" },
+            @{ Path = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\SettingSync"; Name = "DisableDesktopThemeSettingSyncUserOverride"; Value = 1; Type = "DWord"; Action = "Set" },
+            @{ Path = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\SettingSync"; Name = "DisablePersonalizationSettingSync"; Value = 2; Type = "DWord"; Action = "Set" },
+            @{ Path = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\SettingSync"; Name = "DisablePersonalizationSettingSyncUserOverride"; Value = 1; Type = "DWord"; Action = "Set" },
+            @{ Path = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\SettingSync"; Name = "DisableStartLayoutSettingSync"; Value = 2; Type = "DWord"; Action = "Set" },
+            @{ Path = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\SettingSync"; Name = "DisableStartLayoutSettingSyncUserOverride"; Value = 1; Type = "DWord"; Action = "Set" },
+            @{ Path = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\SettingSync"; Name = "DisableWebBrowserSettingSync"; Value = 2; Type = "DWord"; Action = "Set" },
+            @{ Path = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\SettingSync"; Name = "DisableWebBrowserSettingSyncUserOverride"; Value = 1; Type = "DWord"; Action = "Set" },
+            @{ Path = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\SettingSync"; Name = "DisableWindowsSettingSync"; Value = 2; Type = "DWord"; Action = "Set" },
+            @{ Path = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\SettingSync"; Name = "DisableWindowsSettingSyncUserOverride"; Value = 1; Type = "DWord"; Action = "Set" },
+            @{ Path = "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\SettingSync\Groups\Language"; Name = "Enabled"; Value = 0; Type = "DWord"; Action = "Set" }
+        )
+    },
+    @{
+        Name = "Elimina Utente Default0"
+        Description = "Elimina l'utente 'defaultuser0' dal sistema (spesso un account residuo)."
+        RegistryActions = @(
+            @{ Action = "RunFunction"; FunctionName = "Remove-DefaultUser0" }
         )
     }
 )
@@ -2300,7 +2335,7 @@ Function Invoke-DisableDriverUpdatesAndCEIP {
         Set-RegistryValue -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate" -Name "ExcludeWUDriversInQualityUpdate" -Value 1 -Type "DWord"
 
         # Disattiva l'installazione automatica dei driver da parte di Device Installation
-        Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\DriverSearching" -Name "SearchOrderConfig" -Value 0 -Type "DWord"
+        Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\DriverSearching" -Name "SearchOrderConfig" -Value 0; Type = "DWord"
 
         # Disabilita aggiornamento automatico dei driver tramite Pannello di Controllo
         Set-RegistryValue -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Device Metadata" -Name "PreventDeviceMetadataFromNetwork" -Value 1 -Type "DWord"
@@ -2478,6 +2513,23 @@ Function Perform-SystemCleanup {
 
     $Script:LogTextBox.AppendText("Pulizia sistema completata. Si prega di rivedere il log sopra.`r`n")
     Show-MessageBox "La pulizia del sistema è stata completata. Si prega di controllare il log per i dettagli." "Pulizia Completata"
+}
+
+Function Remove-DefaultUser0 {
+    $Script:LogTextBox.AppendText("--- Tentativo di eliminare l'utente 'defaultuser0' ---`r`n")
+    Try {
+        $process = Start-Process -FilePath "net.exe" -ArgumentList "user", "defaultuser0", "/delete" -Wait -PassThru -WindowStyle Hidden -ErrorAction SilentlyContinue
+        If ($process.ExitCode -eq 0) {
+            $Script:LogTextBox.AppendText("SUCCESSO: Utente 'defaultuser0' eliminato (se esistente).`r`n")
+        } ElseIf ($process.ExitCode -eq 2) { # Exit code 2 for net user delete means user not found
+            $Script:LogTextBox.AppendText("INFO: Utente 'defaultuser0' non trovato, nessuna azione necessaria.`r`n")
+        } Else {
+            $Script:LogTextBox.AppendText("AVVISO: L'eliminazione dell'utente 'defaultuser0' è terminata con codice di uscita: $($process.ExitCode).`r`n")
+        }
+    } Catch {
+        $Script:LogTextBox.AppendText("ERRORE: Eccezione durante l'eliminazione dell'utente 'defaultuser0'. Errore: $($_.Exception.Message)`r`n")
+    }
+    $Script:LogTextBox.AppendText("--- Fine eliminazione utente 'defaultuser0' ---`r`n`r`n")
 }
 #endregion
 
@@ -2862,7 +2914,7 @@ $BackgroundAppsToggleButton.Add_Click({
         Show-MessageBox "Le app in background sono state disabilitate. Potrebbe essere necessario un riavvio per avere pieno effetto." "App in Background Disabilitate"
     } Else {
         # Abilita
-        Set-RegistryValue -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\BackgroundAccessApplications" -Name "GlobalUserDisabled" -Value 0 -Type "DWord"
+        Set-RegistryValue -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\BackgroundAccessApplications" -Name "GlobalUserDisabled" -Value 0; Type = "DWord"
         Show-MessageBox "Le app in background sono state abilitate. Potrebbe essere necessario un riavvio per avere pieno effetto." "App in Background Abilitate"
     }
     Update-BackgroundAppsButtonState # Aggiorna lo stato del pulsante dopo la modifica
