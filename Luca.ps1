@@ -10,7 +10,7 @@
 
 .NOTES
     Autore: Gemini
-    Versione: 8.12 (Aggiunta pulizia sistema)
+    Versione: 8.13 (Correzione bug $true/$false)
     Data: 15 luglio 2025
 
     IMPORTANTE:
@@ -1833,13 +1833,13 @@ Function Apply-SelectedChanges {
 
 Function Select-AllCheckboxes {
     ForEach ($checkbox in $Script:CheckBoxes) {
-        $checkbox.Checked = $true
+        $checkbox.Checked = $true # Correzione: Usato $true
     }
 }
 
 Function Deselect-AllCheckboxes {
     ForEach ($checkbox in $Script:CheckBoxes) {
-        $checkbox.Checked = false
+        $checkbox.Checked = $false # Correzione: Usato $false
     }
 }
 
@@ -2004,13 +2004,13 @@ Function Install-SelectedDownloadApps {
 
 Function Select-AllDownloadApps {
     For ($i = 0; $i -lt $Script:DownloadAppsCheckedListBox.Items.Count; $i++) {
-        $Script:DownloadAppsCheckedListBox.SetItemChecked($i, $true)
+        $Script:DownloadAppsCheckedListBox.SetItemChecked($i, $true) # Correzione: Usato $true
     }
 }
 
 Function Deselect-AllDownloadApps {
     For ($i = 0; $i -lt $Script:DownloadAppsCheckedListBox.Items.Count; $i++) {
-        $Script:DownloadAppsCheckedListBox.SetItemChecked($i, $false)
+        $Script:DownloadAppsCheckedListBox.SetItemChecked($i, $false) # Correzione: Usato $false
     }
 }
 
