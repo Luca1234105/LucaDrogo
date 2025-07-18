@@ -325,7 +325,7 @@ $RegistryConfigurations = @(
         Name = "Nascondi 'Home' dalla Pagina Impostazioni"
         Description = "Nasconde la sezione 'Home' all'interno dell'applicazione Impostazioni di Windows."
         RegistryActions = @(
-            @{ Path = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer"; Name = "SettingsPageVisibility"; Value = "hide:home"; Type = "String"; Action = "Set" }
+            @{ Path = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\CurrentVersion\Policies\Explorer"; Name = "SettingsPageVisibility"; Value = "hide:home"; Type = "String"; Action = "Set" }
         )
     },
     @{
@@ -1892,7 +1892,15 @@ Function Deselect-AllCheckboxes {
 
 Function Update-Winget {
     $Script:LogTextBox.Clear()
-    $Script:LogTextBox.AppendText("Controllo e aggiornamento di Winget...`r`n`r`n")
+    $Script:LogTextBox.AppendText("--- Avvio controllo e aggiornamento di Winget ---`r`n`r`n")
+
+    # Show a progress message
+    $Script:DownloadProgressLabel.Text = "Aggiornamento Winget e app installate. Attendere..."
+    $Script:DownloadProgressLabel.Visible = $true
+    $Script:DownloadProgressBar.Style = [System.Windows.Forms.ProgressBarStyle]::Marquee # Indeterminate progress
+    $Script:DownloadProgressBar.Visible = $true
+    $Script:DownloadProgressLabel.Update() # Force GUI refresh
+    $Script:DownloadProgressBar.Update() # Force GUI refresh
 
     Try {
         # Check if winget.exe is available
@@ -1908,6 +1916,7 @@ Function Update-Winget {
 
         $Script:LogTextBox.AppendText("Winget trovato: $wingetPath.`r`n")
         $Script:LogTextBox.AppendText("Tentativo di aggiornare tutte le app e Winget stesso...`r`n")
+        $Script:LogTextBox.Update() # Force GUI refresh
 
         # Create temporary files for output redirection
         $tempOutputFile = [System.IO.Path]::GetTempFileName()
@@ -1922,11 +1931,16 @@ Function Update-Winget {
         $wingetError = Get-Content $tempErrorFile -Raw -ErrorAction SilentlyContinue
 
         If ($wingetOutput) {
-            $Script:LogTextBox.AppendText("Output Winget:`r`n$wingetOutput`r`n")
+            $Script:LogTextBox.AppendText("`r`n--- Output Dettagliato Winget ---`r`n")
+            $Script:LogTextBox.AppendText("$wingetOutput`r`n")
+            $Script:LogTextBox.AppendText("--- Fine Output Dettagliato Winget ---`r`n`r`n")
         }
         If ($wingetError) {
-            $Script:LogTextBox.AppendText("Errore Winget:`r`n$wingetError`r`n")
+            $Script:LogTextBox.AppendText("`r`n--- Errori Winget ---`r`n")
+            $Script:LogTextBox.AppendText("$wingetError`r`n")
+            $Script:LogTextBox.AppendText("--- Fine Errori Winget ---`r`n`r`n")
         }
+        $Script:LogTextBox.Update() # Force GUI refresh
 
         If ($process.ExitCode -eq 0) {
             $Script:LogTextBox.AppendText("SUCCESSO: Tutte le app (e Winget) sono state aggiornate con successo tramite Winget.`r`n")
@@ -1945,6 +1959,14 @@ Function Update-Winget {
         If (Test-Path $tempOutputFile) { Remove-Item $tempOutputFile -ErrorAction SilentlyContinue }
         If (Test-Path $tempErrorFile) { Remove-Item $tempErrorFile -ErrorAction SilentlyContinue }
         $Script:LogTextBox.AppendText("--- Fine aggiornamento Winget ---`r`n")
+        $Script:LogTextBox.Update() # Final refresh
+
+        # Hide progress bar and label
+        $Script:DownloadProgressLabel.Text = ""
+        $Script:DownloadProgressLabel.Visible = $false
+        $Script:DownloadProgressBar.Style = [System.Windows.Forms.ProgressBarStyle]::Blocks # Reset to default
+        $Script:DownloadProgressBar.Value = 0
+        $Script:DownloadProgressBar.Visible = $false
     }
 }
 
@@ -2011,6 +2033,11 @@ Function Install-SelectedDownloadApps {
     $Script:LogTextBox.Clear()
     $Script:LogTextBox.AppendText("Avvio installazione delle app selezionate...`r`n`r`n")
 
+    # First, update Winget
+    $Script:LogTextBox.AppendText("Controllo e aggiornamento di Winget prima dell'installazione delle app...`r`n")
+    Update-Winget # Call the Winget update function
+    $Script:LogTextBox.AppendText("`r`nContinuando con l'installazione delle app selezionate...`r`n`r`n")
+
     $selectedApps = $Script:DownloadAppsCheckedListBox.CheckedItems
     $selectedAppsCount = $selectedApps.Count
 
@@ -2024,6 +2051,7 @@ Function Install-SelectedDownloadApps {
     $Script:DownloadProgressBar.Maximum = $selectedAppsCount
     $Script:DownloadProgressBar.Value = 0
     $Script:DownloadProgressBar.Visible = $true # Make sure it's visible
+    $Script:DownloadProgressBar.Style = [System.Windows.Forms.ProgressBarStyle]::Blocks # Ensure it's determinate for app installs
 
     $currentAppIndex = 0
     ForEach ($item in $selectedApps) {
