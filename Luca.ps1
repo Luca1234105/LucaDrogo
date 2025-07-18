@@ -674,6 +674,15 @@ $RegistryConfigurations = @(
         )
     },
     @{
+        Name = "Disinstalla Widget e Disabilita News e Interessi"
+        Description = "Disinstalla i widget di Windows e disabilita la funzionalità 'Notizie e Interessi' nella barra delle applicazioni."
+        RegistryActions = @(
+            @{ Path = "HKLM:\SOFTWARE\Policies\Microsoft\Dsh"; Name = "AllowNewsAndInterests"; Value = 0; Type = "DWord"; Action = "Set" },
+            @{ Action = "UninstallAppxPackage"; AppxPackageName = "*WebExperience*" },
+            @{ Path = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\MicrosoftWindows.Client.WebExperience_cw5n1h2txyewy"; Name = $null; Value = ""; Type = "String"; Action = "Set" }
+        )
+    },
+    @{
         Name = "Disabilita Animazioni Finestre e Menu"
         Description = "Disattiva animazioni di finestre, menu, tooltip e altri effetti di dissolvenza/scorrimento per migliorare la reattività dell'interfaccia utente."
         RegistryActions = @(
@@ -889,7 +898,7 @@ $RegistryConfigurations = @(
     },
     @{
         Name = "Ripristina Interfaccia Utente (UI) e Sfondo Desktop"
-        Description = "Ripristina le impostazioni predefinite dell'interfaccia utente e riavvia Explorer.exe per risolvere problemi visivi e del menu Start, preservando il tuo sfondo desktop esistente."
+        Description = "Ripristina le impostazioni predefinute dell'interfaccia utente e riavvia Explorer.exe per risolvere problemi visivi e del menu Start, preservando il tuo sfondo desktop esistente."
         RegistryActions = @(
             @{ Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects"; Name = "VisualFXSetting"; Value = 1; Type = "DWord"; Action = "Set" }, # Imposta su Personalizzato (per un reset stabile)
             @{ Path = "HKCU:\Control Panel\Desktop"; Name = "FontSmoothing"; Value = "2"; Type = "String"; Action = "Set" }, # ClearType
